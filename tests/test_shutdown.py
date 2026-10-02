@@ -69,7 +69,7 @@ def test_starting_and_stopping_the_services_again_and_again_leaves_no_thread(tmp
         assert svc.stop() == [], "stopping twice is harmless"
         left = [t for t in threads_now() - before if t.is_alive()]
         assert not left, f"round {n}: {[t.name for t in left]}"
-    assert any(b["type"] == "pygmalion.job_done" for b in bus), "the events did reach the bus"
+    assert any(b["type"] == "pygmalion.job.done" for b in bus), "the events did reach the bus"
     assert not [t for t in threads_now() if not t.daemon and t not in before], "no non-daemon thread was left either"
     assert not [t for t in lingering_threads() if t.name.startswith(APP_THREAD_PREFIXES)]
 

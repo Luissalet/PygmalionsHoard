@@ -21,6 +21,7 @@ from . import procs
 from .errors import PygmalionError
 from .gpus import GpuManager, Grant
 from .logclean import clean_lines
+from .jobevents import JobEvents
 from .lineage import Lineage, is_quantized
 from .messages import ERRORS, error_text, text
 from .settings import Settings
@@ -115,6 +116,7 @@ class JobContext:
         if force or now - self._last_persist >= PERSIST_EVERY_S:
             self._last_persist = now
             self.manager.store.update_job(self.id, progress=self._progress)
+        self.manager.events.progress(self.job, self._progress)
 
     def message(self, text: str, **fields: Any) -> None:
         self.progress(force=True, message=text, **fields)
@@ -152,6 +154,7 @@ class JobContext:
 
         grant = self.deps.gpus.acquire(int(total_mb), purpose, cancel=self.cancel, on_wait=waiting)
         store.update_job(self.id, state="running", queue_position=None, gpus=grant.gpus)
+        self.job["gpus"] = list(grant.gpus)                 # the progress events carry the GPU the job now holds
         self.log(f"GPU {grant.gpus} granted ({grant.via}).")
         return grant
 
@@ -277,7 +280,8 @@ def resolve_refs(value: Any, outputs: dict[str, str]) -> Any:
 
 class JobManager:
     def __init__(self, deps: Deps, runners: dict[str, Runner], *, clock: Callable[[], float] = time.time, enabled: bool = True,
-                 paused: Callable[[], bool] = lambda: False, emit: Callable[[str, dict[str, Any]], None] = lambda t, d: None):
+                 paused: Callable[[], bool] = lambda: False, emit: Callable[[str, dict[str, Any]], None] = lambda t, d: None,
+                 base_url: Callable[[], str] = lambda: ""):
         self.deps = deps
         self.store = deps.store
         self.work = deps.work
@@ -286,6 +290,7 @@ class JobManager:
         self.enabled = enabled
         self.paused = paused
         self.emit = emit
+        self.events = JobEvents(lambda t, d: self.emit(t, d), clock=clock, base_url=base_url)   # looks self.emit up at send time
         self._stop = threading.Event()
         self._threads: dict[str, threading.Thread] = {}
         self._wake = {lane: threading.Event() for lane in LANES}
@@ -298,7 +303,10 @@ class JobManager:
     # ------------------------------------------------------------------ lifecycle
     def start(self) -> int:
         """Mark what was running as interrupted, then start the lane threads (unless the scheduler is disabled)."""
+        stale = [j for j in self.store.jobs(states=["running", "waiting_gpu"], limit=2000)]
         interrupted = self.store.mark_interrupted()
+        for old in stale:
+            self.events.finished(old, "interrupted", "The app stopped while this job was running.")
         if interrupted:
             log.info("%d job(s) were running when the app stopped: marked interrupted", interrupted)
         if self.enabled and not self.alive():
@@ -351,7 +359,7 @@ class JobManager:
         folder.mkdir(parents=True, exist_ok=True)
         job = self.store.update_job(job["id"], job_dir=str(folder))
         self._wake[lane].set()
-        self.emit("pygmalion.job_queued", {"job": job["id"], "kind": kind, "title": job["title"]})
+        self.events.queued(job)
         return job
 
     def pipeline(self, steps: list[dict[str, Any]], title: str = "") -> dict[str, Any]:
@@ -365,7 +373,9 @@ class JobManager:
     def cancel(self, job_id: str) -> dict[str, Any]:
         job = self.store.job(job_id)
         if job["state"] == "queued":
-            return self.store.update_job(job_id, state="cancelled", finished_ts=self.clock(), error=str(text("job_cancelled_early")))
+            cancelled = self.store.update_job(job_id, state="cancelled", finished_ts=self.clock(), error=str(text("job_cancelled_early")))
+            self.events.finished(cancelled, "cancelled")
+            return cancelled
         if job["state"] in ("running", "waiting_gpu"):
             self.store.update_job(job_id, cancel_requested=True)
             with self._lock:
@@ -373,7 +383,9 @@ class JobManager:
             if event is not None:
                 event.set()
             else:   # state says running but nothing runs it here (stale row): close it
-                return self.store.update_job(job_id, state="cancelled", finished_ts=self.clock(), error=str(error_text("cancelled")))
+                closed = self.store.update_job(job_id, state="cancelled", finished_ts=self.clock(), error=str(error_text("cancelled")))
+                self.events.finished(closed, "cancelled")
+                return closed
             return self.store.job(job_id)
         raise PygmalionError("conflict", "job_not_cancellable", id=job_id, state=job["state"])
 
@@ -575,6 +587,7 @@ class JobManager:
         if not job["job_dir"]:
             job = self.store.update_job(job["id"], job_dir=str(self.work.job_dir(job["id"])))
         Path(job["job_dir"]).mkdir(parents=True, exist_ok=True)
+        self.events.started(job)
         ctx = JobContext(self, job, cancel)
         state, error, hint, result = "done", "", "", {}
         try:
@@ -602,7 +615,7 @@ class JobManager:
                                     out_artifact=ctx.output or job.get("out_artifact"), queue_position=None)
         self.store.add_run(job["kind"], job["id"], state == "done", int((self.clock() - started) * 1000), error or "ok")
         self.finished += 1
-        self.emit(f"pygmalion.job_{state}", {"job": job["id"], "kind": job["kind"], "title": job["title"], "error": error})
+        self.events.finished(job, state, error, result)
         if state == "done" and job["then"]:
             try:
                 self._spawn_next(job)

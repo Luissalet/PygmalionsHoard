@@ -112,7 +112,8 @@ class Services:
         self.events = EventPump(self._send_event, wanted=self._events_wanted)
         self._stopped = False
         self.jobs = JobManager(deps, Runners(deps).table(), clock=clock_fn, enabled=config.scheduler,
-                               paused=lambda: self.settings.bool("scheduler.paused"), emit=self.emit)
+                               paused=lambda: self.settings.bool("scheduler.paused"), emit=self.emit,
+                               base_url=lambda: f"http://127.0.0.1:{config.port}")
         self._bases_lock = threading.Lock()
         self._dash_cache: Optional[tuple[float, dict[str, Any], Optional[dict[str, Any]]]] = None  # (when, slow blocks, env check they were built on)
         from .ops import Operations

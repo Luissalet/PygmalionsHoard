@@ -293,7 +293,7 @@ def test_events_are_emitted(ctx, jm):
     jm.emit = lambda t, d: events.append(t)
     jm.submit("convert", {})
     jm.run_until_idle()
-    assert events == ["pygmalion.job_queued", "pygmalion.job_done"]
+    assert events == ["pygmalion.job.queued", "pygmalion.job.started", "pygmalion.job.done"]
 
 
 def test_a_paused_scheduler_starts_nothing(ctx, jm):
