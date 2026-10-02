@@ -67,6 +67,21 @@ def test_valid_spanish_identifiers_are_found():
     text = "DNI 12345678Z, NIE X1234567L, correo ana.perez@example.com, tel: 612 345 678, IBAN ES9121000418450200051332."
     kinds = sorted(h["kind"] for h in pii.scan(text))
     assert kinds == ["dni", "email", "iban", "nie", "phone"]
+    hit = next(h for h in pii.scan(text) if h["kind"] == "iban")
+    assert hit["text"] == "ES9121000418450200051332" and text[hit["start"]:hit["end"]] == hit["text"]
+
+
+def test_numbers_that_only_look_like_identifiers_are_left_alone():
+    """Only values whose checksum is right count: the DNI letter, the NIE letter, the CIF control character and the IBAN sum."""
+    assert pii.scan("DNI 12345678A, NIE X1234567A, CIF A58818502 sin control") == []
+    assert [h["kind"] for h in pii.scan("CIF de la empresa: A58818501")] == ["cif"]    # a CIF is found now (it was not before)
+    assert pii.scan("CIF de la empresa: A58818502") == []
+
+
+def test_a_bare_nine_digit_number_is_not_a_phone_but_a_prefixed_labelled_or_grouped_one_is():
+    assert pii.scan("el pedido 612345678 salió") == []
+    for text in ("llama al +34 612 345 678", "tel: 612345678", "móvil 612 345 678", "612 34 56 78"):
+        assert [h["kind"] for h in pii.scan(text)] == ["phone"], text
 
 
 def test_card_numbers_need_a_valid_luhn_sum():
@@ -76,11 +91,12 @@ def test_card_numbers_need_a_valid_luhn_sum():
 
 def test_invalid_iban_is_ignored():
     assert pii.scan("ES0000000000000000000000") == []
-    assert pii.iban_ok("ES91 2100 0418 4502 0005 1332") and not pii.iban_ok("ES91 2100 0418 4502 0005 1333")
+    from pygmalion_hoard.hoard_link.idcheck import iban_ok
+    assert iban_ok("ES91 2100 0418 4502 0005 1332") and not iban_ok("ES91 2100 0418 4502 0005 1333")
 
 
 def test_mask_is_idempotent_and_keeps_the_text_around():
-    text = "Escríbeme a luis@example.org o llama al 612345678 por favor."
+    text = "Escríbeme a luis@example.org o llama al 612 345 678 por favor."
     once = pii.mask(text)
     assert once == "Escríbeme a <EMAIL> o llama al <PHONE> por favor." and pii.mask(once) == once
 
