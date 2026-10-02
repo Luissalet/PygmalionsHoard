@@ -288,3 +288,41 @@ def test_run_capture_reports_a_timeout_and_a_missing_program_without_raising(tmp
     assert code is None and "timed out" in err
     code, out, err = procs.run_capture([str(tmp_path / "no-such-program")])
     assert code is None and err
+
+
+# ---------------------------------------------------------------- waiting for jobs
+def test_waiting_is_cut_to_the_shared_limit_and_a_job_still_running_says_so(ctx, monkeypatch):
+    from conftest import call
+    from helpers import chat_records
+
+    svc = ctx.svc
+    seen = []
+
+    def patient(job_id, timeout=30.0):           # the job never finishes inside the wait
+        seen.append(timeout)
+        return svc.store.job(job_id)
+
+    monkeypatch.setattr(svc.jobs, "wait", patient)
+    spec = {"name": "Espera", "sources": [{"type": "jsonl", "text": "\n".join(json.dumps(r) for r in chat_records(30))}]}
+    long = call(svc, "dataset_create", wait_s=600, **spec)
+    assert seen == [150.0] and long["state"] == "queued" and long["still_running"] is True and long["done"] is False
+    none = call(svc, "dataset_create", wait_s=0, **{**spec, "name": "Sin espera"})
+    assert seen == [150.0] and "still_running" not in none                      # no waiting asked: nothing to report
+    short = call(svc, "dataset_create", wait_s=7, **{**spec, "name": "Corta"})
+    assert seen == [150.0, 7.0] and short["still_running"] is True
+
+
+def test_a_job_that_finishes_inside_the_wait_is_not_reported_as_running(ctx):
+    from conftest import call
+    from helpers import chat_records
+
+    done = call(ctx.svc, "dataset_create", wait_s=30, name="Rapida", sources=[{"type": "jsonl", "text": "\n".join(json.dumps(r) for r in chat_records(30))}])
+    assert done["done"] is True and done["state"] == "done" and "still_running" not in done
+
+
+def test_every_wait_s_in_the_catalogue_explains_the_limit():
+    from pygmalion_hoard.agent_tools import tool_catalog
+
+    waits = [(t["name"], t["inputSchema"]["properties"]["wait_s"]) for t in tool_catalog() if "wait_s" in t["inputSchema"].get("properties", {})]
+    assert len(waits) >= 8
+    assert all("150" in p["description"] and "still_running" in p["description"] for _, p in waits), [n for n, p in waits if "150" not in p.get("description", "")]

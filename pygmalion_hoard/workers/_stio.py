@@ -17,7 +17,10 @@ import struct
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional
 
-from _atomic import replace_with_retry
+try:                                           # imported as part of the package, or as a script next to its siblings
+    from ._atomic import replace_with_retry
+except ImportError:
+    from _atomic import replace_with_retry
 
 ITEMSIZE = {"F64": 8, "F32": 4, "F16": 2, "BF16": 2, "I64": 8, "I32": 4, "I16": 2, "I8": 1, "U8": 1, "BOOL": 1, "U16": 2, "U32": 4, "U64": 8,
             "F8_E4M3": 1, "F8_E5M2": 1}

@@ -12,8 +12,10 @@ from . import vram as V
 from .errors import PygmalionError
 from .gguf_meta import fit_table, read_metadata, summarize
 from .hf import check_repo
+from .hoard_link.waiting import clamp_wait
 from .jobs import KINDS
 from .messages import text as msg
+from .store import ACTIVE_STATES
 from .util import slug
 from .workers import _stio as stio
 
@@ -32,10 +34,14 @@ class Operations:
 
     # ------------------------------------------------------------------ job helpers
     def _answer(self, job: dict[str, Any], wait_s: float = 0.0, **extra: Any) -> dict[str, Any]:
+        wait_s = clamp_wait(wait_s)                 # the shared limit: a call that waited longer than the bridge allows would only time out
         if wait_s > 0:
             job = self.jobs.wait(job["id"], wait_s)
         view = self.jobs.view(job, detail=job["state"] in ("done", "failed"))
-        return {"job": view, "done": job["state"] == "done", "state": job["state"], "result": job["result"] if job["state"] == "done" else None, **extra}
+        out = {"job": view, "done": job["state"] == "done", "state": job["state"], "result": job["result"] if job["state"] == "done" else None, **extra}
+        if wait_s > 0 and job["state"] in ACTIVE_STATES:
+            out["still_running"] = True             # the wait ended first: the job goes on, poll job_get
+        return out
 
     def _pipeline(self, steps: list[dict[str, Any]], wait_s: float = 0.0, **extra: Any) -> dict[str, Any]:
         job = self.jobs.pipeline(steps)
