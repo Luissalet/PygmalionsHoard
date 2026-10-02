@@ -74,18 +74,48 @@ def test_the_system_temp_folder_counts_even_under_appdata(tmp_path, monkeypatch)
 
 
 def test_hidden_folder_names_are_found_in_windows_paths_at_any_depth():
-    """Pure path logic: the same answer for a path written the Windows way, however deep the folder is."""
-    from pathlib import PureWindowsPath as W
+    """Pure path logic (the shared one): the same answer for a path written the Windows way, however deep the folder is."""
+    from pygmalion_hoard.hoard_link.paths import hidden_parts
 
-    temp = W(r"C:\Users\someone\AppData\Local\Temp")
-    deep = temp / "pytest-of-someone" / "pytest-3431" / "test_folder_source_skips_hidde0"
-    assert paths.hidden_parts(deep, temp) == set(), "AppData above the temp folder does not count"
-    assert paths.hidden_parts(deep / ".git", temp) == {".git"}
-    assert paths.hidden_parts(deep / "a" / "NODE_MODULES" / "p", temp) == {"node_modules"}
-    assert paths.hidden_parts(W(r"C:\Users\someone\AppData\Roaming\app"), temp) == {"appdata"}
-    assert paths.hidden_parts(W(r"D:\docs\.ssh"), None) == {".ssh"}
-    assert paths.hidden_parts(W(r"D:\docs\notas"), None) == set()
+    deep = r"C:\Users\someone\AppData\Local\Temp\pytest-of-someone\pytest-3431\test_folder_source_skips_hidde0"
+    assert hidden_parts(deep) == [], "AppData above the temp folder does not count"
+    assert hidden_parts(deep + r"\.git") == [".git"]
+    assert hidden_parts(deep + r"\a\NODE_MODULES\p") == ["node_modules"]
+    assert hidden_parts(r"C:\Users\someone\AppData\Roaming\app") == ["appdata"]
+    assert hidden_parts(r"D:\docs\.ssh") == [".ssh"]
+    assert hidden_parts(r"D:\docs\notas") == []
     assert paths.hidden_names(("docs", ".Git")) == {".git"}
+
+
+def test_the_reasons_keep_their_catalogue_keys_so_the_interface_translates_them(tmp_path, data):
+    from pygmalion_hoard.messages import CodedText
+
+    for bad, key in (("/", "path_root"), (Path.home(), "path_home"), ("/etc", "path_system"), ("relative/path", "path_relative"), (tmp_path / "nope", "folder_missing")):
+        reason = paths.unsafe_folder(bad, data)
+        assert isinstance(reason, CodedText) and reason.key == key, (bad, reason)
+    assert paths.unsafe_folder(data, data).key == "path_own_data_folder"
+    assert paths.unsafe_file(tmp_path / "nada.txt", data).key == "file_missing"
+    inside = data / "pygmalion.db"
+    inside.write_bytes(b"x")
+    assert paths.unsafe_file(inside, data).key == "path_own_data_file"
+    (tmp_path / ".env").write_text("x", encoding="utf-8")
+    assert paths.unsafe_file(tmp_path / ".env", data).key == "path_credentials"
+
+
+def test_a_folder_that_contains_the_data_folder_is_refused(tmp_path, data):
+    """Reading the parent of the app's own data would read its database and secrets: the shared rule refuses it (the old one let it through)."""
+    assert paths.unsafe_folder(tmp_path, data)
+    assert paths.unsafe_folder(data.parent, data)
+
+
+def test_quotes_pasted_with_a_path_are_stripped_and_windows_paths_are_judged_as_windows_paths(tmp_path, data):
+    ok = tmp_path / "papeles"
+    ok.mkdir()
+    assert paths.unsafe_folder(f'"{ok}"', data) == ""
+    assert paths.clean_user_path(f' "{ok}" ') == str(ok)
+    assert paths.unsafe_folder(r"C:\Windows\System32", data)
+    assert paths.unsafe_folder("C:\\", data)
+    assert paths.unsafe_file(r"C:\Users\yo\.ssh\config", data)
 
 
 def test_a_hidden_folder_below_a_deep_temp_folder_is_refused_for_files(tmp_path):

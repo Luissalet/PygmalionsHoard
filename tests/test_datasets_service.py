@@ -277,3 +277,13 @@ def test_a_failed_build_job_keeps_the_reason(ctx):
     ctx.svc.jobs.run_until_idle()
     job = ctx.svc.store.job(made["job"]["id"])
     assert job["state"] == "failed" and "No usable records" in job["error"] and job["hint"]
+
+
+def test_a_path_pasted_with_its_quotes_is_read_and_the_folder_that_holds_the_data_folder_is_refused(ctx, tmp_path):
+    f = tmp_path / "notas.txt"
+    f.write_text("Una historia larga. " * 300, encoding="utf-8")
+    out = ctx.svc.datasets.build({"name": "Comillas", "sources": [{"type": "files", "paths": [f'"{f}"']}]})
+    assert out["version"]["records"] >= 1
+    with pytest.raises(PygmalionError) as info:
+        ctx.svc.datasets.build({"name": "Padre", "sources": [{"type": "folder", "path": str(ctx.data.parent)}]})
+    assert info.value.code == "forbidden"

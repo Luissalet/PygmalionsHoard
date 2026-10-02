@@ -60,6 +60,7 @@ def chunk_text(text: str, chunk_chars: int = 1500) -> list[str]:
 
 # ------------------------------------------------------------------ small readers
 def _read_text_file(path: str, data_dir: Optional[Path], allow_data_subdir: Optional[Path] = None) -> str:
+    path = paths.clean_user_path(path)                   # a path pasted from the file manager comes with its quotes
     reason = paths.unsafe_file(path, data_dir, allow_data_subdir=allow_data_subdir)
     if reason:
         raise PygmalionError("forbidden", "file_forbidden", path=path, reason=reason)
@@ -82,7 +83,7 @@ def _inline_or_path(spec: dict[str, Any], data_dir: Optional[Path], allow: Optio
 # ------------------------------------------------------------------ source loaders
 def load_jsonl(spec: dict[str, Any], ctx: "SourceContext") -> Iterator[dict[str, Any]]:
     text = _inline_or_path(spec, ctx.data_dir, ctx.allow_data_subdir)
-    label = spec.get("label") or (Path(spec["path"]).name if spec.get("path") else "pasted jsonl")
+    label = spec.get("label") or (Path(paths.clean_user_path(spec["path"])).name if spec.get("path") else "pasted jsonl")
     bad = 0
     stripped = text.strip()
     if stripped.startswith("["):                     # a JSON array of records is accepted too
@@ -113,7 +114,7 @@ def load_jsonl(spec: dict[str, Any], ctx: "SourceContext") -> Iterator[dict[str,
 
 def load_csv(spec: dict[str, Any], ctx: "SourceContext") -> Iterator[dict[str, Any]]:
     text = _inline_or_path(spec, ctx.data_dir, ctx.allow_data_subdir)
-    label = spec.get("label") or (Path(spec["path"]).name if spec.get("path") else "pasted csv")
+    label = spec.get("label") or (Path(paths.clean_user_path(spec["path"])).name if spec.get("path") else "pasted csv")
     columns = spec.get("columns") or {}
     if not columns:
         raise PygmalionError("invalid", "csv_columns_needed")
@@ -137,7 +138,8 @@ def load_files(spec: dict[str, Any], ctx: "SourceContext") -> Iterator[dict[str,
         if isinstance(item, dict) and isinstance(item.get("text"), str):
             items.append((str(item.get("name") or "file"), item["text"]))
     for path in spec.get("paths") or []:
-        items.append((Path(path).name, _read_text_file(str(path), ctx.data_dir, ctx.allow_data_subdir)))
+        path = paths.clean_user_path(path)
+        items.append((Path(path).name, _read_text_file(path, ctx.data_dir, ctx.allow_data_subdir)))
     if not items:
         raise PygmalionError("invalid", "files_source_needs")
     for name, text in items:
@@ -154,7 +156,7 @@ def skipped_in_folder(relative: PurePath) -> bool:
 
 
 def load_folder(spec: dict[str, Any], ctx: "SourceContext") -> Iterator[dict[str, Any]]:
-    folder = str(spec.get("path") or "")
+    folder = paths.clean_user_path(spec.get("path") or "")
     reason = paths.unsafe_folder(folder, ctx.data_dir, allow_data_subdir=ctx.allow_data_subdir)
     if reason:
         raise PygmalionError("forbidden", "folder_forbidden", path=folder, reason=reason)
