@@ -19,34 +19,33 @@
 
 | Path | Role |
 |---|---|
-| `pygmalion_hoard/main.py` | App factory: guard middleware, error handlers, routers, single-page client |
-| `config.py`, `settings.py` | Process settings from the environment (`PYGMALION_*`) and `.env`; typed settings stored in the database |
-| `db.py`, `store.py` | Schema and migrations (SQLite, WAL, one writer lock); every query |
+| `pygmalion_hoard/main.py`, `__main__.py` | App factory (shared guard, error envelope, health, PWA files and single-page server from `hoard_link.service`) and the shared launcher `run_main` (one running copy, rotating `data/logs/pygmalion-hoard.log`, works without a console) |
+| `config.py`, `settings.py` | Process settings from the environment (`PYGMALION_*`, `appconfig`) and `.env` (read by the shared parser, never exported); settings stored in the database as texts (the shared database stores JSON; an older plain-text row reads the same) |
+| `db.py`, `store.py` | Schema and migrations over the shared `sqlkit.Database` (SQLite, WAL, busy timeout, re-entrant transactions); every query. New ids are lowercase ULIDs (`util.new_id`); older ids still resolve |
 | `services.py` | Wires everything from a `Config`; dashboard and views |
 | `ops.py` | The operations the tools call: downloads, dataset builds, pipelines |
-| `agent_tools.py` | The tool catalogue: name, description, pydantic arguments, annotations, handler |
-| `api/` | REST: `agent.py` (assistants, Bearer token), `ui.py` (dashboard, UI calls), `health.py`, `pwa.py` |
+| `agent_tools.py` | The tool catalogue: name, description, pydantic arguments, annotations, handler; `Tool`, the catalogue, `call_tool` and the result cap are the shared `agentkit` |
+| `api/` | REST: `agent.py` (the shared agent router: assistants, Bearer token), `ui.py` (dashboard, UI calls), `health.py` (`/api/status`; `/api/health` is the shared route) |
 | `jobs.py` | Job manager: two lanes, states, pipelines with `$ref` resolution, cancel, resume, interrupted-on-restart |
 | `runners.py` | One runner per job kind; builds the worker arguments and registers the artifacts |
-| `workers/` | Run in the trainer environment: `train_lora`, `merge_lora`, `merge_models`, `ctx_extend`, `download`, `probe_env`; shared `_common` and `_stio` (safetensors streaming) |
-| `procs.py` | Subprocesses: process-tree kill, log file, environment, redaction; the output reader never outlives the program (a child that keeps the pipe open gets its group killed) |
+| `workers/` | Run in the trainer environment: `train_lora`, `merge_lora`, `merge_models`, `ctx_extend`, `download`, `probe_env`; shared `_common`, `_stio` (safetensors streaming) and `_atomic` (loads the vendored `hoard_link/atomic.py` by its path, so state files, checkpoints and safetensors are replaced with the Windows-safe retry) |
+| `procs.py` | Subprocesses on the shared `hoard_link.proc` (start, Ctrl+Break request, tree kill): the stop file, log file, environment, redaction; the output reader never outlives the program (a child that keeps the pipe open gets its group killed) |
 | `events.py` | `EventPump`: events for the family bus go through a queue to one worker thread that `Services.stop` joins (instead of one daemon thread per event) |
 | `gpus.py`, `vram.py` | Allowed GPUs, leases, inventory; memory estimate and the time model (throughput constants, start-up, per-step overhead) |
 | `messages.py`, `errors.py` | The message catalogue (`ERRORS`, `TEXTS`), `CodedText`, recognition of stored sentences, `wire` and `localise` for the UI; `PygmalionError` |
 | `planner.py` | Training parameters, the plan, the steps after a stage, the baseline for evaluation |
-| `datasets/` | Source loaders, operations (dedupe, MinHash, length, language, PII), versions, statistics |
+| `datasets/` | Source loaders, operations (dedupe, MinHash, length, language, PII), versions, statistics; PII is the shared `idcheck.scan_pii`, chunking the shared `docs.chunking`, text decoding the shared `docs.textclean.decode_text` |
 | `chatmask.py` | Which tokens of a chat the loss covers (pure, testable without torch) |
 | `merge_math.py` | Linear, SLERP, TIES and DARE on numpy arrays |
 | `gguf_meta.py`, `convert_detect.py`, `llama_tools.py` | GGUF metadata reader, architecture support check (scans `convert_hf_to_gguf.py` and the `conversion/` package for `@ModelBase.register(...)`, one or several names, one or several lines), llama.cpp command lines and output parsing |
-| `startup.py` | Safe start-up without a console (`pythonw`: stdout/stderr are `None`) and the rotating `data/logs/pygmalion.log` |
 | `lineage.py` | Artifacts, ancestors, graph layout, recipe export, safe deletion |
 | `reference.py` | What a result is measured against: the base model's file in the result's quantization (steps to build it, what is reused), the model before a context extension, or the parent file |
 | `evaluate.py` | Galton client (hub first, direct fallback), the evaluation run, verdict summary, needle table |
 | `publish.py` | Modelfile and `ollama create`, llama.cpp backend entries, unpublishing |
-| `hf.py`, `envcheck.py`, `workdir.py`, `paths.py` | Hugging Face search and file lists, environment check, work folder layout, path safety |
-| `guard.py`, `port.py`, `errors.py` | Same-origin guard, port choice, the single error class (code, message, hint) |
+| `hf.py`, `envcheck.py`, `workdir.py`, `paths.py` | Hugging Face search and file lists, environment check, work folder layout, path safety (`paths.py` words the shared `hoard_link.paths` reasons with the message catalogue) |
+| `errors.py` | The single error class (code, message, hint), an `AppError` of the shared kit |
 | `hoard_link/` | Vendored family library (event bus, calls to other apps, GPU leases). Not edited here |
-| `mcp_server.py` | stdio bridge: proxies to the running app, starts it when needed |
+| `mcp_server.py` | stdio bridge (the shared `CatalogBridge`): proxies to the running app, starts it when needed |
 | `client/` | React 19 + Vite 6 + Tailwind 4 UI; built into `pygmalion_hoard/static` |
 
 ## Jobs and pipelines
@@ -93,7 +92,7 @@ Publishing writes the Modelfile `num_ctx` from `publish.num_ctx` (8192), clamped
 
 ## Client
 
-Hash-routed single page with ten pages. Every call goes through `api.call(name, args)` to `/api/ui/call`. The dashboard is polled every 3 seconds while jobs are active and every 30 seconds otherwise; `usePoll` makes its first call at once whatever the visibility of the tab, and the app bumps a version (which reloads every page) whenever the dashboard counts change, so a write or an environment check shows at once. The service worker is generated by `api/pwa.py` with a cache name taken from the build (`build_id`), never caches `index.html` and is served with `Cache-Control: no-cache`, so a new build is never hidden by an older one; the brand row is `<img src="/icon-192.png">`. The base-model count is read from the disk (`services.sync_bases`) like `bases_list`, never from a stale cache. Texts of the interface live in `client/src/i18n.js`; the messages of the backend live in `pygmalion_hoard/messages.py` and `client/src/msgs.js` (next section).
+Hash-routed single page with ten pages. Every call goes through `api.call(name, args)` to `/api/ui/call`. The dashboard is polled every 3 seconds while jobs are active and every 30 seconds otherwise; `usePoll` makes its first call at once whatever the visibility of the tab, and the app bumps a version (which reloads every page) whenever the dashboard counts change, so a write or an environment check shows at once. The service worker is generated by the shared `install_pwa` with a cache name taken from the build (the hash of `index.html`); it fetches the page from the network first and is served with `Cache-Control: no-cache`, so a new build is never hidden by an older one; the brand row is `<img src="/icon-192.png">`. The base-model count is read from the disk (`services.sync_bases`) like `bases_list`, never from a stale cache. Texts of the interface live in `client/src/i18n.js`; the messages of the backend live in `pygmalion_hoard/messages.py` and `client/src/msgs.js` (next section).
 
 ## Messages and languages
 

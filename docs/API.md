@@ -118,7 +118,7 @@ Annotations: none.
 | `sources` (array) | yes | Sources to combine. Each has a `type`: jsonl {text\|path}, csv {text\|path, columns:{prompt,response,text}}, files {paths}, folder {path, extensions}, family {app, tool, arguments, items_path, mapping:{prompt,response,text}}, synthetic {task, from:[sources], max_items, per_chunk}. |
 | `operations` (array) | no | Operations in order: {op:'dedupe_exact'}, {op:'dedupe_near', threshold}, {op:'length', min_chars, max_chars}, {op:'language', keep:['es','en']}, {op:'pii', mode:'mask'\|'drop'}. |
 | `split` (object) | no | {eval_pct, min_eval, seed}; defaults 5 %, 20 records, seed 42. |
-| `wait_s` (number) | no | Seconds to wait for the build; it keeps running in the background after that. |
+| `wait_s` (number) | no | Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get. |
 
 ## `dataset_records`
 
@@ -271,7 +271,7 @@ Annotations: none.
 | `name` (string) | no | Name for the adapter. |
 | `after` (object/null) | no | Steps after the training: {merge: true, convert: 'f16'\|'bf16'\|'q8_0', quantize: ['Q4_K_M'], imatrix: true, calibration: {source:'bundled'\|'dataset', dataset}, perplexity: true, publish: {target:'ollama'\|'llama'\|'both', name, tag, num_ctx}, evaluate: {intent:'dataset'\|'style'\|'code'\|'context'\|'general', suites:[...], against: artifact, regression}}. |
 | `force` (boolean) | no | Queue it even when the estimate does not fit the allowed GPUs. |
-| `wait_s` (number) | no |  |
+| `wait_s` (number) | no | Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get. |
 
 ## `merge_check`
 
@@ -301,7 +301,7 @@ Annotations: none.
 | `name` (string) | no |  |
 | `device` ( \| cpu \| cuda) | no | Where to merge; the setting merge.device when empty (cpu needs no VRAM). |
 | `after` (object/null) | no | Steps after the training: {merge: true, convert: 'f16'\|'bf16'\|'q8_0', quantize: ['Q4_K_M'], imatrix: true, calibration: {source:'bundled'\|'dataset', dataset}, perplexity: true, publish: {target:'ollama'\|'llama'\|'both', name, tag, num_ctx}, evaluate: {intent:'dataset'\|'style'\|'code'\|'context'\|'general', suites:[...], against: artifact, regression}}. |
-| `wait_s` (number) | no |  |
+| `wait_s` (number) | no | Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get. |
 
 ## `merge_models_start`
 
@@ -327,7 +327,7 @@ Annotations: none.
 | `normalize` (boolean) | no |  |
 | `name` (string) | no |  |
 | `after` (object/null) | no | Steps after the training: {merge: true, convert: 'f16'\|'bf16'\|'q8_0', quantize: ['Q4_K_M'], imatrix: true, calibration: {source:'bundled'\|'dataset', dataset}, perplexity: true, publish: {target:'ollama'\|'llama'\|'both', name, tag, num_ctx}, evaluate: {intent:'dataset'\|'style'\|'code'\|'context'\|'general', suites:[...], against: artifact, regression}}. |
-| `wait_s` (number) | no |  |
+| `wait_s` (number) | no | Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get. |
 
 ## `ctx_extend_start`
 
@@ -345,7 +345,7 @@ Annotations: none.
 | `target_length` (integer/null) | no | Alternative to factor: the context length wanted. |
 | `name` (string) | no |  |
 | `after` (object/null) | no | Steps after the training: {merge: true, convert: 'f16'\|'bf16'\|'q8_0', quantize: ['Q4_K_M'], imatrix: true, calibration: {source:'bundled'\|'dataset', dataset}, perplexity: true, publish: {target:'ollama'\|'llama'\|'both', name, tag, num_ctx}, evaluate: {intent:'dataset'\|'style'\|'code'\|'context'\|'general', suites:[...], against: artifact, regression}}. |
-| `wait_s` (number) | no |  |
+| `wait_s` (number) | no | Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get. |
 
 ## `ctx_fit`
 
@@ -378,7 +378,7 @@ Annotations: none.
 | `outtype` (f16 \| bf16 \| q8_0) | no |  |
 | `name` (string) | no |  |
 | `after` (object/null) | no | Steps after the training: {merge: true, convert: 'f16'\|'bf16'\|'q8_0', quantize: ['Q4_K_M'], imatrix: true, calibration: {source:'bundled'\|'dataset', dataset}, perplexity: true, publish: {target:'ollama'\|'llama'\|'both', name, tag, num_ctx}, evaluate: {intent:'dataset'\|'style'\|'code'\|'context'\|'general', suites:[...], against: artifact, regression}}. |
-| `wait_s` (number) | no |  |
+| `wait_s` (number) | no | Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get. |
 
 ## `quantize_start`
 
@@ -400,7 +400,7 @@ Annotations: none.
 | `perplexity` (boolean) | no | Measure perplexity of the first type afterwards. |
 | `outtype` (f16 \| bf16 \| q8_0) | no |  |
 | `name` (string) | no |  |
-| `wait_s` (number) | no |  |
+| `wait_s` (number) | no | Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get. |
 
 ## `perplexity_start`
 
@@ -416,7 +416,7 @@ Annotations: none.
 | `text` (object/null) | no | {source:'bundled'} or {source:'dataset', dataset, n}. |
 | `ctx` (integer/null) | no |  |
 | `chunks` (integer/null) | no |  |
-| `wait_s` (number) | no |  |
+| `wait_s` (number) | no | Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get. |
 
 ## `jobs_list`
 
@@ -598,7 +598,7 @@ Annotations: openWorldHint.
 | `intent` ( \| dataset \| style \| writing \| code \| context \| general \| smoke \| quant) | no | What to check. dataset: the held-out records of the dataset the result was trained on, graded by Galton's judge (the default for such a result). dataset, style, writing, code, general and smoke ask whether a training helped: the reference is the base model the training started from, in the same quantization (prepared first when it does not exist). context: the model before the context extension. quant: a plain quantization, compared with the file it was made from. |
 | `suites` (array/null) | no | Galton suites; chosen from the intent when omitted. |
 | `regression` (boolean) | no | With intent=dataset, also run Galton's quick general suite. |
-| `wait_s` (number) | no |  |
+| `wait_s` (number) | no | Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get. |
 
 ## `publish_ollama`
 
@@ -618,7 +618,7 @@ Annotations: idempotentHint.
 | `adapter` (string) | no | A GGUF adapter artifact to load on top (ADAPTER). |
 | `template` (string) | no | Chat template for the Modelfile when the GGUF has none. |
 | `system` (string) | no |  |
-| `wait_s` (number) | no |  |
+| `wait_s` (number) | no | Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get. |
 
 ## `publish_llama`
 
@@ -636,7 +636,7 @@ Annotations: idempotentHint.
 | `ngl` (integer) | no |  |
 | `gpu` (integer/null) | no | Allowed GPU for the server; the first allowed one when omitted. |
 | `extra_args` (array) | no | Extra llama-server flags, e.g. ['--rope-scaling','yarn']. |
-| `wait_s` (number) | no |  |
+| `wait_s` (number) | no | Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get. |
 
 ## `unpublish`
 
