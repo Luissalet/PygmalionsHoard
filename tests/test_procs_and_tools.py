@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from pygmalion_hoard import calib, llama_tools as LT, port as PORT, procs
+from pygmalion_hoard import calib, llama_tools as LT, procs
+from pygmalion_hoard.hoard_link import net as PORT
 from pygmalion_hoard.errors import PygmalionError
 from pygmalion_hoard.workdir import EXE
 
@@ -230,7 +231,7 @@ def test_ports():
         s.listen(1)
         taken = s.getsockname()[1]
         assert PORT.can_listen(taken) is False and PORT.find_available_port(taken) > taken
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         PORT.find_available_port(70000)
 
 

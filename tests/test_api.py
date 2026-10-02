@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 
 from conftest import needs_posix
 from pygmalion_hoard import SERVICE, __version__
-from pygmalion_hoard.api import pwa
+from pygmalion_hoard.main import STATIC_DIR
 
 
 def ui(client, name, **arguments):
@@ -121,7 +122,7 @@ def test_pwa_manifest_service_worker_and_static_fallback(client):
     m = client.get("/manifest.webmanifest").json()
     assert m["name"] == "Pygmalion's Hoard" and m["theme_color"].startswith("#")
     sw = client.get("/sw.js")
-    assert sw.status_code == 200 and "/api/" in sw.text and pwa.build_id() in sw.text and sw.headers["cache-control"] == "no-cache"
+    assert sw.status_code == 200 and "/api/" in sw.text and _build_id() in sw.text and sw.headers["cache-control"] == "no-cache"
     assert client.get("/api/does-not-exist").status_code == 404
     page = client.get("/somewhere/inside")
     assert page.status_code in (200, 503)
@@ -133,19 +134,33 @@ def test_the_brand_icon_is_served_as_a_png(client):
     assert r.status_code == 200 and r.headers["content-type"].startswith("image/png") and r.content[:8] == b"\x89PNG\r\n\x1a\n"
 
 
-def test_the_service_worker_cache_is_named_after_the_build_and_never_holds_the_page(client, tmp_path, monkeypatch):
+def _build_id():
+    """What names the worker's cache: the hash of the built index.html (the version when there is no build)."""
+    try:
+        return hashlib.sha256((STATIC_DIR / "index.html").read_bytes()).hexdigest()[:12]
+    except OSError:
+        return __version__
+
+
+def test_the_service_worker_cache_is_named_after_the_build_and_never_holds_the_icons(client, tmp_path):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from pygmalion_hoard.hoard_link.service import install_pwa
+
     first = client.get("/sw.js").text
-    assert f'"pygmalion-hoard-{pwa.build_id()}"' in first
+    assert f'"pygmalion-hoard-{_build_id()}"' in first
     # a new build (another index.html) is another cache name, and the worker deletes every cache that is not its own
     fake_static = tmp_path / "static"
     fake_static.mkdir()
     (fake_static / "index.html").write_text("<script src='/assets/other.js'></script>", encoding="utf-8")
-    monkeypatch.setattr(pwa, "STATIC_DIR", fake_static)
-    second = client.get("/sw.js").text
-    assert pwa.build_id() != first.split('"pygmalion-hoard-')[1].split('"')[0] and f'"pygmalion-hoard-{pwa.build_id()}"' in second
+    app = FastAPI()
+    install_pwa(app, name="Pygmalion's Hoard", short_name="Pygmalion", theme="#1d1417", background="#1d1417", cache="pygmalion-hoard", static_dir=fake_static)
+    second = TestClient(app).get("/sw.js").text
+    assert second.split('"pygmalion-hoard-')[1].split('"')[0] != first.split('"pygmalion-hoard-')[1].split('"')[0]
     assert "caches.delete(name)" in second and 'request.mode === "navigate"' in second and 'startsWith("/assets/")' in second
-    # only the hashed assets are cached: neither the page nor the icons are ever put in a cache
-    assert second.count("cache.put") == 1
+    # the page is fetched from the network first (a new build is never hidden behind an old index); the icons are never put in a cache by the worker
+    assert "icon-" not in second
 
 
 def test_the_page_and_icons_are_revalidated_and_the_hashed_assets_are_immutable(client):

@@ -130,6 +130,6 @@ def test_the_job_page_keeps_polling_while_the_chain_is_live():
 
 
 def test_the_service_worker_is_named_by_the_build_and_never_caches_the_page():
-    from pygmalion_hoard.api import pwa
-    source = Path(pwa.__file__).read_text(encoding="utf-8")
-    assert "build_id" in source and "index.html" in source
+    from pygmalion_hoard.hoard_link import service
+    source = Path(service.__file__).read_text(encoding="utf-8")
+    assert "_build_id" in source and "index.html" in source and 'request.mode === "navigate"' in source

@@ -7,22 +7,21 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
-from . import __version__
+from . import SERVICE, __version__
 from .api import ROUTERS
 from .config import Config
 from .errors import PygmalionError
-from .guard import install_guard
-from .messages import wire
 from .hoard_link import family
+from .hoard_link.agentkit import format_issues, issues_of
+from .hoard_link.guard import install_guard
+from .hoard_link.service import health_router, install_error_handlers, install_pwa, install_spa
+from .messages import wire
 from .services import Services
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-CACHE_IMMUTABLE = "public, max-age=31536000, immutable"
-CACHE_REVALIDATE = "no-cache"
 
 
 def create_app(config: Config | None = None, services: Services | None = None) -> FastAPI:
@@ -44,7 +43,8 @@ def create_app(config: Config | None = None, services: Services | None = None) -
     app.state.config = config
     family.configure("pygmalion", str(config.data_dir), token_file=str(config.token_path))
 
-    install_guard(app, config.allowed_hosts)
+    install_guard(app, port_getter=lambda: config.port, allowed_env="PYGMALION_ALLOWED_HOSTS", allowed_hosts=config.allowed_hosts)
+    install_error_handlers(app)  # one {"error", "code"} envelope: HTTP errors, validation, PygmalionError (an AppError), 500
 
     @app.exception_handler(PygmalionError)
     async def pygmalion_error(request: Request, exc: PygmalionError):
@@ -53,33 +53,26 @@ def create_app(config: Config | None = None, services: Services | None = None) -
             body = wire(body)
         return JSONResponse(body, status_code=exc.status)
 
-    @app.exception_handler(StarletteHTTPException)
-    async def http_error(_: Request, exc: StarletteHTTPException):
-        return JSONResponse({"error": str(exc.detail)}, status_code=exc.status_code)
-
-    @app.exception_handler(RequestValidationError)
-    async def validation_error(_: Request, exc: RequestValidationError):
-        issues = "; ".join(f"{'.'.join(str(p) for p in e['loc'] if p != 'body') or 'input'}: {e['msg']}" for e in exc.errors())
-        return JSONResponse({"error": issues}, status_code=400)
+    @app.exception_handler(ValidationError)
+    async def model_error(_: Request, exc: ValidationError):  # a pydantic model that failed inside a handler (not a request body)
+        return JSONResponse({"error": format_issues(exc), "code": "invalid_arguments", "issues": issues_of(exc)}, status_code=400)
 
     @app.exception_handler(ValueError)
     async def value_error(_: Request, exc: ValueError):
-        return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse({"error": str(exc), "code": "invalid"}, status_code=400)
 
+    app.include_router(health_router(SERVICE, __version__, extra=lambda: _health(app, config)))
     for router in ROUTERS:
         app.include_router(router)
 
-    @app.get("/{path:path}", include_in_schema=False)
-    async def spa(path: str):
-        if path.startswith("api/"):
-            return JSONResponse({"error": "Not found."}, status_code=404)
-        candidate = (STATIC_DIR / path).resolve() if path else None
-        if candidate and candidate.is_file() and STATIC_DIR.resolve() in candidate.parents:
-            # built assets carry a content hash in their name and never change; everything else (icons, favicon) is checked again on every load
-            return FileResponse(candidate, headers={"Cache-Control": CACHE_IMMUTABLE if path.startswith("assets/") else CACHE_REVALIDATE})
-        index = STATIC_DIR / "index.html"
-        if index.is_file():
-            return FileResponse(index, headers={"Cache-Control": CACHE_REVALIDATE})
-        return JSONResponse({"error": "The client is not built yet: run `npm install && npm run build`."}, status_code=503)
-
+    install_pwa(app, name="Pygmalion's Hoard", short_name="Pygmalion", theme="#1d1417", background="#1d1417", cache="pygmalion-hoard", lang="es",
+                static_dir=STATIC_DIR, version=__version__)
+    install_spa(app, STATIC_DIR)  # last: everything that is not an API route or a real file is the single page app
     return app
+
+
+def _health(app: FastAPI, config: Config) -> dict:
+    # Cheap on purpose: the launcher, the hub and the MCP bridge poll this.
+    svc = getattr(app.state, "services", None)
+    return {"dataDirConfigured": config.data_dir_configured, "offline": config.offline,
+            "counts": svc.counts() if svc else {}, "scheduler": svc.jobs.status()["running"] if svc else False}
