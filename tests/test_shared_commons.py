@@ -245,3 +245,46 @@ def test_the_worker_atomic_helpers_fall_back_when_the_shared_copy_is_missing(tmp
     other.write_text("old", encoding="utf-8")
     _atomic.replace_with_retry(target, other)
     assert other.read_text(encoding="utf-8") == "{}" and not target.exists()
+
+
+# ---------------------------------------------------------------- child processes
+def test_children_run_with_utf8_and_the_pci_gpu_order(monkeypatch):
+    from pygmalion_hoard import procs
+
+    monkeypatch.delenv("PYTHONUNBUFFERED", raising=False)
+    env = procs.build_env({"X": 1}, gpus=[2, 0])
+    assert env["PYTHONUTF8"] == "1" and env["PYTHONIOENCODING"] == "utf-8" and env["PYTHONUNBUFFERED"] == "1"
+    assert env["CUDA_DEVICE_ORDER"] == "PCI_BUS_ID" and env["CUDA_VISIBLE_DEVICES"] == "2,0" and env["X"] == "1"
+    assert procs.build_env(gpus=[])["CUDA_VISIBLE_DEVICES"] == ""
+
+
+@pytest.mark.skipif(os.name == "nt", reason="uses sh")
+def test_kill_tree_stops_the_grandchildren_too(tmp_path):
+    import time
+
+    from pygmalion_hoard import procs
+    from pygmalion_hoard.hoard_link import proc as hl_proc
+
+    flag = tmp_path / "grandchild.pid"
+    child = hl_proc.popen(["sh", "-c", f"sleep 60 & echo $! > {flag}; wait"])
+    deadline = time.monotonic() + 10
+    while not flag.exists() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    grandchild = int(flag.read_text().strip())
+    assert hl_proc.pid_alive(grandchild)
+    procs.kill_tree(child)
+    deadline = time.monotonic() + 10
+    while hl_proc.pid_alive(grandchild) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert child.poll() is not None and not hl_proc.pid_alive(grandchild)
+
+
+def test_run_capture_reports_a_timeout_and_a_missing_program_without_raising(tmp_path):
+    from pygmalion_hoard import procs
+
+    code, out, err = procs.run_capture([sys.executable, "-c", "print('hola')"])
+    assert code == 0 and out.strip() == "hola"
+    code, out, err = procs.run_capture([sys.executable, "-c", "import time; time.sleep(30)"], timeout_s=0.5)
+    assert code is None and "timed out" in err
+    code, out, err = procs.run_capture([str(tmp_path / "no-such-program")])
+    assert code is None and err

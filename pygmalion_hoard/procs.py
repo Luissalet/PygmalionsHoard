@@ -1,9 +1,9 @@
 """Every external command goes through here: argv lists (never shell strings), a working folder, an environment with
 ``CUDA_VISIBLE_DEVICES``, a reader thread that writes each line to the job log, and a way to stop the whole process tree.
 
-On Windows the child gets its own process group (``CREATE_NEW_PROCESS_GROUP``) and no console window; a stop request is a
-``CTRL_BREAK_EVENT`` first and ``taskkill /T /F`` after the grace period. On Linux it is ``SIGTERM`` to the process group, then
-``SIGKILL``. A child started without a console never receives the Ctrl+Break, so the polite request is also a file: with
+Starting, stopping and killing the process tree is the shared ``hoard_link.proc``: on Windows the child gets its own process group and no
+console window and a stop request is a ``CTRL_BREAK_EVENT`` first and ``taskkill /T /F`` after the grace period; on Linux it is ``SIGTERM`` to the
+process group, then ``SIGKILL``. A child started without a console never receives the Ctrl+Break, so the polite request is also a file: with
 ``stop_file`` the child is told its path (``PYGMALION_STOP_FILE``) and the file is created on a stop request; the workers watch
 it and save a checkpoint before they exit.
 """
@@ -11,19 +11,18 @@ it and save a checkpoint before they exit.
 from __future__ import annotations
 
 import os
-import shutil
 import signal
 import subprocess
-import sys
 import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional, Sequence
 
+from .hoard_link import proc as hl_proc
+from .hoard_link.proc import request_stop  # noqa: F401  (CTRL_BREAK_EVENT on Windows, SIGTERM to the group elsewhere: the child may save a checkpoint)
 from .logclean import Collapser
 
-IS_WIN = sys.platform.startswith("win")
 TAIL_LINES = 60
 
 
@@ -42,14 +41,8 @@ class ProcResult:
 
 
 def which(name: str) -> Optional[str]:
-    """A program on the PATH (the one place the app asks; tests replace it so the machine running them does not matter)."""
-    return shutil.which(name)
-
-
-def popen_kwargs() -> dict:
-    if IS_WIN:
-        return {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "CREATE_NO_WINDOW", 0)}
-    return {"start_new_session": True}
+    """A program on the PATH or in its usual install folders (the one place the app asks; tests replace it so the machine running them does not matter)."""
+    return hl_proc.which(name)
 
 
 STOP_FILE_ENV = "PYGMALION_STOP_FILE"
@@ -62,9 +55,8 @@ def build_env(extra: Optional[dict[str, str]] = None, gpus: Optional[Sequence[in
 
     ``CUDA_DEVICE_ORDER=PCI_BUS_ID`` always: CUDA numbers GPUs fastest-first by default, while nvidia-smi, the hub and the
     allowed list number them by PCI bus; without it ``CUDA_VISIBLE_DEVICES=2`` can be one of the owner's GPUs."""
-    env = dict(os.environ)
+    env = hl_proc.build_env()                       # a copy of the environment with UTF-8 forced for Python children
     env.setdefault("PYTHONUNBUFFERED", "1")
-    env["PYTHONIOENCODING"] = "utf-8"
     env.update({k: str(v) for k, v in (extra or {}).items()})
     env["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     if gpus is not None:
@@ -72,38 +64,23 @@ def build_env(extra: Optional[dict[str, str]] = None, gpus: Optional[Sequence[in
     return env
 
 
-def _taskkill(pid: int) -> None:
-    try:
-        subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True, timeout=15, stdin=subprocess.DEVNULL,
-                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    except (OSError, subprocess.SubprocessError):
-        pass
-
-
-def request_stop(proc: subprocess.Popen) -> None:
-    """Ask politely: the worker can still save a checkpoint."""
-    try:
-        if IS_WIN:
-            proc.send_signal(signal.CTRL_BREAK_EVENT)  # type: ignore[attr-defined]
-        else:
-            os.killpg(proc.pid, signal.SIGTERM)
-    except (OSError, ProcessLookupError, ValueError):
-        pass
-
-
 def kill_tree(proc: subprocess.Popen) -> None:
-    """Stop the process and everything it started."""
-    try:
-        if IS_WIN:
-            _taskkill(proc.pid)
-        else:
-            os.killpg(proc.pid, signal.SIGKILL)
-    except (OSError, ProcessLookupError):
-        pass
-    try:
-        proc.kill()
-    except OSError:
-        pass
+    """Stop the process and everything it started, at once."""
+    if proc.poll() is not None:
+        # The program ended but something it started may still hold its output open: on POSIX that group can still be addressed (the shared
+        # kill_tree treats an exited leader as "already gone" and leaves the group alone).
+        if os.name != "nt":
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except (OSError, ProcessLookupError):
+                pass
+        return
+    hl_proc.kill_tree(proc, grace_s=0)
+    if proc.poll() is None:
+        try:
+            proc.kill()
+        except OSError:
+            pass
 
 
 def stop_process(proc: subprocess.Popen, grace_s: float = 15.0, stop_file: Optional[Path] = None) -> None:
@@ -172,9 +149,8 @@ def run_streaming(argv: Sequence[str], *, cwd: Optional[str | Path] = None, env:
         Path(log_path).parent.mkdir(parents=True, exist_ok=True)
         log = open(log_path, "a", encoding="utf-8", errors="replace", buffering=1)
         log.write(f"$ {' '.join(redact(str(a), secrets) for a in argv)}\n")
-    proc = subprocess.Popen([str(a) for a in argv], cwd=str(cwd) if cwd else None, env=env or build_env(), stdin=subprocess.DEVNULL,
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
-                            bufsize=1, **popen_kwargs())
+    proc = hl_proc.popen([str(a) for a in argv], cwd=str(cwd) if cwd else None, env=env or build_env(), stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT, text=True, bufsize=1)
     if on_start:
         on_start(proc)
     tail: list[str] = []
@@ -239,9 +215,7 @@ def run_capture(argv: Sequence[str], *, cwd: Optional[str | Path] = None, env: O
     """A short command whose output is wanted as text: ``(returncode, stdout, stderr)``; ``(None, "", reason)`` when it
     cannot be run or times out."""
     try:
-        done = subprocess.run([str(a) for a in argv], cwd=str(cwd) if cwd else None, env=env or build_env(), capture_output=True, text=True,
-                              encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL, timeout=timeout_s,
-                              **({"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)} if IS_WIN else {}))
+        done = hl_proc.run([str(a) for a in argv], cwd=str(cwd) if cwd else None, env=env or build_env(), timeout=timeout_s)
     except subprocess.TimeoutExpired:
         return None, "", f"timed out after {timeout_s:g} s"
     except (OSError, ValueError) as exc:
