@@ -61,7 +61,7 @@ class Store:
     def create_dataset(self, name: str, kind: str, description: str = "") -> dict[str, Any]:
         if self.db.one("SELECT 1 FROM datasets WHERE name = ?", (name,)):
             raise PygmalionError("conflict", "dataset_exists", name=name)
-        did, now = new_id("ds", self.clock()), self.clock()
+        did, now = new_id("ds"), self.clock()
         self.db.execute("INSERT INTO datasets(id, name, description, kind, created_ts, updated_ts) VALUES (?, ?, ?, ?, ?, ?)",
                         (did, name, description, kind, now, now))
         return self.dataset(did)
@@ -91,7 +91,7 @@ class Store:
 
     def add_version(self, did: str, n: int, path: str, sha256: str, *, kind: str, records: int, usable: int, chars: int, tokens: int,
                     splits: dict[str, Any], recipe: dict[str, Any], stats: dict[str, Any], parent: Optional[str] = None) -> dict[str, Any]:
-        vid = new_id("dv", self.clock())
+        vid = new_id("dv")
         self.db.execute(
             "INSERT INTO dataset_versions(id, dataset_id, n, path, sha256, kind, records, usable, chars, tokens, splits, recipe, stats, parent, created_ts) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -129,7 +129,7 @@ class Store:
                         metrics: Optional[dict[str, Any]] = None, notes: str = "", artifact_id: Optional[str] = None) -> dict[str, Any]:
         if kind not in ARTIFACT_KINDS:
             raise PygmalionError("invalid", "artifact_kind_unknown", kind=kind, options=list(ARTIFACT_KINDS))
-        aid, now = artifact_id or new_id("a", self.clock()), self.clock()
+        aid, now = artifact_id or new_id("a"), self.clock()
         self.db.execute(
             "INSERT INTO artifacts(id, kind, name, path, size, parents, dataset_version, job_id, recipe, metrics, notes, created_ts, updated_ts) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -195,7 +195,7 @@ class Store:
     # ------------------------------------------------------------------ jobs
     def create_job(self, kind: str, lane: str, params: dict[str, Any], *, title: str = "", then: Optional[list[dict[str, Any]]] = None,
                    pipeline_id: Optional[str] = None, step: int = 0, out_artifact: Optional[str] = None, job_dir: str = "") -> dict[str, Any]:
-        jid = new_id("j", self.clock())
+        jid = new_id("j")
         self.db.execute(
             "INSERT INTO jobs(id, kind, title, state, lane, params, then_steps, pipeline_id, step, created_ts, job_dir, out_artifact) "
             "VALUES (?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?)",

@@ -134,7 +134,7 @@ class JobContext:
         if existing:
             return existing
         from .util import new_id
-        value = new_id("a", self.manager.clock())
+        value = new_id("a")
         params = dict(self.params)
         params["_out_id"] = value
         self.manager.store.update_job(self.id, params=params)

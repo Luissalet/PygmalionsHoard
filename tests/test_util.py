@@ -8,14 +8,23 @@ from pygmalion_hoard import util
 from pygmalion_hoard.errors import PygmalionError
 
 
-def test_new_id_has_prefix_and_sorts_by_time():
-    a, b = util.new_id("j", now=1000.0), util.new_id("j", now=2000.0)
-    assert a.startswith("j_") and b.startswith("j_")
-    assert a[2:9] < b[2:9]
+def test_new_id_is_a_lowercase_ulid_that_sorts_by_creation_time():
+    ids = [util.new_id("j") for _ in range(200)]
+    assert all(i.startswith("j_") and len(i) == 28 and i == i.lower() for i in ids)
+    assert ids == sorted(ids) and len(set(ids)) == 200        # strictly increasing inside the process, even inside one millisecond
 
 
 def test_new_ids_are_unique():
     assert len({util.new_id("x") for _ in range(500)}) == 500
+
+
+def test_old_ids_still_resolve(ctx):
+    """The ids of the earlier format (``a_`` + 12 characters) are plain text keys: every lookup by id keeps working next to the new ones."""
+    store = ctx.svc.store
+    old = store.create_artifact("adapter", "viejo", artifact_id="a_0abcdefghjkm")
+    new = store.create_artifact("adapter", "nuevo")
+    assert store.artifact("a_0abcdefghjkm")["name"] == "viejo" and store.artifact(new["id"])["name"] == "nuevo" and old["id"] != new["id"]
+    assert len(new["id"]) == 28
 
 
 def test_fold_drops_accents_and_case():

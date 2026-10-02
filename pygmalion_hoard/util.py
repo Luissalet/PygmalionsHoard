@@ -2,43 +2,27 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
-import re
-import secrets
-import time
-import unicodedata
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from .hoard_link import atomic
+from .hoard_link import atomic, ids
 from .hoard_link.atomic import read_json  # noqa: F401  (re-exported: a missing, empty or corrupt file gives the default)
+from .hoard_link.text import fold, sha256_file, sha256_text, slugify  # noqa: F401  (re-exported: the shared folding, hashing and slug rules)
 
-_ID_ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz"
 CHARS_PER_TOKEN = 3.6
 
 
-def new_id(prefix: str, now: Optional[float] = None) -> str:
-    """``<prefix>_<time><random>``: sortable by creation time, unique enough for a local database."""
-    millis = int((now if now is not None else time.time()) * 1000)
-    stamp = ""
-    for _ in range(7):
-        millis, rest = divmod(millis, 32)
-        stamp = _ID_ALPHABET[rest] + stamp
-    tail = "".join(secrets.choice(_ID_ALPHABET) for _ in range(5))
-    return f"{prefix}_{stamp}{tail}"
-
-
-def fold(text: str) -> str:
-    """Lowercase without accents."""
-    return "".join(c for c in unicodedata.normalize("NFD", text or "") if unicodedata.category(c) != "Mn").lower()
+def new_id(prefix: str) -> str:
+    """``<prefix>_<ULID>`` in lowercase (shared ``ids``): sortable by creation time, strictly increasing inside the process and safe in file and
+    model names. The older ``<prefix>_<12 characters>`` ids still resolve everywhere an id is looked up."""
+    return f"{prefix}_{ids.new_ulid().lower()}"
 
 
 def slug(text: str, limit: int = 40) -> str:
-    """Lowercase ASCII identifier made of letters, digits and single hyphens."""
-    out = re.sub(r"[^a-z0-9]+", "-", fold(text)).strip("-")
-    return out[:limit].strip("-") or "model"
+    """Lowercase ASCII identifier made of letters, digits and single hyphens (the shared slug rules; ``model`` when nothing is left)."""
+    return slugify(text, max_len=limit, fallback="model")
 
 
 def est_tokens(chars: int) -> int:
@@ -58,21 +42,6 @@ def human_bytes(n: float) -> str:
 def clamp_text(text: str, limit: int) -> str:
     text = " ".join((text or "").split())
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
-
-
-def sha256_file(path: Path, chunk: int = 1 << 20) -> str:
-    digest = hashlib.sha256()
-    with open(path, "rb") as fh:
-        while True:
-            block = fh.read(chunk)
-            if not block:
-                break
-            digest.update(block)
-    return digest.hexdigest()
-
-
-def sha256_text(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def loads(value: Any, default: Any) -> Any:
