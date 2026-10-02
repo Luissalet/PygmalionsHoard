@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import logging
 import os
-import secrets as _secrets
 import threading
 import time
 from pathlib import Path
@@ -23,6 +22,8 @@ from .events import EventPump
 from .evaluate import Evaluator, Galton
 from .reference import Reference
 from .gpus import GpuManager, query_gpus
+from .hoard_link import tokens
+from .hoard_link.tokens import read_or_create_token
 from .messages import text
 from .hf import HubClient, local_model_folders, repo_of_folder, scan_local
 from .jobs import Deps, JobManager
@@ -41,26 +42,14 @@ DASHBOARD_CACHE_S = 30.0
 
 
 def write_token(config: Config) -> str:
-    """The MCP token is persistent: created once, reused on every later start."""
+    """The MCP token is persistent: created once, reused on every later start (the shared token file helper)."""
     config.data_dir.mkdir(parents=True, exist_ok=True)
-    try:
-        existing = config.token_path.read_text(encoding="utf-8").strip()
-    except OSError:
-        existing = ""
-    if len(existing) >= 32:
-        return existing
-    token = _secrets.token_hex(32)
-    config.token_path.write_text(token, encoding="utf-8")
-    try:
-        config.token_path.chmod(0o600)
-    except OSError:
-        pass
-    return token
+    return read_or_create_token(config.token_path)
 
 
 def write_url(config: Config) -> None:
     try:
-        config.url_path.write_text(f"http://127.0.0.1:{config.port}", encoding="utf-8")
+        tokens.write_url(config.url_path, f"http://127.0.0.1:{config.port}")
     except OSError:
         pass
 
