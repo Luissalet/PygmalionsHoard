@@ -1,5 +1,6 @@
 """Which folders and files Pygmalion may read."""
 
+import os
 from pathlib import Path
 
 import pytest
@@ -90,7 +91,7 @@ def test_hidden_folder_names_are_found_in_windows_paths_at_any_depth():
 def test_the_reasons_keep_their_catalogue_keys_so_the_interface_translates_them(tmp_path, data):
     from pygmalion_hoard.messages import CodedText
 
-    for bad, key in (("/", "path_root"), (Path.home(), "path_home"), ("/etc", "path_system"), ("relative/path", "path_relative"), (tmp_path / "nope", "folder_missing")):
+    for bad, key in ((Path.home().anchor, "path_root"), (Path.home(), "path_home"), (os.environ.get("SystemRoot", r"C:\Windows") if os.name == "nt" else "/etc", "path_system"), ("relative/path", "path_relative"), (tmp_path / "nope", "folder_missing")):
         reason = paths.unsafe_folder(bad, data)
         assert isinstance(reason, CodedText) and reason.key == key, (bad, reason)
     assert paths.unsafe_folder(data, data).key == "path_own_data_folder"
