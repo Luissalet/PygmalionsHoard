@@ -35,6 +35,7 @@ from typing import Any, Callable, Optional, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _common as C  # noqa: E402
+from _atomic import replace_with_retry, write_text_atomic  # noqa: E402
 
 IGNORE = -100
 
@@ -183,9 +184,7 @@ def latest_checkpoint(root: Path) -> Optional[Path]:
 
 
 def write_state(path: Path, state: dict[str, Any]) -> None:
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(state), encoding="utf-8")
-    os.replace(tmp, path)
+    write_text_atomic(path, json.dumps(state))
 
 
 # ------------------------------------------------------------------ torch part
@@ -264,7 +263,7 @@ def save_checkpoint(model: Any, optimizer: Any, root: Path, state: dict[str, Any
     torch.save(optimizer.state_dict(), tmp / "optimizer.pt")
     write_state(tmp / "training_state.json", state)  # written last: a folder without it is not a valid checkpoint
     shutil.rmtree(final, ignore_errors=True)
-    os.replace(tmp, final)
+    replace_with_retry(tmp, final)
     C.prune_checkpoints(root, keep)
     return final
 

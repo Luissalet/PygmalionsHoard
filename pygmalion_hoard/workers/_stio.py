@@ -17,6 +17,8 @@ import struct
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional
 
+from _atomic import replace_with_retry
+
 ITEMSIZE = {"F64": 8, "F32": 4, "F16": 2, "BF16": 2, "I64": 8, "I32": 4, "I16": 2, "I8": 1, "U8": 1, "BOOL": 1, "U16": 2, "U32": 4, "U64": 8,
             "F8_E4M3": 1, "F8_E5M2": 1}
 FLOAT_DTYPES = ("F64", "F32", "F16", "BF16")
@@ -187,7 +189,7 @@ def write_shard(path: str | Path, entries: list[tuple[str, str, list[int]]], pro
             if len(data) != expected:
                 raise StioError(f"{name}: produced {len(data)} bytes, expected {expected}")
             fh.write(data)
-    os.replace(tmp, path)
+    replace_with_retry(tmp, path)
 
 
 def write_index(root: str | Path, weight_map: dict[str, str], total_size: int) -> None:

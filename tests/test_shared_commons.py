@@ -4,6 +4,7 @@ old plain-text rows, the secrets of .env that are never exported, the launcher s
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import subprocess
 import sys
@@ -159,3 +160,88 @@ def test_the_launcher_script_imports_the_shared_net_helpers():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)  # a deleted helper module would fail here, not on the user's double click
     assert module.SERVICE == "pygmalion-hoard" and callable(module.main)
+
+
+# ---------------------------------------------------------------- atomic files
+def test_json_files_are_written_atomically_and_survive_a_file_held_by_a_reader(tmp_path, monkeypatch):
+    import time
+
+    from pygmalion_hoard import util
+    from pygmalion_hoard.hoard_link import atomic
+
+    target = tmp_path / "x" / "state.json"
+    util.write_json_atomic(target, {"a": 1})
+    assert target.read_text(encoding="utf-8") == '{\n  "a": 1\n}\n'
+    real, calls = os.replace, {"n": 0}
+
+    def flaky(src, dst):                      # Windows: the destination is open in a reader for a moment
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise PermissionError(13, "in use")
+        return real(src, dst)
+
+    monkeypatch.setattr(atomic.os, "replace", flaky)
+    monkeypatch.setattr(time, "sleep", lambda _s: None)
+    util.write_json_atomic(target, {"a": 2})
+    assert calls["n"] == 3 and util.read_json(target) == {"a": 2}
+    assert [p.name for p in target.parent.iterdir()] == ["state.json"]          # no temp file left
+
+
+def test_a_secret_is_written_atomically_and_owner_only(ctx):
+    svc = ctx.svc
+    svc.set_secret("hf.token", "hf_abcdefghijklmnop")
+    path = svc.config.secrets_path
+    assert "hf_abcdefghijklmnop" in path.read_text(encoding="utf-8")
+    if os.name != "nt":
+        assert path.stat().st_mode & 0o777 == 0o600
+    svc.set_secret("hf.token", "")
+    assert "hf_abcdefghijklmnop" not in path.read_text(encoding="utf-8")
+    assert [p.name for p in path.parent.iterdir() if p.name.endswith(".tmp")] == []
+
+
+def test_a_dataset_version_file_is_replaced_whole_and_a_failed_write_leaves_no_temp_file(ctx, monkeypatch):
+    from pygmalion_hoard.hoard_link import atomic
+
+    from helpers import chat_records
+
+    def build(name):
+        return ctx.svc.datasets.build({"name": name, "kind": "chat", "sources": [{"type": "jsonl", "text": "\n".join(json.dumps(r) for r in chat_records(30))}]})
+
+    ds = ctx.svc.datasets
+    out = build("Atomico")
+    folder = ds.dir / ctx.svc.store.version(out["version"]["id"])["dataset_id"]
+    assert [p.name for p in folder.iterdir() if p.name.endswith(".tmp")] == [] and (folder / "v1.jsonl").is_file()
+
+    def boom(src, dst, **kw):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(atomic, "replace_with_retry", boom)
+    with pytest.raises(OSError):
+        build("Roto")
+    assert [p for p in ds.dir.rglob("*") if p.name.endswith(".tmp")] == []
+
+
+def test_the_workers_write_their_files_through_the_shared_atomic_module(tmp_path, monkeypatch):
+    import models  # noqa: F401  (puts the workers folder on sys.path)
+    import _atomic
+    import train_lora
+
+    assert _atomic._atomic is not None                      # the vendored copy next to the workers was found
+    state = tmp_path / "ck" / "training_state.json"
+    state.parent.mkdir()
+    train_lora.write_state(state, {"step": 3})
+    assert json.loads(state.read_text(encoding="utf-8")) == {"step": 3}
+    assert [p.name for p in state.parent.iterdir()] == ["training_state.json"]
+
+
+def test_the_worker_atomic_helpers_fall_back_when_the_shared_copy_is_missing(tmp_path, monkeypatch):
+    import models  # noqa: F401
+    import _atomic
+
+    monkeypatch.setattr(_atomic, "_atomic", None)
+    target = tmp_path / "f.json"
+    _atomic.write_text_atomic(target, "{}")
+    other = tmp_path / "g.json"
+    other.write_text("old", encoding="utf-8")
+    _atomic.replace_with_retry(target, other)
+    assert other.read_text(encoding="utf-8") == "{}" and not target.exists()

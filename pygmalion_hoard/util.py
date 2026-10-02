@@ -12,6 +12,9 @@ import unicodedata
 from pathlib import Path
 from typing import Any, Optional
 
+from .hoard_link import atomic
+from .hoard_link.atomic import read_json  # noqa: F401  (re-exported: a missing, empty or corrupt file gives the default)
+
 _ID_ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz"
 CHARS_PER_TOKEN = 3.6
 
@@ -87,18 +90,8 @@ def dumps(value: Any) -> str:
 
 
 def write_json_atomic(path: Path, data: Any) -> None:
-    """Write JSON next to its destination and rename it over: a reader never sees half a file."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + f".{os.getpid()}.tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.replace(tmp, path)
-
-
-def read_json(path: Path, default: Any = None) -> Any:
-    try:
-        return json.loads(Path(path).read_text(encoding="utf-8-sig"))
-    except (OSError, ValueError):
-        return default
+    """Write JSON next to its destination and rename it over (retrying while Windows has the file open): a reader never sees half a file."""
+    atomic.write_json_atomic(path, data, indent=2, ensure_ascii=False)
 
 
 def dir_size(path: Path) -> int:

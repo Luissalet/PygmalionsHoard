@@ -22,7 +22,7 @@ from .events import EventPump
 from .evaluate import Evaluator, Galton
 from .reference import Reference
 from .gpus import GpuManager, query_gpus
-from .hoard_link import tokens
+from .hoard_link import atomic, tokens
 from .hoard_link.tokens import read_or_create_token
 from .messages import text
 from .hf import HubClient, local_model_folders, repo_of_folder, scan_local
@@ -212,14 +212,7 @@ class Services:
             lines[env_name] = value
         else:
             lines.pop(env_name, None)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_name(path.name + ".tmp")
-        tmp.write_text("".join(f"{k}={v}\n" for k, v in lines.items()), encoding="utf-8")
-        try:
-            tmp.chmod(0o600)
-        except OSError:
-            pass
-        os.replace(tmp, path)
+        atomic.write_bytes_atomic(path, "".join(f"{k}={v}\n" for k, v in lines.items()).encode("utf-8"), mode=0o600)   # owner-only, never half written
         self.config.secrets.pop(env_name, None)
         return self.secrets_status()[key]
 

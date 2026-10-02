@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from ..errors import PygmalionError
+from ..hoard_link import atomic
 from ..messages import text as msg
 from ..settings import Settings
 from ..store import Store
@@ -97,11 +98,15 @@ class DatasetService:
         folder = self.dir / ds["id"]
         folder.mkdir(parents=True, exist_ok=True)
         path = folder / f"v{n}.jsonl"
-        tmp = path.with_suffix(".tmp")
-        with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
-            for rec in records:
-                fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
-        os.replace(tmp, path)
+        tmp = atomic.tmp_path_for(path)                  # streamed (a dataset can be large), then renamed over with the shared retry
+        try:
+            with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+                for rec in records:
+                    fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            atomic.replace_with_retry(tmp, path)
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
         usable = [i for i, r in enumerate(records) if status_of(r) == "ok"]
         splits = ops.make_split(usable, self.settings.float("train.eval_split") if eval_pct is None else eval_pct,
                                 self.settings.int("train.eval_min") if min_eval is None else min_eval,
