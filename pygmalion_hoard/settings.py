@@ -83,6 +83,17 @@ SPECS: dict[str, Spec] = {
 SECRET_KEYS = ("hf.token",)
 
 
+def _as_text(value: Any) -> Optional[str]:
+    """The text a setting was stored as. Settings are texts; the shared database hands back what JSON makes of them (``"1"`` -> 1, ``"true"`` -> True)."""
+    if value is None or isinstance(value, str):
+        return value
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    if isinstance(value, (list, tuple)):
+        return ",".join(str(x) for x in value)
+    return str(value)
+
+
 def _truthy(value: str) -> bool:
     return str(value).strip().lower() in ("1", "true", "yes", "on")
 
@@ -161,9 +172,9 @@ class Settings:
         return (self.env.get("PYGMALION_GALTON_TOKEN_FILE") or "").strip()
 
     def get(self, key: str) -> str:
-        value = self.db.get_setting(key, None)
+        value = _as_text(self.db.get_setting(key, None))   # the shared database decodes JSON: a row written as plain text by an older copy comes back as a number
         if value not in (None, ""):
-            return str(value)
+            return value
         if key == "paths.work":
             return self.default_work()
         if key == "env.python":

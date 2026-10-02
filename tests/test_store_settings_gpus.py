@@ -23,11 +23,11 @@ def store(tmp_path):
 # ------------------------------------------------------------------ db
 def test_database_migrates_and_is_idempotent(tmp_path):
     db = Database(tmp_path / "d.db")
-    version = db.version()
+    version = db.schema_version
     db.migrate()
-    assert db.version() == version >= 1
+    assert db.schema_version == version >= 1
     db.close()
-    assert Database(tmp_path / "d.db").version() == version
+    assert Database(tmp_path / "d.db").schema_version == version
 
 
 def test_database_uses_wal_and_settings_table(tmp_path):

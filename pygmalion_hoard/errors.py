@@ -4,11 +4,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from .hoard_link.agentkit import AppError
 from .messages import ERRORS, KEY, CodedText, fields_of, fill, hint_text, recognise, scalar
 
 
-class PygmalionError(Exception):
-    """An expected, explainable failure: a stable ``code``, a human ``message`` and an actionable ``hint``."""
+class PygmalionError(AppError):
+    """An expected, explainable failure: a stable ``code``, a human ``message`` and an actionable ``hint``.
+
+    An :class:`~hoard_link.agentkit.AppError`: the shared error handlers and the agent router answer it with its own status and body (this app's
+    handler adds the message parts the bundled interface translates)."""
 
     STATUS = {
         "not_found": 404,
@@ -43,12 +47,7 @@ class PygmalionError(Exception):
             raise KeyError(f"{message!r} is not in messages.ERRORS")
         else:
             self.params = {}
-        super().__init__(message)
-        self.code = code
-        self.message = message
-        self.hint = hint
-        self.status = http_status or self.STATUS.get(code, 400)
-        self.details = details
+        super().__init__(code, message, hint=hint, status=http_status, details=details)
 
     def to_dict(self) -> dict[str, Any]:
         body: dict[str, Any] = {**self.details, "error": self.message, "code": self.code}
