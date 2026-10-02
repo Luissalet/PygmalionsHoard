@@ -367,6 +367,9 @@ def test_the_token_file_is_found_through_the_hub_registry(ctx, tmp_path, monkeyp
     ctx.svc.galton.offline = False
     assert ctx.svc.galton.token() == "from-registry"
     monkeypatch.setattr(E._hubclient, "fetch", lambda url, **kw: (None, None))
+    assert ctx.svc.galton.token() == "from-registry"         # the path found once is kept while the hub is away
+    token.unlink()
+    monkeypatch.setattr(E, "SIBLING_TOKEN", tmp_path / "nowhere" / "mcp-token")
     assert ctx.svc.galton.token() == ""
 
 
@@ -552,6 +555,7 @@ def test_a_dataset_evaluation_builds_the_suite_runs_both_models_and_stores_both_
     assert all(r["checker"]["type"] == "judge" and r["checker"]["reference"] == r["expected"] for r in fake.rows)
     start = fake.args_of("run_start")[0]
     assert start["suites"] == ["s_pyg-prueba-v1-eval", "rapida"] and len(start["contestants"]) == 2
+    assert start["settings"]["effort"] == "off"            # the records answer directly: no thinking budget spent on them
     compares = fake.args_of("compare")
     assert [c.get("suite") for c in compares] == ["s_pyg-prueba-v1-eval", "rapida"]
     assert record["intent"] == "dataset" and record["verdict"] == "better" and record["regression"]["suite"] == "rapida" and record["regression"]["verdict"] == "better"
@@ -658,3 +662,18 @@ def test_evaluate_start_by_dataset_returns_the_plan_with_the_dataset(ctx, tmp_pa
     assert answer["plan"]["intent"] == "dataset" and answer["plan"]["dataset"]["dataset"] == "Prueba"
     ctx.svc.jobs.run_until_idle()
     assert ctx.svc.store.job(answer["job"]["id"])["state"] == "done"
+
+
+def test_the_token_falls_back_to_galtons_folder_next_to_this_one(monkeypatch, tmp_path):
+    from pygmalion_hoard import evaluate as ev
+
+    token = tmp_path / "Galton's Hoard" / "data" / "mcp-token"
+    token.parent.mkdir(parents=True)
+    token.write_text("abc\n", encoding="utf-8")
+    monkeypatch.setattr(ev, "SIBLING_TOKEN", token)
+
+    class S:
+        def get(self, key):
+            return ""
+    g = ev.Galton(S(), offline=True)            # offline: the hub registry is not asked
+    assert g.token() == "abc"

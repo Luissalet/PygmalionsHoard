@@ -48,6 +48,8 @@ def hermetic_host(tmp_path_factory, monkeypatch):
     monkeypatch.setattr(settings_module, "WIN_LLAMA", str(nowhere / "llama.cpp"))
     monkeypatch.setattr(workdir, "OLLAMA_SYSTEM_PATHS", ())
     monkeypatch.setattr(procs, "which", lambda name: None)
+    from pygmalion_hoard import evaluate as _evaluate
+    monkeypatch.setattr(_evaluate, "SIBLING_TOKEN", nowhere / "Galton's Hoard" / "data" / "mcp-token")   # the real Galton may sit next door
 
 
 def build_services(tmp_path: Path, *, offline: bool = True, with_tools: bool = True, **kwargs: Any) -> SimpleNamespace:

@@ -41,6 +41,7 @@ DONE_STATES = ("done", "completed", "finished")
 FAILED_STATES = ("failed", "error", "cancelled", "canceled")
 VERDICTS = {"better": "better", "worse": "worse", "no clear difference": "no_clear_difference", "no_clear_difference": "no_clear_difference",
             "same": "no_clear_difference", "tie": "no_clear_difference", "inconclusive": "no_clear_difference", "no data": "no_data", "no_data": "no_data"}
+SIBLING_TOKEN = Path(__file__).resolve().parents[2] / "Galton's Hoard" / "data" / "mcp-token"  # the usual layout: both apps side by side
 LENGTH_RE = re.compile(r"(\d+)\s*k\s+tokens", re.I)
 NEEDLE_SUITE = "contexto-largo"
 RUBRIC = "¿Responde correctamente y con el mismo contenido que la referencia? Penaliza datos inventados."
@@ -199,25 +200,35 @@ class Galton:
         self.offline = offline
         self.sleep = sleep
         self.clock = clock
+        self._token_path = ""
 
     # ------------------------------------------------------------------ transport
     def token(self) -> str:
-        path = self.settings.get("galton.token_file").strip()
-        if not path:
-            path = self._registry_token_file()
-        if not path:
-            return ""
-        try:
-            return Path(path).read_text(encoding="utf-8").strip()
-        except OSError:
-            return ""
+        """Galton's token: the setting, else the file the hub's registry names, else Galton's folder next to this one."""
+        candidates = [self.settings.get("galton.token_file").strip()]
+        if not candidates[0]:
+            if not self._token_path:
+                self._token_path = self._registry_token_file()
+            candidates = [self._token_path, str(SIBLING_TOKEN)]
+            if self._token_path and not Path(self._token_path).is_file():
+                self._token_path = ""                       # moved or gone: ask the registry again next time
+        for path in candidates:
+            if not path:
+                continue
+            try:
+                value = Path(path).read_text(encoding="utf-8").strip()
+            except OSError:
+                continue
+            if value:
+                return value
+        return ""
 
     def _registry_token_file(self) -> str:
         """Where Galton keeps its token, as the hub's registry knows it (best effort)."""
         if self.offline:
             return ""
         try:
-            status, body = _hubclient.fetch(_hubclient.hub_url() + "/api/apps", timeout=1.5)
+            status, body = _hubclient.fetch(_hubclient.hub_url() + "/api/apps", timeout=8.0)  # the hub checks every app: seconds, not ms
         except Exception:  # noqa: BLE001
             return ""
         apps = body if isinstance(body, list) else (body or {}).get("apps") if isinstance(body, dict) else None
@@ -231,9 +242,15 @@ class Galton:
     def _via_hub(self, tool: str, args: dict[str, Any]) -> Optional[Any]:
         if self.family_call is None or self.offline:
             return None
-        try:
-            reply = self.family_call("galton", tool, args, timeout=120.0)
-        except Exception:  # noqa: BLE001
+        reply = None
+        for attempt in range(2):  # one retry: a busy hub or a restart of Galton must not drop a long evaluation to the fallback
+            try:
+                reply = self.family_call("galton", tool, args, timeout=120.0)
+                break
+            except Exception:  # noqa: BLE001
+                if attempt == 0:
+                    self.sleep(2.0)
+        if reply is None:
             return None
         if isinstance(reply, dict) and reply.get("ok") and "result" in reply:
             return reply["result"]
@@ -416,6 +433,10 @@ class Evaluator:
             run_suites = [dataset_suite["id"], *(REGRESSION_SUITES if plan["regression"] else [])]
         log(f"Evaluating {child['name']} against {parent['name']} on {', '.join(plan['suites'])}.")
         run_settings = dict(settings) if settings else {"temperature": 0, "repeats": 1}
+        if plan["intent"] == "dataset" and "effort" not in run_settings:
+            # the records answer directly: thinking first only spends the budget (and hours on a CPU) without
+            # measuring what the training taught, so both models answer without it unless the caller asks
+            run_settings["effort"] = "off"
         if plan["context_variant"] and "context" not in run_settings:
             window = self.child_context(child)
             if window:
