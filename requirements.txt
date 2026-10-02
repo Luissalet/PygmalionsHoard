@@ -1,0 +1,15 @@
+# App dependencies (light). Versions verified with Python 3.11 and 3.13.
+# The training, merge and probe workers run in a separate "trainer" environment (torch, transformers, peft, bitsandbytes,
+# safetensors, huggingface_hub): see README.md, section Install. Nothing in this file installs PyTorch.
+fastapi==0.142.2
+uvicorn==0.46.0
+pydantic==2.13.3
+starlette==1.0.0
+httpx==0.28.1
+mcp==1.27.0
+tzdata==2025.2
+python-multipart==0.0.26
+numpy==2.4.4
+safetensors==0.8.0
+pytest==9.1.1
+pytest-asyncio==1.4.0
