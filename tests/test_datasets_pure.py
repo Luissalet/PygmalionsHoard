@@ -391,3 +391,24 @@ def test_synthetic_preview_only_estimates_unless_sampled():
     spec = {"type": "synthetic", "task": "t", "from": [{"type": "files", "items": [{"name": "a", "text": "x"}]}]}
     out = S.preview_source(spec, ctx)
     assert out["estimate"]["calls"] == 1 and not called
+
+
+def test_chunks_never_pass_the_limit_and_end_at_the_best_break():
+    text = "\n\n".join(f"Párrafo {i}. " + "Una frase corta. " * 20 for i in range(12))
+    chunks = S.chunk_text(text, 400)
+    assert len(chunks) > 5 and all(len(c) <= 400 for c in chunks)
+    assert all(c.rstrip()[-1] in ".!?" for c in chunks)                       # cut at sentence ends, not in the middle of a word
+    assert S.chunk_text("", 400) == [] and S.chunk_text("corto", 50) == ["corto"] and S.chunk_text("a\r\n\r\nb", 400) == ["a\n\nb"]
+    assert max(len(c) for c in S.chunk_text("palabra " * 500, 10)) <= 100          # the smallest size is 100
+
+
+def test_text_files_are_read_whatever_their_encoding(tmp_path):
+    text = "Canción del niño: ¿qué pasó? Árbol, corazón y camión."
+    for name, data in (("utf8.txt", text.encode("utf-8")), ("bom.txt", b"\xef\xbb\xbf" + text.encode("utf-8")), ("ansi.txt", text.encode("cp1252")),
+                       ("utf16.txt", text.encode("utf-16"))):
+        (tmp_path / name).write_bytes(data)
+        assert S._read_text_file(str(tmp_path / name), None) == text, name
+    (tmp_path / "carpeta").mkdir()
+    (tmp_path / "carpeta" / "ansi.txt").write_bytes(text.encode("cp1252"))
+    rows = list(S.load_source({"type": "folder", "path": str(tmp_path / "carpeta")}, S.SourceContext()))
+    assert rows and text[:20] in rows[0]["text"]

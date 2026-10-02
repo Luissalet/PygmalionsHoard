@@ -17,6 +17,7 @@ from typing import Any, Callable, Iterator, Optional
 
 from .. import paths
 from ..errors import PygmalionError
+from ..hoard_link.docs import chunking, textclean
 from ..messages import text as msg
 from .formats import content_text, detect_kind, normalize_record, with_meta
 
@@ -31,31 +32,11 @@ Teacher = Callable[[list[dict[str, str]], int], str]
 
 # ------------------------------------------------------------------ text chunking
 def chunk_text(text: str, chunk_chars: int = 1500) -> list[str]:
-    """Cut text into pieces of about ``chunk_chars`` along paragraph boundaries. A paragraph longer than the limit is split at
-    sentence ends, and a sentence longer than the limit is cut hard."""
-    chunk_chars = max(100, int(chunk_chars))
-    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text.replace("\r\n", "\n")) if p.strip()]
-    pieces: list[str] = []
-    for p in paragraphs:
-        if len(p) <= chunk_chars:
-            pieces.append(p)
-            continue
-        for sentence in re.split(r"(?<=[.!?…])\s+", p):
-            while len(sentence) > chunk_chars:
-                pieces.append(sentence[:chunk_chars])
-                sentence = sentence[chunk_chars:]
-            if sentence:
-                pieces.append(sentence)
-    chunks, current = [], ""
-    for piece in pieces:
-        if current and len(current) + 2 + len(piece) > chunk_chars:
-            chunks.append(current)
-            current = piece
-        else:
-            current = f"{current}\n\n{piece}" if current else piece
-    if current:
-        chunks.append(current)
-    return chunks
+    """Cut text into pieces of at most ``chunk_chars`` characters (at least 100), ending at the best break inside that window: a paragraph, a line,
+    a sentence, a clause or a word (the shared chunker, without overlap; a text with no break at all is cut hard)."""
+    size = max(100, int(chunk_chars))
+    unit = chunking.Unit("text", 1, "", (text or "").replace("\r\n", "\n"), 1)
+    return [c.text for c in chunking.chunk_units([unit], size=size, overlap=0, min_unit=0, min_chunk=0, min_tail=0)]
 
 
 # ------------------------------------------------------------------ small readers
@@ -67,7 +48,7 @@ def _read_text_file(path: str, data_dir: Optional[Path], allow_data_subdir: Opti
     p = Path(path)
     if p.stat().st_size > MAX_FILE_BYTES:
         raise PygmalionError("too_large", "file_too_big", name=p.name, mb=MAX_FILE_BYTES // 1048576)
-    return p.read_text(encoding="utf-8-sig", errors="replace")
+    return textclean.decode_text(p.read_bytes())          # UTF-8 (with or without BOM) or UTF-16, else Windows-1252: an ANSI file keeps its accents
 
 
 def _inline_or_path(spec: dict[str, Any], data_dir: Optional[Path], allow: Optional[Path]) -> str:
@@ -177,7 +158,7 @@ def load_folder(spec: dict[str, Any], ctx: "SourceContext") -> Iterator[dict[str
         if path.stat().st_size > MAX_FILE_BYTES:
             ctx.notes.append(msg("note_file_big", name=path.name, mb=MAX_FILE_BYTES // 1048576))
             continue
-        text = path.read_text(encoding="utf-8-sig", errors="replace")
+        text = textclean.decode_text(path.read_bytes())
         rel = path.relative_to(root).as_posix()      # the same label on every OS
         for piece in chunk_text(text, int(spec.get("chunk_chars") or ctx.chunk_chars)):
             yield with_meta({"text": piece}, source=rel)
