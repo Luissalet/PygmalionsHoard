@@ -517,6 +517,7 @@ const D = {
   wins_losses: ["Gana / pierde / empata", "Wins / losses / ties"],
   suites: ["Pruebas", "Suites"],
   promote_suggested: ["El resultado no es peor que el original: se puede publicar.", "The result is not worse than the original: it can be published."],
+  promote_neutral: ["No es peor que el original, pero tampoco mejora de forma clara: publícalo solo si te sirve. Más registros o más épocas pueden marcar la diferencia.", "Not worse than the original, but not clearly better either: publish it only if it helps you. More records or more epochs can make the difference."],
   eval_regression: ["Comprobar también que no pierde capacidad general", "Also check that it keeps its general ability"],
   eval_dataset_help: ["Se mide sobre los registros reservados del dataset con el que se entrenó (los califica el modelo juez de Galton) y, aparte, sobre una prueba general corta para detectar regresiones.", "It is measured on the held-out records of the dataset it was trained on (Galton's judge model grades them) and, separately, on a short general suite to catch regressions."],
   verdict_dataset: ["Sobre los registros reservados", "On the held-out records"],

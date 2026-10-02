@@ -110,7 +110,7 @@ function GaltonBlock({ galton, art, isGguf }) {
           {reg.verdict === "worse" && <div className="banner banner-warn">{t("regression_worse")}</div>}
         </div>
       )}
-      {galton.verdict !== "worse" && reg?.verdict !== "worse" && !art.published?.length && isGguf && <div className="banner banner-info">{t("promote_suggested")}</div>}
+      {["better", "no_clear_difference"].includes(galton.verdict) && reg?.verdict !== "worse" && !art.published?.length && isGguf && <div className="banner banner-info">{galton.verdict === "better" ? t("promote_suggested") : t("promote_neutral")}</div>}
     </div>
   );
 }
