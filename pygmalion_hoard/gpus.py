@@ -208,9 +208,9 @@ class GpuManager:
                     self._helpers.pop(threading.current_thread(), None)
 
         thread = threading.Thread(target=run, name="pygmalion-lease", daemon=True)
-        with self._helpers_lock:
+        with self._helpers_lock:          # started under the lock: close() never sees (and joins) a thread that has not started
             self._helpers[thread] = abandoned
-        thread.start()
+            thread.start()
         while not done.wait(0.5):
             if on_wait:
                 position = (getattr(held, "info", None) or {}).get("position")
