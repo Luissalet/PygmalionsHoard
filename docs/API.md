@@ -586,7 +586,7 @@ Annotations: readOnlyHint, idempotentHint.
 
 Measure a GGUF or Ollama result against its reference with Galton's Hoard. Evaluar con Galton.
 
-Verdict better, worse or no clear difference with deltas and intervals; stored on the artifact. The reference is the base model the training started from in the same quantization (queued first as a pipeline when it does not exist), the file before a context extension, or the parent file of a plain quantization; see evaluate_plan. A result trained on a dataset is measured on that dataset's held-out records (intent dataset, graded by Galton's judge) plus a quick general suite for regressions; other intents pick suites.
+Verdict better, worse or no clear difference with deltas and intervals, stored on the artifact. The reference is the base model in the same quantization (queued first when missing), the file before a context extension or the parent of a plain quantization; see evaluate_plan. A result trained on a dataset is measured on its held-out records (graded by Galton's judge) plus a quick general suite for regressions.
 Sinónimos: ¿es mejor que el original?, comparar, regresión, medir, prueba de estilo, contexto largo, registros reservados del dataset
 
 Annotations: openWorldHint.
