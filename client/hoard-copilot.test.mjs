@@ -104,18 +104,18 @@ test("a view's own object (picked in a list) is read, and its version wins over 
 });
 
 test("a base route whose id is not a base model resolves to no object", async () => {
-  assert.deepEqual(await buildContext({ hash: "#/modelos/a_adapter", api: apiOf(), ask: noForms }), {});
+  assert.deepEqual(await buildContext({ hash: "#/modelos/a_adapter", api: apiOf(), ask: noForms }), { active_objects: [] });
 });
 
 test("new, unresolvable ids and failing reads give no object and never throw", async () => {
   const calls = [];
   const api = apiOf(calls);
-  assert.deepEqual(await buildContext({ hash: "#/datasets/new", api, ask: noForms }), {});
-  assert.deepEqual(await buildContext({ hash: "#/linaje/", api, ask: noForms }), {});
+  assert.deepEqual(await buildContext({ hash: "#/datasets/new", api, ask: noForms }), { active_objects: [] });
+  assert.deepEqual(await buildContext({ hash: "#/linaje/", api, ask: noForms }), { active_objects: [] });
   assert.deepEqual(calls, []);
-  for (const hash of ["#/datasets/ghost", "#/trabajos/ghost", "#/linaje/ghost", "#/modelos/ghost"]) assert.deepEqual(await buildContext({ hash, api, ask: noForms }), {}, hash);
-  assert.deepEqual(await buildContext({ hash: "#/linaje/x", api: { call: async () => null }, ask: noForms }), {});
-  assert.deepEqual(await buildContext({ hash: "#/linaje/x", api: { call: () => { throw new Error("sync"); } }, ask: noForms }), {});
+  for (const hash of ["#/datasets/ghost", "#/trabajos/ghost", "#/linaje/ghost", "#/modelos/ghost"]) assert.deepEqual(await buildContext({ hash, api, ask: noForms }), { active_objects: [] }, hash);
+  assert.deepEqual(await buildContext({ hash: "#/linaje/x", api: { call: async () => null }, ask: noForms }), { active_objects: [] });
+  assert.deepEqual(await buildContext({ hash: "#/linaje/x", api: { call: () => { throw new Error("sync"); } }, ask: noForms }), { active_objects: [] });
 });
 
 test("one failing object does not drop the others, and a slow read is abandoned", async () => {
@@ -134,7 +134,7 @@ test("create forms are reported on any route, including with no object", async (
   const ctx = await buildContext({ hash: "#/entrenar?base=a_base", api: apiOf(), ask: ({ provide }) => {
     provide(formSnapshot("training-draft", { initial: {}, current: filled({ base: "a_base", dataset: "", rank: 8 }) }));
   } });
-  assert.deepEqual(ctx, { editor: { kind: "training-draft", dirty: true, fields: { base: "a_base", rank: 8 } } });
+  assert.deepEqual(ctx, { active_objects: [], editor: { kind: "training-draft", dirty: true, fields: { base: "a_base", rank: 8 } } });
 });
 
 test("an edit form on a detail route is reported next to its object", async () => {
@@ -146,9 +146,9 @@ test("an edit form on a detail route is reported next to its object", async () =
 });
 
 test("a failing form or a missing API leaves context() resolved", async () => {
-  assert.deepEqual(await buildContext({ hash: "#/linaje/a_base", api: { call: () => Promise.reject(new Error("down")) }, ask: () => { throw new Error("form"); } }), {});
-  assert.deepEqual(await buildContext({ hash: undefined, api: {}, ask: noForms }), {});
-  assert.deepEqual(await buildContext({ hash: "#/linaje/a_base", api: undefined, ask: noForms }), {});
+  assert.deepEqual(await buildContext({ hash: "#/linaje/a_base", api: { call: () => Promise.reject(new Error("down")) }, ask: () => { throw new Error("form"); } }), { active_objects: [] });
+  assert.deepEqual(await buildContext({ hash: undefined, api: {}, ask: noForms }), { active_objects: [] });
+  assert.deepEqual(await buildContext({ hash: "#/linaje/a_base", api: undefined, ask: noForms }), { active_objects: [] });
 });
 
 test("every tool the readers call exists in the backend catalogue", async () => {
@@ -170,10 +170,17 @@ test("window.hoardCopilot: context() never rejects and onTurnEnd fires the refre
   const hc = globalThis.window.hoardCopilot;
   assert.equal(typeof hc.context, "function");
   target.addEventListener("hoard:copilot-context-request", (e) => e.detail.provide({ kind: "dataset-draft", dirty: true, fields: { name: "N" } }));
-  assert.deepEqual(await hc.context(), { editor: { kind: "dataset-draft", dirty: true, fields: { name: "N" } } });
+  assert.deepEqual(await hc.context(), { active_objects: [], editor: { kind: "dataset-draft", dirty: true, fields: { name: "N" } } });
   globalThis.window.location.hash = "#/datasets/ds_9";      // backend unreachable: api rejects, context still resolves
-  assert.deepEqual(await hc.context(), { editor: { kind: "dataset-draft", dirty: true, fields: { name: "N" } } });
+  assert.deepEqual(await hc.context(), { active_objects: [], editor: { kind: "dataset-draft", dirty: true, fields: { name: "N" } } });
   target.addEventListener("pygmalion:copilot-updated", () => hits.push(1));
   hc.onTurnEnd();
   assert.equal(hits.length, 1);
+});
+
+
+test("a job whose title is a translatable object reads as its text", async () => {
+  const api = { call: async (tool) => (tool === "job_get" ? { id: "j_1", kind: "evaluate", state: "done", title: { key: "title_evaluate", params: {}, text: "evaluate m-Q4" } } : null) };
+  const ctx = await buildContext({ hash: "#/trabajos/j_1", api, ask: () => {} });
+  assert.equal(ctx.active_objects[0].title, "evaluate m-Q4 (done)");
 });

@@ -88,7 +88,7 @@ export function settle(promise, ms = READ_TIMEOUT_MS) {
 
 const enc = (id) => encodeURIComponent(id);
 const BASE_KINDS = new Set(["base", "merged", "ctx_variant"]);
-const text = (v) => (v === undefined || v === null ? "" : String(v));
+const text = (v) => (v === undefined || v === null ? "" : typeof v === "object" ? String(v.text ?? v.name ?? "") : String(v));
 
 /**
  * What each kind of object is read with. `read` gets the client API and the object reference and returns the list of
@@ -132,7 +132,8 @@ export const ROUTE_KINDS = { modelos: "base_model", datasets: "dataset", trabajo
  *  - ask: `(detail) => void` that dispatches the context request to the mounted forms and views
  */
 export async function buildContext({ hash, api, ask, timeout = READ_TIMEOUT_MS }) {
-  const out = {};
+  // Always say which objects are open (possibly none): an empty list overrides the launcher's guesses from the URL.
+  const out = { active_objects: [] };
   let route = { page: "panel", id: null };
   try { route = parseRoute(hash); } catch { /* default route */ }
 
@@ -165,7 +166,7 @@ export async function buildContext({ hash, api, ask, timeout = READ_TIMEOUT_MS }
         if (!ids.has(key)) { ids.add(key); objects.push(obj); }
       }
     }
-    if (objects.length) out.active_objects = objects;
+    out.active_objects = objects;
   }
 
   if (editor) out.editor = editor;
