@@ -43,20 +43,10 @@ export function follow(current, prev, next) {
   return same(current, prev) ? next : current;
 }
 
-export const MAX_FIELD_CHARS = 2000;
-
-/** Deep copy of `value` where long strings (pasted JSONL, notes) are cut, so one big field cannot swamp a turn. */
-export function clip(value, max = MAX_FIELD_CHARS) {
-  if (typeof value === "string") return value.length > max ? `${value.slice(0, max)}… [+${value.length - max} chars]` : value;
-  if (Array.isArray(value)) return value.map((v) => clip(v, max));
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, clip(v, max)]));
-  return value;
-}
-
-/** Snapshot a form hands to the copilot. `objectId` is omitted for create forms. */
+/** Snapshot a form hands to the copilot. `objectId` is omitted for create forms. A draft is sent whole: never clipped. */
 export function formSnapshot(kind, { objectId, initial, current } = {}) {
   const fields = changedFields(initial, current);
-  return { kind, ...(isNoObjectId(objectId) ? {} : { object_id: String(objectId) }), dirty: Object.keys(fields).length > 0, fields: clip(fields) };
+  return { kind, ...(isNoObjectId(objectId) ? {} : { object_id: String(objectId) }), dirty: Object.keys(fields).length > 0, fields };
 }
 
 /**
@@ -67,14 +57,19 @@ export function formSnapshot(kind, { objectId, initial, current } = {}) {
 export function collectEditor(dispatch) {
   const answers = [];
   const objects = [];
+  const parts = {};
   try {
     dispatch({
       provide: (snapshot) => { if (snapshot && typeof snapshot === "object" && snapshot.kind) answers.push(snapshot); },
+      // A sub-form inside the form (e.g. a source being typed before it is added) reports its live value here.
+      providePart: (name, value) => { if (name && value !== undefined && value !== null) parts[String(name)] = value; },
       provideObject: (ref) => { if (ref && typeof ref === "object" && ref.kind && !isNoObjectId(ref.object_id)) objects.push({ ...ref, object_id: String(ref.object_id) }); },
     });
   } catch { /* a broken form must not break the turn */ }
   const dirty = answers.filter((a) => a.dirty);
-  const editor = dirty.length ? dirty[dirty.length - 1] : answers[answers.length - 1];
+  let editor = dirty.length ? dirty[dirty.length - 1] : answers[answers.length - 1];
+  // Parts ride along with the form they belong to (the rest of the form context is kept) and make it dirty.
+  if (editor && Object.keys(parts).length) editor = { ...editor, dirty: true, fields: { ...editor.fields, ...parts } };
   return { editor, objects };
 }
 

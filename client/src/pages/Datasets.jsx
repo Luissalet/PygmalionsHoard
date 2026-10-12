@@ -5,7 +5,7 @@ import { compact, num, seconds, splitList } from "../format.js";
 import { Histogram } from "../components/charts.jsx";
 import { Busy, Check, Chip, Empty, ErrorBox, Field, Icon, ICONS, KV, Modal, PageHead, Rel, Section, Seg, Tabs, useBusy, useLoad } from "../components/ui.jsx";
 import { useTool } from "../components/hooks.js";
-import { useCopilotForm, useCopilotObject } from "../copilot-hooks.js";
+import { useCopilotForm, useCopilotObject, useCopilotPart } from "../copilot-hooks.js";
 
 const SOURCE_TYPES = ["files", "folder", "jsonl", "csv", "family", "synthetic"];
 const emptySource = (type) => ({
@@ -58,6 +58,9 @@ function SourceForm({ onAdd }) {
   const set = (k, v) => setS((x) => ({ ...x, [k]: v }));
   const pick = (next) => { setType(next); setS(emptySource(next)); setPreview(null); };
   const spec = sourceSpec({ ...s, type });
+  // the assistant also sees the source being typed here before "add" (whole, not clipped); an untouched form says nothing
+  const untouched = JSON.stringify(spec) === JSON.stringify(sourceSpec(emptySource(type)));
+  useCopilotPart("pending_source", untouched ? undefined : spec);
   const valid = {
     files: spec.paths?.length, folder: spec.path, jsonl: spec.text || spec.path, csv: spec.text || spec.path, family: spec.app && spec.tool && Object.keys(spec.mapping || {}).length,
     synthetic: spec.task && spec.from[0].path !== "" && (spec.from[0].paths ? spec.from[0].paths.length : true),

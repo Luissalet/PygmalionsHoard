@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  READERS, buildContext, changedFields, clip, collectEditor, filled, follow, formSnapshot, isNoObjectId, parseRoute, settle,
+  READERS, buildContext, changedFields, collectEditor, filled, follow, formSnapshot, isNoObjectId, parseRoute, settle,
 } from "./src/copilot-core.js";
 
 const dataset = { id: "ds_1", name: "Mis escritos", kind: "chat", version_list: [{ id: "dv_1", n: 1 }, { id: "dv_2", n: 2 }] };
@@ -47,16 +47,38 @@ test("filled keeps what a create form has filled in and drops empties", () => {
   assert.deepEqual(filled({ base: "a_base", dataset: "", rank: 16, after: undefined, targets: [], values: {}, force: false }), { base: "a_base", rank: 16, force: false });
 });
 
-test("formSnapshot: edit forms carry object_id, create forms do not, long text is cut", () => {
+test("formSnapshot: edit forms carry object_id, create forms do not, long drafts are sent whole", () => {
   const edit = formSnapshot("artifact-form", { objectId: "a_1", initial: { name: "A", notes: "" }, current: { name: "B", notes: "" } });
   assert.deepEqual(edit, { kind: "artifact-form", object_id: "a_1", dirty: true, fields: { name: "B" } });
   const draft = formSnapshot("training-draft", { initial: {}, current: { base: "a_base" } });
   assert.deepEqual(draft, { kind: "training-draft", dirty: true, fields: { base: "a_base" } });
   assert.equal("object_id" in formSnapshot("training-draft", { objectId: "new", initial: {}, current: {} }), false);
   assert.equal(formSnapshot("x", { objectId: "p", initial: { a: 1 }, current: { a: 1 } }).dirty, false);
-  const big = formSnapshot("dataset-draft", { initial: {}, current: { sources: [{ type: "jsonl", text: "x".repeat(5000) }] } });
-  assert.match(big.fields.sources[0].text, /^x{2000}… \[\+3000 chars\]$/);
-  assert.equal(clip("short"), "short");
+  const text = `${"{\"messages\":[]}\n".repeat(163)}   TAIL403JSONL`;   // 2623 chars: past the old 2000-char cut
+  assert.equal(text.length, 2623);
+  const big = formSnapshot("dataset-draft", { initial: {}, current: { sources: [{ type: "jsonl", text }], notes: "n".repeat(9000) } });
+  assert.equal(big.fields.sources[0].text, text);
+  assert.ok(big.fields.sources[0].text.endsWith("TAIL403JSONL"));
+  assert.equal(big.fields.notes.length, 9000);
+});
+
+test("a pending (not yet added) source is merged into the form snapshot whole, keeping the rest of the form", async () => {
+  const text = `${"{\"messages\":[]}\n".repeat(163)}   TAIL403JSONL`;
+  const pending = { type: "jsonl", text };
+  const draft = formSnapshot("dataset-draft", { initial: { name: "", sources: [] }, current: { name: "Mis escritos", sources: [] } });
+  const { editor } = collectEditor(({ provide, providePart }) => { provide(draft); providePart("pending_source", pending); providePart("ignored", undefined); });
+  assert.equal(editor.kind, "dataset-draft");
+  assert.equal(editor.dirty, true);
+  assert.equal(editor.fields.name, "Mis escritos");
+  assert.equal(editor.fields.pending_source.text, text);
+  assert.ok(editor.fields.pending_source.text.endsWith("TAIL403JSONL"));
+  assert.equal("ignored" in editor.fields, false);
+  // a clean form becomes dirty only because of the pending source; without a form the part has nowhere to go
+  const clean = collectEditor(({ provide, providePart }) => { provide(formSnapshot("dataset-draft", { initial: {}, current: {} })); providePart("pending_source", pending); });
+  assert.equal(clean.editor.dirty, true);
+  assert.equal(collectEditor(({ providePart }) => providePart("pending_source", pending)).editor, undefined);
+  const ctx = await buildContext({ hash: "#/datasets", api: apiOf(), ask: ({ provide, providePart }) => { provide(draft); providePart("pending_source", pending); } });
+  assert.equal(ctx.editor.fields.pending_source.text.length, 2623);
 });
 
 test("follow keeps unsaved typing when the saved value changes underneath", () => {
