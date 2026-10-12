@@ -47,6 +47,13 @@ Spanish by default, English with one click, dark, desktop and phone.
 - Synthetic examples are only as good as the teacher model; they stay pending until you approve them.
 - The time estimate is a rough throughput constant (1 600 tokens/s per billion parameters for QLoRA on a 16 GB 50-series card), not a measurement of your machine; the first steps of the job replace it. Text that comes from a library (a Python error, a Hugging Face message, Galton's own warnings) is shown as it arrived, in its language.
 
+## Faustus panel
+
+A «Faustus» button opens the family's shared assistant panel without leaving the app. Faustus keeps the conversations
+(also listed in Faustus Studio), runs the agent with the globally selected model and uses this app's own tools. Each turn
+carries the base model, dataset (and the version on screen), job or artifact open; unsaved fields of the training setup, the dataset builder and the artifact name and notes. After a turn the lists and the open view refresh in place, without discarding what you were typing. The
+panel comes from Hoard Link (`install_spa`) and talks to Faustus through this app's relay, so no token reaches the browser.
+
 ## Install
 
 Requirements: Python 3.11 or newer (tested on 3.11 and 3.13), Node 22 only to rebuild the UI.

@@ -47,6 +47,14 @@ En castellano por defecto, en inglés con un clic, oscuro, en escritorio y en m�
 - Los ejemplos sintéticos valen lo que valga el modelo profesor; quedan pendientes hasta que los apruebes.
 - La estimación de tiempo es una velocidad de referencia aproximada (1 600 tokens/s por cada mil millones de parámetros en QLoRA sobre una tarjeta de 16 GB de la serie 50), no una medición de tu equipo; los primeros pasos del trabajo la sustituyen. El texto que llega de una biblioteca (un error de Python, un mensaje de Hugging Face, los avisos propios de Galton) se muestra tal como llegó, en su idioma.
 
+## Panel de Faustus
+
+Un botón «Faustus» abre el panel de asistente común de la familia sin salir de la app. Faustus guarda las conversaciones
+(también en Faustus Studio), ejecuta el agente con el modelo elegido globalmente y usa las herramientas de esta app. Cada
+turno lleva el modelo base, dataset (y la versión en pantalla), trabajo o artefacto abierto; lo que esté sin guardar en la preparación del entrenamiento, el constructor de datasets y el nombre y las notas del artefacto. Al terminar un turno, las listas y la vista abierta se refrescan sin perder lo que estuvieras escribiendo.
+El panel lo sirve Hoard Link (`install_spa`) y habla con Faustus a través del relay de la app, así que ningún token llega
+al navegador.
+
 ## Instalación
 
 Requisitos: Python 3.11 o superior (probado con 3.11 y 3.13), Node 22 solo para reconstruir la interfaz.
