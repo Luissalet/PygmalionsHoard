@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { api, errorText } from "./api.js";
 import { initialLang, makeT, saveLang } from "./i18n.js";
 import { AppContext } from "./context.js";
+import { useCopilotRefresh } from "./copilot-hooks.js";
 import { ConfirmDialog, Icon, ICONS } from "./components/ui.jsx";
 import Panel from "./pages/Panel.jsx";
 import Modelos from "./pages/Modelos.jsx";
@@ -112,6 +113,8 @@ export default function App() {
   }, []);
   // Something changed (a job, an artifact, a setting): reload the dashboard and every page that listens to `version`.
   const changed = useCallback(() => { setVersion((v) => v + 1); refreshDash(); }, [refreshDash]);
+  // The assistant finished a turn: it may have changed anything, so reload in place what is on screen (forms keep their state).
+  useCopilotRefresh(changed);
 
   // Every 3 s while jobs are active, every 30 s otherwise, only while the tab is visible; also when it becomes visible again.
   useEffect(() => {

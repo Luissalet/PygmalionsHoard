@@ -3,6 +3,8 @@ import { api } from "../api.js";
 import { useApp } from "../context.js";
 import { toNumber } from "../format.js";
 import { ArtifactSelect, DatasetSelect, PostSteps, VramPanel, buildAfter, emptyAfter } from "../components/cards.jsx";
+import { filled } from "../copilot-core.js";
+import { useCopilotForm } from "../copilot-hooks.js";
 import { Busy, Check, ErrorBox, Field, Icon, ICONS, PageHead, Seg, useBusy, useLoad } from "../components/ui.jsx";
 
 const NUMERIC = ["rank", "alpha", "dropout", "lr", "seq_len", "batch", "grad_accum", "epochs", "max_steps", "warmup", "weight_decay", "eval_every", "save_every", "seed"];
@@ -46,6 +48,8 @@ export default function Entrenar({ query }) {
     return o;
   };
   const common = () => ({ base, dataset, ...(datasetN ? { dataset_n: Number(datasetN) } : {}), ...overrides() });
+  // The assistant sees the run being set up (nothing is saved yet): every field that has been filled in, as train_start takes it.
+  useCopilotForm("training-draft", { initial: {}, current: filled({ ...common(), name: name.trim(), after: buildAfter(after), ...(force ? { force: true } : {}) }) });
 
   const doPlan = () => run("plan", async () => {
     setPlanError(null);

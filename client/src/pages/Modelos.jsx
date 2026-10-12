@@ -5,6 +5,7 @@ import { bytes, compact, num } from "../format.js";
 import { ArtifactRow, VramPanel } from "../components/cards.jsx";
 import { Busy, Chip, Drawer, Empty, ErrorBox, Field, Icon, ICONS, KV, Modal, PageHead, Section, useBusy, useLoad } from "../components/ui.jsx";
 import { useTool } from "../components/hooks.js";
+import { useCopilotObject } from "../copilot-hooks.js";
 
 function BaseBadges({ b }) {
   const { t } = useApp();
@@ -19,8 +20,8 @@ function BaseBadges({ b }) {
 }
 
 function BaseDetail({ id, onClose }) {
-  const { t, lang } = useApp();
-  const { data, error } = useLoad(() => api.call("base_get", { base: id }), [id]);
+  const { t, lang, version } = useApp();
+  const { data, error } = useLoad(() => api.call("base_get", { base: id }), [id, version]);
   const local = data?.local;
   return (
     <Drawer title={local?.repo_id || local?.name || id} onClose={onClose}>
@@ -161,6 +162,7 @@ export default function Modelos({ param }) {
   const { t, lang } = useApp();
   const { data, error, loading } = useTool("bases_list", {}, []);
   const [open, setOpen] = useState(param || null);
+  useCopilotObject("base_model", open);
   const bases = data?.bases || [];
   return (
     <div className="space-y-6">

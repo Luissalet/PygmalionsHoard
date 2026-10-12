@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../context.js";
 import { bytes, num, seconds } from "../format.js";
 import { ArtifactRow, PplTable, VerdictChip } from "../components/cards.jsx";
 import { Busy, Check, Chip, CopyButton, Drawer, Empty, ErrorBox, Field, Icon, ICONS, KV, KindChip, Modal, PageHead, Rel, Section, useBusy, useLoad } from "../components/ui.jsx";
 import { ARTIFACT_KINDS, INTENTS } from "../meta.js";
+import { changedFields, follow } from "../copilot-core.js";
+import { useCopilotForm, useCopilotObject } from "../copilot-hooks.js";
 
 function Graph({ graph, selected, onSelect }) {
   const { t } = useApp();
@@ -126,10 +128,27 @@ function Detail({ id, onClose }) {
   const [regression, setRegression] = useState(true);
   // what the evaluation would compare with, for the chosen intent (read-only; nothing is queued)
   const { data: evalPlan } = useLoad(async () => (art && art.kind === "gguf" ? api.call("evaluate_plan", { artifact: id, ...(intent ? { intent } : {}) }).catch(() => null) : null), [id, intent, version, art?.kind]);
-  useEffect(() => { if (art) { setNotes(art.notes || ""); setName(art.name); } }, [art?.id, art?.notes, art?.name]);
+  // What the form last loaded. When the saved name or notes change underneath (the assistant edited them, another tab), the form follows
+  // unless that field has unsaved typing, which is kept.
+  const loaded = useRef({ id: null, name: "", notes: "" });
+  useEffect(() => {
+    if (!art) return;
+    const prev = loaded.current;
+    const next = { id: art.id, name: art.name, notes: art.notes || "" };
+    if (prev.id !== next.id) { setName(next.name); setNotes(next.notes); }
+    else {
+      setName((cur) => follow(cur, prev.name, next.name));
+      setNotes((cur) => follow(cur, prev.notes, next.notes));
+    }
+    loaded.current = next;
+  }, [art?.id, art?.notes, art?.name]);
+  const saved = art ? { name: art.name, notes: art.notes || "" } : {};
+  useCopilotObject("artifact", id);
+  useCopilotForm(art ? "artifact-form" : "", { objectId: art?.id, initial: saved, current: { name, notes } });
   if (!art) return <Drawer title={id} onClose={onClose}>{error ? <ErrorBox error={error} /> : <div className="help">{t("loading")}</div>}</Drawer>;
   const after = () => { changed(); reload(); };
-  const save = () => run("s", async () => { await api.call("artifact_update", { artifact: art.id, name, notes }); notify(t("saved")); after(); });
+  // Only the fields this form changed are sent, so a save never writes back an older value of the other one.
+  const save = () => run("s", async () => { await api.call("artifact_update", { artifact: art.id, ...changedFields(saved, { name, notes }) }); notify(t("saved")); after(); });
   const pin = () => run("p", async () => { await api.call("artifact_update", { artifact: art.id, pinned: !art.pinned }); after(); });
   const exportRecipe = () => run("x", async () => {
     const r = await api.call("artifact_recipe", { artifact: art.id });

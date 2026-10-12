@@ -5,6 +5,7 @@ import { compact, num, seconds, splitList } from "../format.js";
 import { Histogram } from "../components/charts.jsx";
 import { Busy, Check, Chip, Empty, ErrorBox, Field, Icon, ICONS, KV, Modal, PageHead, Rel, Section, Seg, Tabs, useBusy, useLoad } from "../components/ui.jsx";
 import { useTool } from "../components/hooks.js";
+import { useCopilotForm, useCopilotObject } from "../copilot-hooks.js";
 
 const SOURCE_TYPES = ["files", "folder", "jsonl", "csv", "family", "synthetic"];
 const emptySource = (type) => ({
@@ -194,6 +195,8 @@ export function OpsForm({ value, onChange }) {
   );
 }
 
+const DEFAULT_SPLIT = { eval_pct: 5, min_eval: 20, seed: 42 };
+
 function Builder({ existing, onClose, onDone }) {
   const { t, notify, changed } = useApp();
   const [busy, run] = useBusy();
@@ -201,8 +204,13 @@ function Builder({ existing, onClose, onDone }) {
   const [description, setDescription] = useState("");
   const [sources, setSources] = useState([]);
   const [ops, setOps] = useState(defaultOps());
-  const [split, setSplit] = useState({ eval_pct: 5, min_eval: 20, seed: 42 });
+  const [split, setSplit] = useState(DEFAULT_SPLIT);
   const [error, setError] = useState(null);
+  // the assistant sees what is typed here before the dataset is built (a new version of a dataset reports its changes the same way)
+  useCopilotForm(existing ? "dataset-version-draft" : "dataset-draft", {
+    initial: { name: "", description: "", sources: [], operations: opsList(defaultOps()), split: DEFAULT_SPLIT },
+    current: { name: name.trim(), description, sources, operations: opsList(ops), split: { eval_pct: Number(split.eval_pct), min_eval: Number(split.min_eval), seed: Number(split.seed) } },
+  });
   const build = () => run("b", async () => {
     setError(null);
     try {
@@ -402,6 +410,7 @@ function DatasetDetail({ id, onGone }) {
   const [ops, setOps] = useState(defaultOps());
   const [showOps, setShowOps] = useState(false);
   const [newVersion, setNewVersion] = useState(false);
+  useCopilotObject("dataset", id, { n: n || undefined });
   const { data, error, reload } = useLoad(() => api.call("dataset_get", { dataset: id, n: n || undefined }), [id, n, version]);
   useEffect(() => { setN(""); }, [id]);
   if (!data) return <div className="help">{error ? <ErrorBox error={error} /> : t("loading")}</div>;

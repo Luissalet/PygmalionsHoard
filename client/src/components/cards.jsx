@@ -165,11 +165,11 @@ export function ArtifactSelect({ label, hint, value, onChange, kinds, empty, fil
 
 // Dataset + version pickers.
 export function DatasetSelect({ value, onChange, n, onN, label, hint }) {
-  const { t } = useApp();
-  const { data } = useLoad(() => api.call("datasets_list", {}), []);
+  const { t, version } = useApp();
+  const { data } = useLoad(() => api.call("datasets_list", {}), [version]);
   const list = data?.datasets || [];
   const current = list.find((d) => d.id === value);
-  const versions = useLoad(() => (value ? api.call("dataset_get", { dataset: value }) : Promise.resolve(null)), [value]);
+  const versions = useLoad(() => (value ? api.call("dataset_get", { dataset: value }) : Promise.resolve(null)), [value, version]);
   const items = versions.data?.dataset?.version_list || [];
   return (
     <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
