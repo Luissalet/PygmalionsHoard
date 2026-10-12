@@ -60,7 +60,8 @@ function SourceForm({ onAdd }) {
   const spec = sourceSpec({ ...s, type });
   // the assistant also sees the source being typed here before "add" (whole, not clipped); an untouched form says nothing
   const untouched = JSON.stringify(spec) === JSON.stringify(sourceSpec(emptySource(type)));
-  useCopilotPart("pending_source", untouched ? undefined : spec);
+  const pending = untouched ? null : spec;
+  useCopilotPart("pending_source", pending);
   const valid = {
     files: spec.paths?.length, folder: spec.path, jsonl: spec.text || spec.path, csv: spec.text || spec.path, family: spec.app && spec.tool && Object.keys(spec.mapping || {}).length,
     synthetic: spec.task && spec.from[0].path !== "" && (spec.from[0].paths ? spec.from[0].paths.length : true),
