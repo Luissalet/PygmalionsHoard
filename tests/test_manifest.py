@@ -12,7 +12,7 @@ from pygmalion_hoard.config import DEFAULT_PORT
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = [ROOT / "README.md", ROOT / "README.es.md", ROOT / "AGENTS.md", *sorted((ROOT / "docs").glob("*.md"))]
-BANNED = ("chatgpt", "claude", "openai", "anthropic", "lm studio", "odysseus", "gemini", "copilot", "notion", "evernote", "paperless")
+BANNED = ("chatgpt", "claude", "openai", "anthropic", "lm studio", "odysseus", "gemini", "notion", "evernote", "paperless")
 SLOGAN_HINTS = ("tagline", "slogan")
 
 

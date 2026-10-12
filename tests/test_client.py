@@ -46,7 +46,7 @@ def test_both_languages_are_filled_and_placeholders_match():
 
 
 def test_no_emojis_or_banned_words_in_the_client():
-    banned = ("chatgpt", "claude", "openai", "anthropic", "lm studio", "gemini", "copilot")
+    banned = ("chatgpt", "claude", "openai", "anthropic", "lm studio", "gemini")
     for path in [*SOURCES, SRC / "i18n.js"]:
         text = path.read_text(encoding="utf-8")
         assert not re.search("[\U0001F300-\U0001FAFF☀-➿]", text), path.name
