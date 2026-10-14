@@ -43,6 +43,16 @@ ERRORS: dict[str, tuple[str, str]] = {
     "artifact_kind_unknown": ("Unknown artifact kind {kind}.", "Kinds: {options}."),
     "no_artifact": ("No artifact {ref}.", "List artifacts with artifacts_list."),
     "no_job": ("No job {id}.", "List jobs with jobs_list."),
+    # -- capture
+    "no_capture_session": ("No capture session {ref}.", "List sessions with capture_sessions."),
+    "no_capture_node": ("No captured call {ref}.", "See the calls of a session with capture_session."),
+    "capture_upstream_needed": ("Give the address of the model server to capture.", "For example http://127.0.0.1:8093 (llama.cpp) or http://host:8002 (vLLM)."),
+    "capture_upstream_bad": ("'{url}' is not an http(s) address.", "Use http://host:port, without a path."),
+    "capture_nothing_to_export": ("No captured sequence matches the filters.", "Loosen the filters, include unverified calls or capture more sessions."),
+    "capture_dataset_needed": ("Name the dataset to register the export in (dataset_name), or export only the token files.", ""),
+    "capture_date_bad": ("'{value}' is not a date.", "Use an ISO date such as 2026-10-15 or 2026-10-15T08:00:00Z, or seconds since 1970."),
+    "capture_formats_needed": ("Choose at least one export format.", "Formats: dataset, sft, rl."),
+    "capture_delete_what": ("Say which sessions to delete (sessions) or pass all=true.", ""),
     # -- jobs
     "env_not_set": ("The trainer environment is not set up.",
         "Set env.python in Settings (run env_check for the steps)."),
