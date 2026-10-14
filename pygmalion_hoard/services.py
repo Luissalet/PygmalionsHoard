@@ -14,6 +14,9 @@ import httpx
 
 from . import SERVICE, __version__
 from .config import PREFIX, Config, load_dotenv
+from .capture.proxy import CaptureProxy
+from .capture.service import CaptureService
+from .capture.store import CaptureStore
 from .datasets.service import DatasetService
 from .db import Database
 from .envcheck import EnvChecker
@@ -64,7 +67,8 @@ class Services:
                  galton_transport: Optional[httpx.BaseTransport] = None, family_call: Optional[Callable[..., dict]] = None,
                  teacher: Optional[Callable[[list[dict[str, str]], int], str]] = None, probe: Optional[Callable[[], list[dict[str, Any]]]] = None,
                  lease_factory: Optional[Callable[..., Any]] = None, hub_status: Optional[Callable[[], Optional[dict]]] = None,
-                 launcher: Any = None, capture: Optional[Callable[..., Any]] = None, port_is_free: Optional[Callable[[int], bool]] = None):
+                 launcher: Any = None, capture: Optional[Callable[..., Any]] = None, port_is_free: Optional[Callable[[int], bool]] = None,
+                 capture_transport: Optional[httpx.BaseTransport] = None):
         self.config = config
         self.clock = clock_fn
         self.started_at = time.time()
@@ -90,6 +94,10 @@ class Services:
         self._link: Any = None
         self.datasets = DatasetService(self.store, self.settings, config.datasets_dir, data_dir=config.data_dir, family_call=self._family_call,
                                        teacher=self._teacher, clock=clock_fn)
+        self.capture_store = CaptureStore(self.db, clock_fn)
+        self.capture_proxy = CaptureProxy(self.capture_store, self.settings, clock=clock_fn, transport=capture_transport)
+        self.capture = CaptureService(self.capture_store, self.capture_proxy, self.settings, exports_dir=config.capture_dir / "exports",
+                                      port=lambda: config.port, datasets=self.datasets, clock=clock_fn)
         self.galton = Galton(self.settings, family_call=self._family_call, transport=galton_transport, offline=config.offline, clock=clock_fn)
         self.references = Reference(self.store, self.lineage)
         self.evaluator = Evaluator(self.store, self.lineage, self.galton, self.settings, datasets=self.datasets, references=self.references)
@@ -125,6 +133,7 @@ class Services:
         late += self.gpus.close(min(timeout, 5.0))
         if not self.events.close(min(timeout, 5.0)):
             late.append("pygmalion-events")
+        self.capture_proxy.close()
         if self._link is not None:
             try:
                 self._link.sync.close()

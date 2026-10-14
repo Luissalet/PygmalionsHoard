@@ -194,6 +194,18 @@ class DatasetService:
                                       min_eval=split.get("min_eval"), seed=split.get("seed"), report=report, notes=ctx.notes)
         return {"dataset": self.dataset_view(self.store.dataset(ds["id"])), "version": self.version_view(version, detail=True), "notes": ctx.notes}
 
+    def import_records(self, records: list[dict[str, Any]], spec: dict[str, Any], recipe: dict[str, Any], kind: str = "chat") -> dict[str, Any]:
+        """Store records another part of the app produced (the capture export) as a version of a dataset: cleaned like any source, new dataset
+        by ``spec["name"]`` or a new version of ``spec["dataset"]``, with ``recipe`` as its provenance."""
+        valid = [r for r in (normalize_record(rec, kind) for rec in records) if r is not None]
+        report: list[dict[str, Any]] = [{"op": "load", "before": 0, "after": len(records), "changed": 0},
+                                        {"op": "validate", "before": len(records), "after": len(valid), "changed": len(records) - len(valid)}]
+        if not valid:
+            raise PygmalionError("invalid", "no_usable_records")
+        ds = self._dataset_for(spec, kind)
+        version = self._write_version(ds, [with_meta(r, status=status_of(r)) for r in valid], kind=kind, recipe=recipe, parent=None, report=report)
+        return {"dataset": self.dataset_view(self.store.dataset(ds["id"])), "version": self.version_view(version, detail=True), "notes": []}
+
     @staticmethod
     def _majority_kind(records: list[dict[str, Any]]) -> str:
         counts: dict[str, int] = {}

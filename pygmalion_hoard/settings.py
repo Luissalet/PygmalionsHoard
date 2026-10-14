@@ -77,6 +77,12 @@ SPECS: dict[str, Spec] = {
     "publish.num_ctx": _s("int", 8192, "publish", "Context (num_ctx) written into an Ollama Modelfile unless the publish asks for another; never above the trained context.", low=256, high=2_000_000),
     "publish.llama_port_start": _s("int", 8100, "publish", "First port tried for published llama.cpp servers.", low=1024, high=65000),
     "publish.ollama_exe": _s("path", "", "publish", "Ollama executable (empty: PATH or the default install folder)."),
+    "capture.enabled": _s("bool", 0, "capture", "The capture proxy forwards and records calls (off: it answers 503)."),
+    "capture.upstream_url": _s("str", "", "capture", "Model server the capture proxy forwards to, e.g. http://127.0.0.1:8093 (llama.cpp) or http://host:8002 (vLLM)."),
+    "capture.upstream_type": _s("choice", "auto", "capture", "Kind of server: llama_server, vllm, or auto (detected).", ("auto", "llama_server", "vllm")),
+    "capture.top_logprobs": _s("int", 1, "capture", "Alternatives per token asked from the server; above 1 they are stored too (larger database).", low=1, high=20),
+    "capture.faithful_sampling": _s("bool", 0, "capture", "Neutralise top_k, top_p and min_p so the logged log-probabilities describe the distribution the token was drawn from (for RL)."),
+    "capture.timeout_s": _s("int", 900, "capture", "Seconds a forwarded call may take.", low=10, high=7200),
     "jobs.stop_grace_s": _s("int", 30, "jobs", "Seconds a worker gets to save a checkpoint after a stop request.", low=1, high=600),
 }
 

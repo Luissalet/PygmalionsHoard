@@ -67,6 +67,10 @@ class Config:
         return self.data_dir / "datasets"
 
     @property
+    def capture_dir(self) -> Path:
+        return self.data_dir / "capture"
+
+    @property
     def secrets_path(self) -> Path:
         """Write-only secrets (the Hugging Face token) saved from Settings: KEY=VALUE lines, owner-only permissions."""
         return self.data_dir / "secrets.env"

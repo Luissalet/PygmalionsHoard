@@ -94,6 +94,55 @@ MIGRATIONS: list[str] = [
     );
     CREATE INDEX runs_ts ON runs(ts);
     """,
+    # 2: captured calls of model servers (the capture proxy): sessions and the prefix tree of their calls
+    """
+    CREATE TABLE capture_sessions (
+      id TEXT PRIMARY KEY,
+      harness TEXT NOT NULL DEFAULT '',
+      created_ts REAL NOT NULL,
+      updated_ts REAL NOT NULL,
+      reward REAL,
+      outcome TEXT,
+      note TEXT NOT NULL DEFAULT ''
+    );
+    CREATE INDEX capture_sessions_harness ON capture_sessions(harness, created_ts);
+    CREATE TABLE capture_nodes (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL REFERENCES capture_sessions(id) ON DELETE CASCADE,
+      seq INTEGER NOT NULL,
+      ts REAL NOT NULL,
+      harness TEXT NOT NULL DEFAULT '',
+      upstream TEXT NOT NULL DEFAULT '',
+      upstream_type TEXT NOT NULL DEFAULT '',
+      model TEXT NOT NULL DEFAULT '',
+      parent_id TEXT,
+      parent_len INTEGER NOT NULL DEFAULT 0,
+      prompt_len INTEGER NOT NULL DEFAULT 0,
+      prompt_delta TEXT NOT NULL DEFAULT '[]',
+      completion_len INTEGER NOT NULL DEFAULT 0,
+      completion_ids TEXT NOT NULL DEFAULT '[]',
+      logprobs TEXT NOT NULL DEFAULT '[]',
+      top TEXT,
+      pieces TEXT,
+      full_len INTEGER NOT NULL DEFAULT 0,
+      full_sha TEXT NOT NULL DEFAULT '',
+      msg_skip INTEGER NOT NULL DEFAULT 0,
+      messages TEXT NOT NULL DEFAULT '[]',
+      tools TEXT,
+      response_message TEXT,
+      finish_reason TEXT NOT NULL DEFAULT '',
+      sampling TEXT NOT NULL DEFAULT '{}',
+      prompt_ids_source TEXT NOT NULL DEFAULT '',
+      verified INTEGER NOT NULL DEFAULT 0,
+      verify_note TEXT NOT NULL DEFAULT '',
+      usage TEXT NOT NULL DEFAULT '{}',
+      latency_ms INTEGER NOT NULL DEFAULT 0,
+      reward REAL,
+      flags TEXT NOT NULL DEFAULT '{}'
+    );
+    CREATE INDEX capture_nodes_session ON capture_nodes(session_id, seq);
+    CREATE INDEX capture_nodes_parent ON capture_nodes(parent_id);
+    """,
 ]
 
 
