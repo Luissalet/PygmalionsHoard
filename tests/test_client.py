@@ -8,7 +8,7 @@ SRC = ROOT / "client" / "src"
 I18N = (SRC / "i18n.js").read_text(encoding="utf-8")
 ENTRIES = dict(re.findall(r'^\s*([a-z0-9_]+): \[(".*")\],?\s*$', I18N, re.M))
 SOURCES = [p for p in sorted(SRC.rglob("*")) if p.suffix in (".js", ".jsx") and p.name != "i18n.js"]
-PAGES = ["Panel", "Modelos", "Datasets", "Entrenar", "Trabajos", "Fusionar", "Cuantizar", "Contexto", "Linaje", "Ajustes"]
+PAGES = ["Panel", "Modelos", "Datasets", "Entrenar", "Trabajos", "Fusionar", "Cuantizar", "Contexto", "Linaje", "Captura", "Ajustes"]
 
 
 def used_keys():
@@ -53,7 +53,7 @@ def test_no_emojis_or_banned_words_in_the_client():
         assert not any(w in text.lower() for w in banned), path.name
 
 
-def test_ten_pages_and_identity():
+def test_pages_and_identity():
     for page in PAGES:
         assert (SRC / "pages" / f"{page}.jsx").is_file(), page
     app = (SRC / "App.jsx").read_text(encoding="utf-8")

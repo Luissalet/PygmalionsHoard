@@ -31,7 +31,7 @@ class Runner:
 
 def test_the_catalogue_is_well_formed():
     names = [t.name for t in TOOLS]
-    assert len(names) == len(set(names)) == 44
+    assert len(names) == len(set(names)) == 50
     for entry in tool_catalog():
         assert entry["description"].splitlines()[0] and entry["inputSchema"]["type"] == "object"
         assert set(entry["annotations"]) == {"readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"}
@@ -185,6 +185,27 @@ def test_every_tool_works_in_a_realistic_session(ctx, base_model, tmp_path):
     # --- cleaning up
     assert t("artifact_delete", artifact=variant["id"], delete_files=True, confirm=True)["files_removed"] is True
     assert t("dataset_delete", dataset="Familia", confirm=True)["deleted"] == "Familia"
+
+    # --- capture (calls recorded by the proxy are seeded straight into the store; tests/test_capture.py drives the proxy itself)
+    status = t("capture_proxy")
+    assert status["enabled"] is False and status["base_url"].endswith("/capture/v1")
+    assert t("capture_proxy", action="configure", upstream_url="http://127.0.0.1:8093/v1", top_logprobs=2)["upstream_url"] == "http://127.0.0.1:8093"
+    for n, session in enumerate(("cap-a", "cap-b")):
+        ctx.svc.capture_store.add_call(session, "faustus" if n == 0 else "cowork", {
+            "prompt_ids": [1, 2, 3], "completion_ids": [10, 11], "logprobs": [-0.5, -0.25], "messages": [{"role": "user", "content": "hola"}],
+            "response_message": {"role": "assistant", "content": "adios"}, "verified": True, "prompt_ids_source": "upstream", "model": "m"})
+    assert {s["id"] for s in t("capture_sessions")["sessions"]} == {"cap-a", "cap-b"}
+    leaf = t("capture_session", session="cap-a")["nodes"][0]["id"]
+    assert t("capture_session", session="cap-a", node=leaf)["node"]["tokens"][0]["id"] == 10
+    assert t("capture_outcome", session="cap-a", reward=1.0, outcome="success")["session"]["reward"] == 1.0
+    dry = t("capture_export", dry_run=True, balance_by_harness="min")
+    assert dry["rows"] == 2 and set(dry["per_harness"]) == {"faustus", "cowork"}
+    exported = t("capture_export", dataset_name="Capturas", formats=["dataset", "sft"])
+    assert exported["version"]["records"] == 2 and "sft" in exported["files"]
+    with pytest.raises(PygmalionError):
+        t("capture_delete", all=True)
+    assert t("capture_delete", sessions=["cap-a", "cap-b"], confirm=True)["deleted"] == 2
+    assert t("dataset_delete", dataset="Capturas", confirm=True)["deleted"] == "Capturas"
 
     never = set(TOOLS_BY_NAME) - set(t.called)
     assert not never, f"tools never called by this test: {sorted(never)}"

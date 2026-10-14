@@ -64,7 +64,7 @@ def test_agent_needs_the_token(client):
 
 def test_agent_tool_listing_has_instructions_and_short_first_lines(client):
     body = client.get("/api/agent/tools").json()
-    assert "Pygmalion" in body["instructions"] and len(body["tools"]) == 44
+    assert "Pygmalion" in body["instructions"] and len(body["tools"]) == 50
     assert all(len(t["description"].splitlines()[0]) <= 110 and t["inputSchema"]["type"] == "object" for t in body["tools"])
     names = {t["name"] for t in body["tools"]}
     assert {"train_start", "quantize_start", "evaluate_start", "publish_ollama", "lineage_graph"} <= names
