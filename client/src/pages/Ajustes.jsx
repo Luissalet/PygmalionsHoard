@@ -57,7 +57,7 @@ export function EnvReport({ report }) {
   );
 }
 
-const GROUP_ORDER = ["paths", "defaults", "teacher", "galton", "publish", "jobs"];
+const GROUP_ORDER = ["paths", "defaults", "teacher", "galton", "publish", "capture", "jobs"];
 const HINTED = new Set(["gpus.allowed", "gpus.reserved"]);
 
 function SettingInput({ name, spec, value, onChange }) {

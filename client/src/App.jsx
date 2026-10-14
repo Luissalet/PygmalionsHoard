@@ -13,6 +13,7 @@ import Fusionar from "./pages/Fusionar.jsx";
 import Cuantizar from "./pages/Cuantizar.jsx";
 import Contexto from "./pages/Contexto.jsx";
 import Linaje from "./pages/Linaje.jsx";
+import Captura from "./pages/Captura.jsx";
 import Ajustes from "./pages/Ajustes.jsx";
 
 export { useApp } from "./context.js";
@@ -27,6 +28,7 @@ const PAGES = [
   { path: "cuantizar", key: "nav_quantize", icon: ICONS.compress, component: Cuantizar },
   { path: "contexto", key: "nav_context", icon: ICONS.ruler, component: Contexto },
   { path: "linaje", key: "nav_lineage", icon: ICONS.tree, component: Linaje },
+  { path: "captura", key: "nav_capture", icon: ICONS.record, component: Captura },
   { path: "ajustes", key: "nav_settings", icon: ICONS.gear, component: Ajustes },
 ];
 

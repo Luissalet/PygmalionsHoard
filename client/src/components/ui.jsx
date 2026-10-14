@@ -42,6 +42,7 @@ export const ICONS = {
   home: "M4 11l8-7 8 7v9h-5v-6H9v6H4z",
   pin: "M9 3h6l-1 6 3 3H7l3-3zM12 12v9",
   alert: "M12 3l10 18H2zM12 10v5M12 18v.5",
+  record: "M12 21a9 9 0 100-18 9 9 0 000 18zM12 15a3 3 0 100-6 3 3 0 000 6z",
 };
 
 export function Spinner() {
