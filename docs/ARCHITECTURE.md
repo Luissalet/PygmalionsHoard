@@ -2,7 +2,7 @@
 
 ```
  UI (React)  ──POST /api/ui/call──┐
- assistants ─ /api/agent/call ────┼──► agent_tools.py: one catalogue (44 tools) ──► Services / Ops
+ assistants ─ /api/agent/call ────┼──► agent_tools.py: one catalogue (50 tools) ──► Services / Ops
  mcp_server.py (stdio bridge) ────┘                                                   │
                                                                                       ▼
  datasets/ (sources, operations, service) ◄── planner.py (parameters, memory, pipelines) ──► jobs.py (store-backed queue)
@@ -23,6 +23,7 @@
 | `config.py`, `settings.py` | Process settings from the environment (`PYGMALION_*`, `appconfig`) and `.env` (read by the shared parser, never exported); settings stored in the database as texts (the shared database stores JSON; an older plain-text row reads the same) |
 | `db.py`, `store.py` | Schema and migrations over the shared `sqlkit.Database` (SQLite, WAL, busy timeout, re-entrant transactions); every query. New ids are lowercase ULIDs (`util.new_id`); older ids still resolve |
 | `services.py` | Wires everything from a `Config`; dashboard and views |
+| `capture/` , `api/capture.py` | The capture proxy (`proxy.py`), its storage (`store.py`), the prefix tree and the training rows (`tree.py`, pure) and the views and exports (`service.py`); the routes under `/capture/` and `/api/capture/` |
 | `ops.py` | The operations the tools call: downloads, dataset builds, pipelines |
 | `agent_tools.py` | The tool catalogue: name, description, pydantic arguments, annotations, handler; `Tool`, the catalogue, `call_tool` and the result cap are the shared `agentkit` |
 | `api/` | REST: `agent.py` (the shared agent router: assistants, Bearer token), `ui.py` (dashboard, UI calls), `health.py` (`/api/status`; `/api/health` is the shared route) |
@@ -73,6 +74,12 @@ Tests: `tests/conftest.py` has an autouse fixture that fails the test that leave
 A worker is a script run by the trainer environment's Python with `--args args.json`. It prints one JSON object per line (`progress`, `eval`, `artifact`, `result`, `log`) and never imports the app. The app stops it by creating the stop file named in `PYGMALION_STOP_FILE` (the job folder's `STOP`) and sending a signal (a worker started without a console on Windows only sees the file); the worker saves a checkpoint and exits, and the job can be resumed from the last checkpoint. Tests replace the workers with `tests/fake_workers/*.py` that print realistic lines.
 
 `merge_lora.py` computes `W + (alpha / r) B A` one tensor at a time in float32 over the base's safetensors shards and copies every other file of the base unchanged; adapters it cannot map (DoRA, extra saved modules, unmatched names) go through transformers and PEFT instead.
+
+## Capture proxy
+
+`api/capture.py` serves `POST /capture[/<harness>]/<session>/v1/chat/completions` and `GET .../v1/models`; its errors use the chat-completions error body, not the app's envelope. `capture/proxy.py` forwards one call: it asks the upstream (`capture.upstream_url`; `llama_server`, `vllm` or `auto`, detected with `GET /props` and `GET /version`) for the answer without streaming and with `logprobs`, plus `return_token_ids` for vLLM, then builds the call. vLLM: `prompt_token_ids`, `choices[].token_ids` and the log-probability of each token are used as they come. llama.cpp: the sampled ids come from `logprobs.content[].id`; the prompt ids from `POST /apply-template` (messages, tools, `chat_template_kwargs`) and `POST /tokenize` (`add_special` false, then true), keeping the variant whose length equals `usage.prompt_tokens`. A count that matches nothing, a missing id list or a mismatch between ids, log-probabilities and `usage` makes the call `unverified` with the reason in `verify_note`; the exports skip such calls unless `include_unverified`. One generated token more than listed on a call that ended by itself is the end-of-turn token (`/props` `eos_token` through `/tokenize`) and is appended with a null log-probability.
+
+`capture/store.py` keeps `capture_sessions` and `capture_nodes`. A node is linked at insert time to the deepest earlier node of its session whose whole sequence (prompt then completion) is an exact prefix of its prompt (`tree.find_parent`, SHA-1 fingerprints of prefixes in one pass), and stores only what follows the parent: the prompt ids, the messages (the leading messages equal to the parent's conversation are skipped) and the tools (inherited when equal). Reading a node walks the chain. `capture/tree.py` is pure: it indexes nodes into roots and leaves, turns each root-to-leaf path into `input_ids`, a 0/1 mask and aligned log-probabilities (`dedupe_shared` keeps tokens already trained on by an earlier path as context; `loss_on=last` trains only the leaf), and balances rows by harness with a seeded sample. `capture/service.py` selects rows with the filters, writes `sft.jsonl`, `rl.jsonl` and `manifest.json` under `data/capture/exports/<stamp>-<name>/` and registers the chat records through `DatasetService.import_records` (tool messages flattened to text). There are no threads of its own: the route runs the blocking call in the server's worker pool and `Services.stop` closes the HTTP client.
 
 ## Evaluation
 

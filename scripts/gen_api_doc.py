@@ -38,6 +38,8 @@ def main() -> int:
               "- `GET /api/dashboard` - GPUs, running and queued jobs, recent artifacts, environment state, Galton and hub availability.",
               "- `GET /api/ui/tools` - the catalogue for the UI.",
               "- `POST /api/ui/call` `{name, arguments}` - any tool above, uncapped (the UI is local).",
+              "- `POST /capture/v1/chat/completions`, `POST /capture/<session>/v1/chat/completions`, `POST /capture/<harness>/<session>/v1/chat/completions`, `GET .../v1/models` - the capture proxy (chat-completions API; the session and the harness may also come from the API key or the `X-Capture-Session` and `X-Capture-Harness` headers).",
+              "- `GET /api/capture`, `POST /api/capture/proxy`, `GET /api/capture/sessions`, `GET /api/capture/sessions/{id}`, `POST /api/capture/sessions/{id}/outcome`, `POST /api/capture/export`, `DELETE /api/capture/sessions/{id}?confirm=true` - the capture tools as plain REST.",
               "- `GET /manifest.webmanifest`, `GET /sw.js` - installable app.", ""]
     target = ROOT / "docs" / "API.md"
     text = "\n".join(lines)

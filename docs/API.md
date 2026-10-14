@@ -695,10 +695,122 @@ Sinónimos: VRAM libre, quién usa la GPU, leases, cola del hub
 
 Annotations: readOnlyHint, idempotentHint.
 
+## `capture_proxy`
+
+Start, stop or inspect the capture proxy that records model calls as training data. Proxy de captura.
+
+Chat-completions endpoint in front of a llama.cpp or vLLM server: it forwards each call, records the token ids and log-probabilities and builds a prefix tree per session. Point the harness at base_url (or base_url with /<session> or /<harness>/<session>).
+Sinónimos: capturar turnos de Faustus, grabar llamadas, datos de entrenamiento, RL, logprobs, ids de tokens, llama-server, vLLM
+
+Annotations: idempotentHint, openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `action` (status \| check \| start \| stop \| configure) | no | status: address and counters. check: also ask the upstream which server it is. start/stop: turn the proxy on or off. configure: change the settings below without changing on/off. |
+| `upstream_url` (string/null) | no | Model server to capture, e.g. http://127.0.0.1:8093 (llama.cpp) or http://host:8002 (vLLM). |
+| `upstream_type` (string/null) | no | Kind of server; auto detects it. |
+| `top_logprobs` (integer/null) | no | Alternatives per token asked from the server; above 1 they are stored too. |
+| `faithful_sampling` (boolean/null) | no | For RL: neutralise top_k, top_p and min_p so the logged log-probabilities describe the sampling distribution. Off by default. |
+| `timeout_s` (integer/null) | no |  |
+
+## `capture_sessions`
+
+List capture sessions with calls, tokens, reward and unverified counts. Sesiones capturadas.
+
+Sinónimos: qué se ha capturado, arneses, rollouts, conversaciones grabadas, por fecha
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `harness` (string) | no | Only sessions of this harness. |
+| `since` (number/string/null) | no | Updated since: ISO date/time or seconds since 1970. |
+| `until` (number/string/null) | no | Created until: ISO date/time or seconds since 1970. |
+| `limit` (integer) | no |  |
+| `offset` (integer) | no |  |
+
+## `capture_session`
+
+One capture session as a tree of calls, or one call in full with token log-probabilities. Árbol de captura.
+
+Each call has its parent (the call whose whole sequence is an exact prefix of its prompt), token counts, verification state and a preview.
+Sinónimos: ver llamadas, ramas, prefijo, tokens, logprobs, sin verificar, plantilla
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `session` (string) | yes | Capture session id. |
+| `node` (string) | no | A call id of the session: returns that call in full (messages, tools, tokens with log-probabilities). |
+| `max_tokens` (integer) | no | Tokens of the call to list when node is given. |
+| `limit` (integer) | no | Calls to list. |
+
+## `capture_outcome`
+
+Set the reward or outcome of a capture session (or of one call). Marcar resultado de captura.
+
+Leave the reward empty when nothing verified the result: exports can require or skip it.
+Sinónimos: recompensa, éxito, fallo, verificador, etiquetar rollout
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `session` (string) | yes |  |
+| `reward` (number/null) | no | Numeric reward of the session (or of one call when node is given). Leave empty when nothing verified the outcome. |
+| `outcome` (string/null) | no | Label such as success or failure. |
+| `note` (string) | no |  |
+| `node` (string) | no | Set the reward of this call instead of the whole session. |
+| `clear` (boolean) | no | Remove the reward and outcome. |
+
+## `capture_export`
+
+Export captured calls as a dataset, SFT tokens and RL tokens with logprobs. Exportar captura.
+
+Loss mask: tokens the model sampled train, context does not. Balances by harness (balance_by_harness) and filters by session, harness, date and reward; unverified calls are left out unless asked. dry_run reports the split per harness without writing.
+Sinónimos: dataset de entrenamiento desde Faustus, equilibrar por arnés, máscara de pérdida, SFT, RL, JSONL
+
+Annotations: none.
+
+| Argument | Required | Description |
+|---|---|---|
+| `sessions` (array) | no | Only these sessions; all when empty. |
+| `harness` (array) | no | Only these harnesses. |
+| `since` (number/string/null) | no | Only sequences whose last call is at or after this time (ISO or seconds). |
+| `until` (number/string/null) | no | Only sequences whose last call is at or before this time. |
+| `require_reward` (boolean) | no | Only sequences with a reward set (by capture_outcome). |
+| `min_reward` (number/null) | no | Only sequences with a reward of at least this. |
+| `include_unverified` (boolean) | no | Also use calls whose token ids could not be verified (off by default). |
+| `loss_on` (all \| last) | no | all: every token the model sampled along the path; last: only the final call's. |
+| `dedupe_shared` (boolean) | no | A token shared by several paths is trained on once (later paths keep it as context). |
+| `balance_by_harness` (integer/string/null) | no | min: as many sequences per harness as the smallest one has; a number: at most that many per harness. |
+| `seed` (integer) | no | Seed of the sample taken when balancing. |
+| `formats` (array/null) | no | dataset: chat records registered as a dataset the trainer can use (needs dataset_name or dataset). sft: token file with input_ids and labels (-100 on context). rl: token file with loss mask, per-token log-probabilities and reward. Default: sft and rl, plus dataset when a name is given. |
+| `dataset_name` (string) | no | New dataset to register the chat records in. |
+| `dataset` (string) | no | Existing dataset to add a version to instead. |
+| `dry_run` (boolean) | no | Only report what would be exported: sequences and loss tokens per harness, before and after balancing. Writes nothing. |
+
+## `capture_delete`
+
+Delete capture sessions and their calls (confirm=true). Borrar sesiones capturadas.
+
+Datasets already exported keep their records.
+Sinónimos: limpiar capturas, eliminar rollouts
+
+Annotations: destructiveHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `sessions` (array) | no |  |
+| `all` (boolean) | no | Delete every session. |
+| `confirm` (boolean) | no |  |
+
 ## REST routes for the UI
 
 - `GET /api/health`, `GET /api/status`
 - `GET /api/dashboard` - GPUs, running and queued jobs, recent artifacts, environment state, Galton and hub availability.
 - `GET /api/ui/tools` - the catalogue for the UI.
 - `POST /api/ui/call` `{name, arguments}` - any tool above, uncapped (the UI is local).
+- `POST /capture/v1/chat/completions`, `POST /capture/<session>/v1/chat/completions`, `POST /capture/<harness>/<session>/v1/chat/completions`, `GET .../v1/models` - the capture proxy (chat-completions API; the session and the harness may also come from the API key or the `X-Capture-Session` and `X-Capture-Harness` headers).
+- `GET /api/capture`, `POST /api/capture/proxy`, `GET /api/capture/sessions`, `GET /api/capture/sessions/{id}`, `POST /api/capture/sessions/{id}/outcome`, `POST /api/capture/export`, `DELETE /api/capture/sessions/{id}?confirm=true` - the capture tools as plain REST.
 - `GET /manifest.webmanifest`, `GET /sw.js` - installable app.
