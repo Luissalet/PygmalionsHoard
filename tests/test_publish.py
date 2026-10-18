@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import call, needs_posix
+from tests.conftest import call, needs_posix
 from gguf_builder import build_gguf
 from pygmalion_hoard import publish as P
 from pygmalion_hoard.errors import PygmalionError

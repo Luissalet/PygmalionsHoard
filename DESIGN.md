@@ -1,0 +1,3 @@
+# Pygmalion visual system
+
+Preserve the existing Pygmalion icon and rose marble family palette: deep #1d1417, surface #251a1e, text #f0e8eb, accent #c46a8a. Inherit shared Hoard tokens and self-hosted Cinzel / Source Sans 3. Functions extends the previously reviewed Talos/Hermes operate surface: sidebar, horizontal module rows, explicit switches, status and persistent data-location details. No cards used as dashboard decoration. Faustus is the family mark, #e06c75, icon-only launcher with aria-label Faustus. Native module navigation uses same-origin routes, without iframes or secondary servers. Mobile stacks controls and content with usable touch targets.

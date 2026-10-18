@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-import models  # noqa: F401
+from tests import models  # noqa: F401
 import _common as C
 
 ROOT = Path(__file__).resolve().parent.parent

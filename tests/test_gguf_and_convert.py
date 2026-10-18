@@ -5,7 +5,7 @@ import struct
 import pytest
 
 from gguf_builder import build_gguf
-from models import make_model
+from tests.models import make_model
 from pygmalion_hoard import gguf_meta as G
 from pygmalion_hoard import convert_detect as D
 

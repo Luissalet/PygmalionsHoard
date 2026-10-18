@@ -1,5 +1,8 @@
 # Architecture
 
+Production entry point: `pygmalion_hoard.fusion.app:create_app`. The shell owns three independent lifetimes, all OFF initially. Its static catalogue combines 50 training tools and 65 tools from the incorporated evaluation engine, plus two module controls. Native pages/API stay under `/training/` and `/evaluation/`. See [FUSION.md](FUSION.md) for data mapping, concurrency, shutdown and compatibility. The diagram below describes the retained training domain.
+
+
 ```
  UI (React)  ──POST /api/ui/call──┐
  assistants ─ /api/agent/call ────┼──► agent_tools.py: one catalogue (50 tools) ──► Services / Ops

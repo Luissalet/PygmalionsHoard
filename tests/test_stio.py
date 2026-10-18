@@ -7,9 +7,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-import models  # noqa: F401  (puts the workers folder on sys.path)
+from tests import models  # noqa: F401  (puts the workers folder on sys.path)
 import _stio as S
-from models import make_model, read_all, tensor_names
+from tests.models import make_model, read_all, tensor_names
 
 
 def test_our_writer_is_read_by_the_reference_library(tmp_path):

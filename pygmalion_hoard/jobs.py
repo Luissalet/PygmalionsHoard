@@ -293,6 +293,8 @@ class JobManager:
         self.events = JobEvents(lambda t, d: self.emit(t, d), clock=clock, base_url=base_url)   # looks self.emit up at send time
         self._stop = threading.Event()
         self._threads: dict[str, threading.Thread] = {}
+        self.defer_existing_jobs = False
+        self._held_jobs = set()
         self._wake = {lane: threading.Event() for lane in LANES}
         self._cancels: dict[str, threading.Event] = {}
         self._running: dict[str, Optional[str]] = {lane: None for lane in LANES}
@@ -303,6 +305,8 @@ class JobManager:
     # ------------------------------------------------------------------ lifecycle
     def start(self) -> int:
         """Mark what was running as interrupted, then start the lane threads (unless the scheduler is disabled)."""
+        if self.defer_existing_jobs:
+            self._held_jobs = self.store.queued_ids()
         stale = [j for j in self.store.jobs(states=["running", "waiting_gpu"], limit=2000)]
         interrupted = self.store.mark_interrupted()
         for old in stale:
@@ -391,8 +395,9 @@ class JobManager:
 
     def resume(self, job_id: str) -> dict[str, Any]:
         job = self.store.job(job_id)
-        if job["state"] not in RESUMABLE:
+        if job["state"] not in RESUMABLE and job_id not in self._held_jobs:
             raise PygmalionError("conflict", "job_not_resumable", id=job_id, state=job["state"])
+        self._held_jobs.discard(job_id)
         job = self.store.update_job(job_id, state="queued", error="", hint="", finished_ts=None, cancel_requested=False, queue_position=None)
         self._wake[job["lane"]].set()
         return job
@@ -477,7 +482,8 @@ class JobManager:
         out["progress"] = job["progress"]
         out["gpus"] = job["gpus"]
         out["next"] = [s.get("kind") for s in job["then"]]
-        out["resumable"] = job["state"] in RESUMABLE
+        out["held"] = job["id"] in self._held_jobs and job["state"] == "queued"
+        out["resumable"] = job["state"] in RESUMABLE or out["held"]
         out["pct"] = (job["progress"] or {}).get("pct")
         out["timing"] = self.timing(job)
         if detail:
@@ -519,7 +525,7 @@ class JobManager:
         while ran < limit and not self._stop.is_set():
             job = None
             for lane in LANES:
-                job = self.store.next_queued(lane)
+                job = self.store.next_queued(lane, exclude_ids=self._held_jobs)
                 if job:
                     break
             if job is None:
@@ -536,7 +542,7 @@ class JobManager:
                     self._wake[lane].wait(1.0)
                     self._wake[lane].clear()
                     continue
-                job = self.store.next_queued(lane)
+                job = self.store.next_queued(lane, exclude_ids=self._held_jobs)
                 if job is None:
                     self._wake[lane].wait(1.0)
                     self._wake[lane].clear()

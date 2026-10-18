@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from conftest import call
-from helpers import chat_records
+from tests.conftest import call
+from tests.helpers import chat_records
 from pygmalion_hoard.errors import PygmalionError
 
 

@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from conftest import build_services
+from tests.conftest import build_services
 from fake_servers import SPECIAL, FakeLlama, FakeVllm, Routed
 from pygmalion_hoard.agent_tools import TOOLS_BY_NAME, call_tool, uncapped
 from pygmalion_hoard.capture import tree as T

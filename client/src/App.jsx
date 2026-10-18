@@ -161,7 +161,7 @@ export default function App() {
       <div className="min-h-dvh md:grid md:grid-cols-[220px_minmax(0,1fr)]">
         <aside className="sticky top-0 z-10 border-b md:flex md:h-dvh md:flex-col md:self-start md:overflow-y-auto md:border-b-0 md:border-r" style={{ background: "var(--sidebar)", borderColor: "var(--line)" }}>
           <div className="flex items-center gap-3 px-4 py-3 md:py-4">
-            <img src="/icon-192.png" alt="" width="32" height="32" className="brand-icon rounded-lg" decoding="sync" />
+            <img src="/training/icon-192.png" alt="" width="32" height="32" className="brand-icon rounded-lg" decoding="sync" />
             <div>
               <div>Pygmalion's Hoard</div>
               <div className="brand-sub">{t("subtitle")}</div>

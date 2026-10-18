@@ -38,6 +38,7 @@ def server(tmp_path):
                 time.sleep(0.2)
         else:
             pytest.fail("server did not start")
+        assert httpx.put(url+"/api/modules/training",json={"enabled":True},trust_env=False).status_code == 200
         yield url, tmp_path / "data", env
     finally:
         proc.terminate()
@@ -67,7 +68,7 @@ def test_bridge_roundtrip(server):
         tools = rpc(proc, {"jsonrpc": "2.0", "id": 2, "method": "tools/list"})["result"]["tools"]
         names = {t["name"] for t in tools}
         assert {"pygmalion_overview", "train_plan", "train_start", "quantize_start", "evaluate_start", "publish_ollama", "lineage_graph"} <= names
-        assert len(names) == 50
+        assert len(names) == 117
         ov = rpc(proc, {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "pygmalion_overview", "arguments": {}}})
         body = json.loads(ov["result"]["content"][0]["text"])
         assert body["allowed_gpus"] == [2, 3] and "summary" in body

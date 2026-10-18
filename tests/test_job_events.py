@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from conftest import call, finish, needs_posix
+from tests.conftest import call, finish, needs_posix
 from pygmalion_hoard.errors import PygmalionError
 from pygmalion_hoard.jobevents import JobEvents, canonical_kind, published_model
 from pygmalion_hoard.jobs import KINDS

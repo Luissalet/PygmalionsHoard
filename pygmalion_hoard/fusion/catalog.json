@@ -1,0 +1,6409 @@
+[
+  {
+    "name": "pygmalion_overview",
+    "description": "Studio at a glance: environment, GPUs, running jobs, latest artifacts. Resumen de Pygmalion.\nStart here. Lists what is missing and the next sensible step.\nSinónimos: qué puedo hacer, estado del estudio, trabajos en marcha, modelos, entrenamientos",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "env_check",
+    "description": "Check the trainer environment, llama.cpp tools and Ollama and how to fix gaps. Comprobar entorno.\nRuns the probe in the trainer's Python: versions, CUDA, bitsandbytes, free disk; finds llama-quantize, llama-imatrix and the convert scripts.\nSinónimos: instalar, falta torch, CUDA, bitsandbytes, llama.cpp, configuración, diagnóstico",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "fresh": {
+          "default": true,
+          "description": "Run the probe again (a few seconds) instead of answering from the last check.",
+          "title": "Fresh",
+          "type": "boolean"
+        }
+      },
+      "title": "EnvCheckArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "bases_list",
+    "description": "Base models on disk with size, architecture, trainable and convertible badges. Modelos base locales.\nSinónimos: qué modelos tengo, carpetas hf, bases, descargados",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "deep": {
+          "default": false,
+          "description": "Also ask the trainer environment which architectures transformers can load (slower).",
+          "title": "Deep",
+          "type": "boolean"
+        }
+      },
+      "title": "BasesListArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "base_get",
+    "description": "One base model: config, memory estimate, support check, derived artifacts. Detalle de un modelo base.\nSinónimos: arquitectura, contexto, parámetros, ¿se puede entrenar?, ¿se puede convertir?",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "base": {
+          "description": "Base model artifact id, name or folder path.",
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Base",
+          "type": "string"
+        }
+      },
+      "required": [
+        "base"
+      ],
+      "title": "BaseRef",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "hf_search",
+    "description": "Search Hugging Face for base models by text, with size, licence and gating. Buscar modelos en Hugging Face.\nNetwork use. Sorted by downloads by default.\nSinónimos: buscar modelo, descargar qwen, llama, gemma, más descargados",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "query": {
+          "description": "Text to search, e.g. 'qwen 4b instruct'.",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Query",
+          "type": "string"
+        },
+        "pipeline": {
+          "default": "text-generation",
+          "enum": [
+            "text-generation",
+            "image-text-to-text"
+          ],
+          "title": "Pipeline",
+          "type": "string"
+        },
+        "sort": {
+          "default": "downloads",
+          "enum": [
+            "downloads",
+            "likes",
+            "lastModified",
+            "trendingScore"
+          ],
+          "title": "Sort",
+          "type": "string"
+        },
+        "limit": {
+          "default": 15,
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "title": "HfSearchArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "base_download",
+    "description": "Download a base model from Hugging Face into the work folder (confirm=true after the size). Descargar modelo.\nWithout confirm it only reports the download size and the free disk. Resumable. Only safetensors, configs and tokenizer files.\nSinónimos: bajar modelo, traer de Hugging Face, descarga",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "repo_id": {
+          "description": "Hugging Face repository, e.g. 'Qwen/Qwen3-4B'.",
+          "maxLength": 200,
+          "minLength": 3,
+          "title": "Repo Id",
+          "type": "string"
+        },
+        "revision": {
+          "default": "",
+          "maxLength": 80,
+          "title": "Revision",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "description": "Without it the call only reports the download size. Repeat with true after showing it.",
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "repo_id"
+      ],
+      "title": "BaseDownloadArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "datasets_list",
+    "description": "List datasets with their versions, record counts and tokens. Lista de datasets.\nSinónimos: mis datos, conjuntos de entrenamiento, corpus",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "dataset_get",
+    "description": "One dataset with its versions, stats, recipe and split. Detalle de un dataset.\nSinónimos: histograma de longitudes, balance de roles, versiones, receta, PII",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "dataset": {
+          "description": "Dataset id or name (or a version id).",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Dataset",
+          "type": "string"
+        },
+        "n": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Version number; the latest when omitted.",
+          "title": "N"
+        }
+      },
+      "required": [
+        "dataset"
+      ],
+      "title": "DatasetRef",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "dataset_create",
+    "description": "Build a dataset version from files, folders, JSONL/CSV, family apps or a teacher model. Crear dataset.\nSources combine in one build; operations (dedupe, length, language, PII) run in order; the split is seeded. Immutable versions.\nSinónimos: preparar datos, juntar textos, destilar, sintético, importar JSONL, usar mis escritos",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "name": {
+          "default": "",
+          "description": "Name of a new dataset (letters, digits, spaces, dots and hyphens).",
+          "maxLength": 80,
+          "title": "Name",
+          "type": "string"
+        },
+        "dataset": {
+          "default": "",
+          "description": "Add a new version to this existing dataset instead of creating one.",
+          "maxLength": 120,
+          "title": "Dataset",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Description",
+          "type": "string"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "chat",
+                "instruction",
+                "text"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Force the record kind; detected from the sources when omitted.",
+          "title": "Kind"
+        },
+        "sources": {
+          "description": "Sources to combine. Each has a `type`: jsonl {text|path}, csv {text|path, columns:{prompt,response,text}}, files {paths}, folder {path, extensions}, family {app, tool, arguments, items_path, mapping:{prompt,response,text}}, synthetic {task, from:[sources], max_items, per_chunk}.",
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "operations": {
+          "description": "Operations in order: {op:'dedupe_exact'}, {op:'dedupe_near', threshold}, {op:'length', min_chars, max_chars}, {op:'language', keep:['es','en']}, {op:'pii', mode:'mask'|'drop'}.",
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Operations",
+          "type": "array"
+        },
+        "split": {
+          "additionalProperties": true,
+          "description": "{eval_pct, min_eval, seed}; defaults 5 %, 20 records, seed 42.",
+          "title": "Split",
+          "type": "object"
+        },
+        "wait_s": {
+          "default": 30,
+          "description": "Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get.",
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "sources"
+      ],
+      "title": "DatasetCreateArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "dataset_records",
+    "description": "Page through a dataset version's records with filters. Registros de un dataset.\nSinónimos: ver ejemplos, filtrar por estado, buscar en el dataset, sintéticos pendientes",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "dataset": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Dataset",
+          "type": "string"
+        },
+        "n": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N"
+        },
+        "offset": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Offset",
+          "type": "integer"
+        },
+        "limit": {
+          "default": 20,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "status": {
+          "default": "",
+          "enum": [
+            "",
+            "ok",
+            "pending",
+            "rejected"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "text": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Text",
+          "type": "string"
+        },
+        "source": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Source",
+          "type": "string"
+        },
+        "synthetic": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Synthetic"
+        },
+        "split": {
+          "default": "",
+          "enum": [
+            "",
+            "train",
+            "eval",
+            "none"
+          ],
+          "title": "Split",
+          "type": "string"
+        },
+        "lang": {
+          "default": "",
+          "enum": [
+            "",
+            "es",
+            "en"
+          ],
+          "title": "Lang",
+          "type": "string"
+        },
+        "min_chars": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Min Chars",
+          "type": "integer"
+        },
+        "max_chars": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Max Chars",
+          "type": "integer"
+        },
+        "has_pii": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has Pii"
+        }
+      },
+      "required": [
+        "dataset"
+      ],
+      "title": "DatasetRecordsArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "dataset_review",
+    "description": "Accept, reject or edit records; the result is a new version. Revisar dataset.\nSinónimos: aceptar, rechazar, corregir ejemplos, aprobar sintéticos",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "dataset": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Dataset",
+          "type": "string"
+        },
+        "n": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N"
+        },
+        "accept": {
+          "description": "Record indexes to accept.",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Accept",
+          "type": "array"
+        },
+        "reject": {
+          "description": "Record indexes to reject.",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Reject",
+          "type": "array"
+        },
+        "edit": {
+          "additionalProperties": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "description": "Index to the corrected record, in the dataset's own format.",
+          "title": "Edit",
+          "type": "object"
+        },
+        "accept_all_pending": {
+          "default": false,
+          "description": "Accept every pending (synthetic) record.",
+          "title": "Accept All Pending",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "dataset"
+      ],
+      "title": "DatasetReviewArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "dataset_preview_source",
+    "description": "Show what a source would yield (first items, kind, notes) without building. Vista previa de una fuente.\nFor a family app it shows what the tool returned; for a synthetic source it estimates time and cost.\nSinónimos: probar fuente, qué sale de esta carpeta, qué devuelve la app",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "source": {
+          "additionalProperties": true,
+          "description": "One source as in dataset_create. A synthetic source only estimates unless sample=true.",
+          "title": "Source",
+          "type": "object"
+        },
+        "limit": {
+          "default": 5,
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "DatasetPreviewArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "dataset_apply",
+    "description": "Apply operations (dedupe, length, language, PII) to a version; makes a new version. Limpiar dataset.\nSinónimos: deduplicar, filtrar por longitud, enmascarar datos personales, idioma",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "dataset": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Dataset",
+          "type": "string"
+        },
+        "n": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N"
+        },
+        "operations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "minItems": 1,
+          "title": "Operations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "dataset",
+        "operations"
+      ],
+      "title": "DatasetApplyArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "dataset_delete",
+    "description": "Delete a dataset and its versions (confirm=true). Borrar dataset.\nArtifacts trained on it keep their lineage.\nSinónimos: eliminar datos",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "dataset": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Dataset",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "dataset"
+      ],
+      "title": "DatasetDeleteArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "train_plan",
+    "description": "Plan a LoRA/QLoRA run: parameters, memory and time estimate, GPU that fits. Plan de entrenamiento.\nThe estimate shows its formula. Call before train_start.\nSinónimos: cuánta VRAM, cuánto tarda, qué rango, qué learning rate, cabe en la GPU",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "method": {
+          "anyOf": [
+            {
+              "enum": [
+                "qlora",
+                "lora"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Method"
+        },
+        "rank": {
+          "anyOf": [
+            {
+              "maximum": 512,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rank"
+        },
+        "alpha": {
+          "anyOf": [
+            {
+              "maximum": 1024,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alpha"
+        },
+        "dropout": {
+          "anyOf": [
+            {
+              "maximum": 0.9,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dropout"
+        },
+        "lr": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lr"
+        },
+        "seq_len": {
+          "anyOf": [
+            {
+              "maximum": 262144,
+              "minimum": 64,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seq Len"
+        },
+        "batch": {
+          "anyOf": [
+            {
+              "maximum": 256,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Batch"
+        },
+        "grad_accum": {
+          "anyOf": [
+            {
+              "maximum": 4096,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Grad Accum"
+        },
+        "epochs": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 100,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Epochs"
+        },
+        "max_steps": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Steps"
+        },
+        "warmup": {
+          "anyOf": [
+            {
+              "maximum": 0.5,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Warmup"
+        },
+        "weight_decay": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weight Decay"
+        },
+        "eval_every": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eval Every"
+        },
+        "save_every": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Save Every"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "target_modules": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Last names of the layers to adapt (q_proj, v_proj...) or ['all'].",
+          "title": "Target Modules"
+        },
+        "train_on": {
+          "anyOf": [
+            {
+              "enum": [
+                "assistant",
+                "last"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Train On"
+        },
+        "gradient_checkpointing": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gradient Checkpointing"
+        },
+        "base": {
+          "description": "Base model artifact id, name or folder path.",
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Base",
+          "type": "string"
+        },
+        "dataset": {
+          "description": "Dataset id or name (or a version id).",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Dataset",
+          "type": "string"
+        },
+        "dataset_n": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dataset version number; the latest when omitted.",
+          "title": "Dataset N"
+        }
+      },
+      "required": [
+        "base",
+        "dataset"
+      ],
+      "title": "TrainPlanArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "train_start",
+    "description": "Start a LoRA/QLoRA fine-tune (optionally the full recipe after it). Entrenar un modelo.\nQueues a pipeline: train, then the steps in `after` (merge, convert, quantize, publish, evaluate). Waits for an allowed GPU lease.\nSinónimos: ajustar, afinar, fine-tune, LoRA, QLoRA, enseñar mi estilo, receta completa",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "method": {
+          "anyOf": [
+            {
+              "enum": [
+                "qlora",
+                "lora"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Method"
+        },
+        "rank": {
+          "anyOf": [
+            {
+              "maximum": 512,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rank"
+        },
+        "alpha": {
+          "anyOf": [
+            {
+              "maximum": 1024,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alpha"
+        },
+        "dropout": {
+          "anyOf": [
+            {
+              "maximum": 0.9,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dropout"
+        },
+        "lr": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lr"
+        },
+        "seq_len": {
+          "anyOf": [
+            {
+              "maximum": 262144,
+              "minimum": 64,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seq Len"
+        },
+        "batch": {
+          "anyOf": [
+            {
+              "maximum": 256,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Batch"
+        },
+        "grad_accum": {
+          "anyOf": [
+            {
+              "maximum": 4096,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Grad Accum"
+        },
+        "epochs": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 100,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Epochs"
+        },
+        "max_steps": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Steps"
+        },
+        "warmup": {
+          "anyOf": [
+            {
+              "maximum": 0.5,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Warmup"
+        },
+        "weight_decay": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weight Decay"
+        },
+        "eval_every": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eval Every"
+        },
+        "save_every": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Save Every"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "target_modules": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Last names of the layers to adapt (q_proj, v_proj...) or ['all'].",
+          "title": "Target Modules"
+        },
+        "train_on": {
+          "anyOf": [
+            {
+              "enum": [
+                "assistant",
+                "last"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Train On"
+        },
+        "gradient_checkpointing": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gradient Checkpointing"
+        },
+        "base": {
+          "description": "Base model artifact id, name or folder path.",
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Base",
+          "type": "string"
+        },
+        "dataset": {
+          "description": "Dataset id or name (or a version id).",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Dataset",
+          "type": "string"
+        },
+        "dataset_n": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dataset version number; the latest when omitted.",
+          "title": "Dataset N"
+        },
+        "name": {
+          "default": "",
+          "description": "Name for the adapter.",
+          "maxLength": 80,
+          "title": "Name",
+          "type": "string"
+        },
+        "after": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Steps after the training: {merge: true, convert: 'f16'|'bf16'|'q8_0', quantize: ['Q4_K_M'], imatrix: true, calibration: {source:'bundled'|'dataset', dataset}, perplexity: true, publish: {target:'ollama'|'llama'|'both', name, tag, num_ctx}, evaluate: {intent:'dataset'|'style'|'code'|'context'|'general', suites:[...], against: artifact, regression}}.",
+          "title": "After"
+        },
+        "force": {
+          "default": false,
+          "description": "Queue it even when the estimate does not fit the allowed GPUs.",
+          "title": "Force",
+          "type": "boolean"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get.",
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "base",
+        "dataset"
+      ],
+      "title": "TrainStartArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "merge_check",
+    "description": "Check that models can be merged (same tensors, shapes, dtypes) before merging. Comprobar fusión.\nSinónimos: compatibles, misma arquitectura, formas distintas",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "models": {
+          "description": "Model artifact ids, names or folder paths.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 2,
+          "title": "Models",
+          "type": "array"
+        },
+        "base": {
+          "default": "",
+          "maxLength": 400,
+          "title": "Base",
+          "type": "string"
+        }
+      },
+      "required": [
+        "models"
+      ],
+      "title": "MergeCheckArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "merge_lora_start",
+    "description": "Fold a LoRA adapter into its base model (optionally the steps after it). Fusionar LoRA con la base.\nSinónimos: mezclar adapter, merge_and_unload, aplicar LoRA",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "base": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Base",
+          "type": "string"
+        },
+        "adapter": {
+          "description": "Adapter artifact id or name.",
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Adapter",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Name",
+          "type": "string"
+        },
+        "device": {
+          "default": "",
+          "description": "Where to merge; the setting merge.device when empty (cpu needs no VRAM).",
+          "enum": [
+            "",
+            "cpu",
+            "cuda"
+          ],
+          "title": "Device",
+          "type": "string"
+        },
+        "after": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Steps after the training: {merge: true, convert: 'f16'|'bf16'|'q8_0', quantize: ['Q4_K_M'], imatrix: true, calibration: {source:'bundled'|'dataset', dataset}, perplexity: true, publish: {target:'ollama'|'llama'|'both', name, tag, num_ctx}, evaluate: {intent:'dataset'|'style'|'code'|'context'|'general', suites:[...], against: artifact, regression}}.",
+          "title": "After"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get.",
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "base",
+        "adapter"
+      ],
+      "title": "MergeLoraArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "merge_models_start",
+    "description": "Merge models of the same architecture: linear, slerp, ties or dare. Fusionar modelos.\nStreams tensor by tensor over safetensors shards; never loads a whole model.\nSinónimos: mezclar modelos, model soup, slerp, TIES, DARE, promedio de pesos",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "models": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 2,
+          "title": "Models",
+          "type": "array"
+        },
+        "method": {
+          "default": "linear",
+          "enum": [
+            "linear",
+            "slerp",
+            "ties",
+            "dare"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "weights": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "One weight per model (linear, ties, dare).",
+          "title": "Weights"
+        },
+        "base": {
+          "default": "",
+          "description": "Required by ties and dare: the model the others were tuned from.",
+          "maxLength": 400,
+          "title": "Base",
+          "type": "string"
+        },
+        "t": {
+          "default": 0.5,
+          "description": "slerp: interpolation between the first and the second model.",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "T",
+          "type": "number"
+        },
+        "t_map": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "slerp: {regex on tensor name: t} overrides.",
+          "title": "T Map",
+          "type": "object"
+        },
+        "density": {
+          "default": 0.5,
+          "description": "ties and dare: fraction of each task vector kept.",
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Density",
+          "type": "number"
+        },
+        "lam": {
+          "default": 1.0,
+          "description": "ties: scale of the merged task vector.",
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Lam",
+          "type": "number"
+        },
+        "seed": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "consensus": {
+          "default": "linear",
+          "enum": [
+            "linear",
+            "ties"
+          ],
+          "title": "Consensus",
+          "type": "string"
+        },
+        "normalize": {
+          "default": true,
+          "title": "Normalize",
+          "type": "boolean"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Name",
+          "type": "string"
+        },
+        "after": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Steps after the training: {merge: true, convert: 'f16'|'bf16'|'q8_0', quantize: ['Q4_K_M'], imatrix: true, calibration: {source:'bundled'|'dataset', dataset}, perplexity: true, publish: {target:'ollama'|'llama'|'both', name, tag, num_ctx}, evaluate: {intent:'dataset'|'style'|'code'|'context'|'general', suites:[...], against: artifact, regression}}.",
+          "title": "After"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get.",
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "models"
+      ],
+      "title": "MergeModelsArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "ctx_extend_start",
+    "description": "Make a copy of a model with YaRN rope scaling for a longer context. Ampliar el contexto.\nNo weights change; quality at the far end must be measured (evaluate with intent=context).\nSinónimos: contexto largo, YaRN, 32k, 128k, ventana de contexto",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "model": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "factor": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 1,
+              "maximum": 64,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "YaRN factor: 2, 4 or 8.",
+          "title": "Factor"
+        },
+        "target_length": {
+          "anyOf": [
+            {
+              "maximum": 2000000,
+              "minimum": 1024,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Alternative to factor: the context length wanted.",
+          "title": "Target Length"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Name",
+          "type": "string"
+        },
+        "after": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Steps after the training: {merge: true, convert: 'f16'|'bf16'|'q8_0', quantize: ['Q4_K_M'], imatrix: true, calibration: {source:'bundled'|'dataset', dataset}, perplexity: true, publish: {target:'ollama'|'llama'|'both', name, tag, num_ctx}, evaluate: {intent:'dataset'|'style'|'code'|'context'|'general', suites:[...], against: artifact, regression}}.",
+          "title": "After"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get.",
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "model"
+      ],
+      "title": "CtxExtendArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "ctx_fit",
+    "description": "KV-cache memory per context length for a GGUF and whether it fits the allowed GPUs. Tabla de contexto.\nSinónimos: cuánto contexto cabe, memoria KV, caché, longitud máxima",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "gguf": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Gguf",
+          "type": "string"
+        },
+        "contexts": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Context lengths to tabulate.",
+          "title": "Contexts"
+        },
+        "gpu": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only this allowed GPU.",
+          "title": "Gpu"
+        }
+      },
+      "required": [
+        "gguf"
+      ],
+      "title": "CtxFitArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "convert_start",
+    "description": "Convert a Hugging Face model (or a LoRA adapter) to GGUF. Convertir a GGUF.\nChecks that the installed llama.cpp knows the architecture.\nSinónimos: pasar a GGUF, f16, bf16, convert_hf_to_gguf, adapter GGUF",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "model": {
+          "default": "",
+          "description": "Hugging Face model artifact to convert.",
+          "maxLength": 400,
+          "title": "Model",
+          "type": "string"
+        },
+        "adapter": {
+          "default": "",
+          "description": "Convert a LoRA adapter to a GGUF adapter instead (needs its base).",
+          "maxLength": 400,
+          "title": "Adapter",
+          "type": "string"
+        },
+        "base": {
+          "default": "",
+          "maxLength": 400,
+          "title": "Base",
+          "type": "string"
+        },
+        "outtype": {
+          "default": "f16",
+          "enum": [
+            "f16",
+            "bf16",
+            "q8_0"
+          ],
+          "title": "Outtype",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Name",
+          "type": "string"
+        },
+        "after": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Steps after the training: {merge: true, convert: 'f16'|'bf16'|'q8_0', quantize: ['Q4_K_M'], imatrix: true, calibration: {source:'bundled'|'dataset', dataset}, perplexity: true, publish: {target:'ollama'|'llama'|'both', name, tag, num_ctx}, evaluate: {intent:'dataset'|'style'|'code'|'context'|'general', suites:[...], against: artifact, regression}}.",
+          "title": "After"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get.",
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "title": "ConvertArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "quantize_start",
+    "description": "Quantize a GGUF (several types at once) with an importance matrix from your own text. Cuantizar.\nTypes: Q8_0, Q6_K, Q5_K_M, Q4_K_M, IQ4_XS, Q3_K_M, IQ3_M. The matrix runs on a leased allowed GPU; IQ types are poor without it.\nSinónimos: comprimir, Q4_K_M, imatrix, matriz de importancia, calibración, reducir tamaño",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "gguf": {
+          "default": "",
+          "description": "An f16, bf16 or q8_0 GGUF artifact.",
+          "maxLength": 400,
+          "title": "Gguf",
+          "type": "string"
+        },
+        "model": {
+          "default": "",
+          "description": "Alternatively a Hugging Face model: it is converted first.",
+          "maxLength": 400,
+          "title": "Model",
+          "type": "string"
+        },
+        "types": {
+          "description": "Any of Q8_0, Q6_K, Q5_K_M, Q4_K_M, IQ4_XS, Q3_K_M, IQ3_M.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Types",
+          "type": "array"
+        },
+        "imatrix": {
+          "default": true,
+          "description": "Compute an importance matrix first (needs a GPU lease); IQ types are poor without it.",
+          "title": "Imatrix",
+          "type": "boolean"
+        },
+        "calibration": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "{source:'bundled'} or {source:'dataset', dataset, n}: the text the matrix is computed on.",
+          "title": "Calibration"
+        },
+        "chunks": {
+          "anyOf": [
+            {
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chunks"
+        },
+        "perplexity": {
+          "default": false,
+          "description": "Measure perplexity of the first type afterwards.",
+          "title": "Perplexity",
+          "type": "boolean"
+        },
+        "outtype": {
+          "default": "f16",
+          "enum": [
+            "f16",
+            "bf16",
+            "q8_0"
+          ],
+          "title": "Outtype",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Name",
+          "type": "string"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get.",
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "title": "QuantizeArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "perplexity_start",
+    "description": "Measure the perplexity (PPL ± error) of a GGUF on a text. Medir perplejidad.\nSinónimos: PPL, calidad tras cuantizar, comparar cuantizaciones",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "gguf": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Gguf",
+          "type": "string"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "{source:'bundled'} or {source:'dataset', dataset, n}.",
+          "title": "Text"
+        },
+        "ctx": {
+          "anyOf": [
+            {
+              "minimum": 128,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ctx"
+        },
+        "chunks": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chunks"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get.",
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "gguf"
+      ],
+      "title": "PerplexityArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "jobs_list",
+    "description": "Queue and history of jobs with state, progress and ETA. Lista de trabajos.\nSinónimos: cola, qué está corriendo, historial, fallidos, interrumpidos",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "states": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Any of queued, waiting_gpu, running, done, failed, cancelled, interrupted.",
+          "title": "States"
+        },
+        "kind": {
+          "default": "",
+          "description": "One of download, dataset_build, train, merge_lora, merge_models, convert, imatrix, quantize, perplexity, ctx_extend, publish, evaluate.",
+          "maxLength": 30,
+          "title": "Kind",
+          "type": "string"
+        },
+        "limit": {
+          "default": 30,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "JobsListArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "job_get",
+    "description": "One job: progress, loss curve, VRAM estimate, log tail, pipeline. Detalle de un trabajo.\nSinónimos: cómo va el entrenamiento, loss, curva, log, ETA, error",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "job": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Job",
+          "type": "string"
+        },
+        "log_lines": {
+          "default": 30,
+          "maximum": 300,
+          "minimum": 0,
+          "title": "Log Lines",
+          "type": "integer"
+        },
+        "curve_points": {
+          "default": 60,
+          "maximum": 400,
+          "minimum": 0,
+          "title": "Curve Points",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "job"
+      ],
+      "title": "JobGetArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "job_cancel",
+    "description": "Cancel a job (a training run saves a checkpoint first). Cancelar trabajo.\nSinónimos: parar, detener entrenamiento",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "job": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Job",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job"
+      ],
+      "title": "JobRef",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "job_resume",
+    "description": "Resume an interrupted, failed or cancelled job (training continues from its last checkpoint). Reanudar.\nSinónimos: continuar, reintentar, retomar tras reinicio",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "job": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Job",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job"
+      ],
+      "title": "JobRef",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "job_delete",
+    "description": "Delete a finished job and its log (confirm=true); artifacts are kept. Borrar trabajo.\nSinónimos: limpiar historial",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "job": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Job",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job"
+      ],
+      "title": "JobDeleteArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "artifacts_list",
+    "description": "List artifacts: bases, adapters, merges, GGUF files, matrices, Ollama tags. Lista de artefactos.\nSinónimos: mis modelos, resultados, ficheros GGUF, adaptadores, publicados",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "kind": {
+          "default": "",
+          "description": "One of base, adapter, merged, gguf, imatrix, ollama, ctx_variant.",
+          "maxLength": 20,
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "default": "",
+          "maxLength": 80,
+          "title": "Text",
+          "type": "string"
+        },
+        "pinned": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pinned"
+        },
+        "limit": {
+          "default": 50,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "ArtifactsListArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "artifact_get",
+    "description": "One artifact with its lineage, recipe, metrics and Galton verdict. Detalle de un artefacto.\nSinónimos: de dónde viene, con qué datos, parámetros, evaluación, linaje",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "artifact": {
+          "description": "Artifact id or name.",
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Artifact",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "artifact_recipe",
+    "description": "Reproducible recipe of an artifact (every step from the base, dataset hashes, parameters). Receta.\nSinónimos: exportar receta, reproducir, JSON de la receta",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "artifact": {
+          "description": "Artifact id or name.",
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Artifact",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "artifact_update",
+    "description": "Rename an artifact, edit its notes or pin it. Editar artefacto.\nSinónimos: anclar, notas, renombrar, favorito",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "artifact": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Artifact",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "pinned": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pinned"
+        }
+      },
+      "required": [
+        "artifact"
+      ],
+      "title": "ArtifactUpdateArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "artifact_delete",
+    "description": "Delete an artifact record (and optionally its files) (confirm=true). Borrar artefacto.\nPublished artifacts must be unpublished first; downloaded bases keep their files.\nSinónimos: eliminar modelo, liberar disco",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "artifact": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Artifact",
+          "type": "string"
+        },
+        "delete_files": {
+          "default": false,
+          "description": "Also delete the files (never for a base model).",
+          "title": "Delete Files",
+          "type": "boolean"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "artifact"
+      ],
+      "title": "ArtifactDeleteArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "lineage_graph",
+    "description": "Nodes and edges of the artifact graph in columns by kind. Grafo de linaje.\nSinónimos: árbol, familia de modelos, genealogía",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "root": {
+          "default": "",
+          "description": "Limit to the family of this artifact.",
+          "maxLength": 400,
+          "title": "Root",
+          "type": "string"
+        },
+        "kinds": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kinds"
+        }
+      },
+      "title": "LineageGraphArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "evaluate_plan",
+    "description": "Say what an evaluation would compare with, and whether that file must be prepared first. Plan de evaluación.\nRead-only. The reference is the base model the training started from, in the same quantization as the result, for the intents that ask whether a training helped.\nSinónimos: con qué se compara, modelo base, referencia, cuantización, antes de evaluar",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "artifact": {
+          "description": "A GGUF or published Ollama artifact.",
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Artifact",
+          "type": "string"
+        },
+        "against": {
+          "default": "",
+          "description": "A file to compare with; it always wins over the rule of the intent.",
+          "maxLength": 400,
+          "title": "Against",
+          "type": "string"
+        },
+        "intent": {
+          "default": "",
+          "description": "What to check. dataset: the held-out records of the dataset the result was trained on, graded by Galton's judge (the default for such a result). dataset, style, writing, code, general and smoke ask whether a training helped: the reference is the base model the training started from, in the same quantization (prepared first when it does not exist). context: the model before the context extension. quant: a plain quantization, compared with the file it was made from.",
+          "enum": [
+            "",
+            "dataset",
+            "style",
+            "writing",
+            "code",
+            "context",
+            "general",
+            "smoke",
+            "quant"
+          ],
+          "title": "Intent",
+          "type": "string"
+        },
+        "suites": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Galton suites; chosen from the intent when omitted.",
+          "title": "Suites"
+        },
+        "regression": {
+          "default": true,
+          "description": "With intent=dataset, also run Galton's quick general suite.",
+          "title": "Regression",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "artifact"
+      ],
+      "title": "EvaluatePlanArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "evaluate_start",
+    "description": "Measure a GGUF or Ollama result against its reference with Galton's Hoard. Evaluar con Galton.\nVerdict better, worse or no clear difference with deltas and intervals, stored on the artifact. The reference is the base model in the same quantization (queued first when missing), the file before a context extension or the parent of a plain quantization; see evaluate_plan. A result trained on a dataset is measured on its held-out records (graded by Galton's judge) plus a quick general suite for regressions.\nSinónimos: ¿es mejor que el original?, comparar, regresión, medir, prueba de estilo, contexto largo, registros reservados del dataset",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "artifact": {
+          "description": "A GGUF or published Ollama artifact.",
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Artifact",
+          "type": "string"
+        },
+        "against": {
+          "default": "",
+          "description": "A file to compare with (always wins). Empty: the reference of the intent, see evaluate_plan.",
+          "maxLength": 400,
+          "title": "Against",
+          "type": "string"
+        },
+        "intent": {
+          "default": "",
+          "description": "What to check. dataset: the held-out records of the dataset the result was trained on, graded by Galton's judge (the default for such a result). dataset, style, writing, code, general and smoke ask whether a training helped: the reference is the base model the training started from, in the same quantization (prepared first when it does not exist). context: the model before the context extension. quant: a plain quantization, compared with the file it was made from.",
+          "enum": [
+            "",
+            "dataset",
+            "style",
+            "writing",
+            "code",
+            "context",
+            "general",
+            "smoke",
+            "quant"
+          ],
+          "title": "Intent",
+          "type": "string"
+        },
+        "suites": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Galton suites; chosen from the intent when omitted.",
+          "title": "Suites"
+        },
+        "regression": {
+          "default": true,
+          "description": "With intent=dataset, also run Galton's quick general suite.",
+          "title": "Regression",
+          "type": "boolean"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get.",
+          "maximum": 3600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "artifact"
+      ],
+      "title": "EvaluateArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "publish_ollama",
+    "description": "Publish a GGUF as an Ollama model tagged pyg-<name>:<tag>. Publicar en Ollama.\nWrites a Modelfile and runs ollama create.\nSinónimos: ollama create, usar en Faustus, exponer el modelo",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "gguf": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Gguf",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "description": "Name part of the tag; the tag is always pyg-<name>:<tag>.",
+          "maxLength": 80,
+          "title": "Name",
+          "type": "string"
+        },
+        "tag": {
+          "default": "latest",
+          "maxLength": 40,
+          "title": "Tag",
+          "type": "string"
+        },
+        "num_ctx": {
+          "anyOf": [
+            {
+              "maximum": 2000000,
+              "minimum": 256,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Num Ctx"
+        },
+        "adapter": {
+          "default": "",
+          "description": "A GGUF adapter artifact to load on top (ADAPTER).",
+          "maxLength": 400,
+          "title": "Adapter",
+          "type": "string"
+        },
+        "template": {
+          "default": "",
+          "description": "Chat template for the Modelfile when the GGUF has none.",
+          "maxLength": 8000,
+          "title": "Template",
+          "type": "string"
+        },
+        "system": {
+          "default": "",
+          "maxLength": 8000,
+          "title": "System",
+          "type": "string"
+        },
+        "wait_s": {
+          "default": 180,
+          "description": "Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get.",
+          "maximum": 900,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "gguf"
+      ],
+      "title": "PublishOllamaArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "publish_llama",
+    "description": "Add a GGUF as a llama.cpp server the hub can start (never started automatically). Publicar en llama.cpp.\nSinónimos: llama-server, backend, puerto, hub, arrancar servidor",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "gguf": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Gguf",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 80,
+          "title": "Name",
+          "type": "string"
+        },
+        "ctx": {
+          "anyOf": [
+            {
+              "maximum": 2000000,
+              "minimum": 256,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ctx"
+        },
+        "ngl": {
+          "default": 99,
+          "maximum": 999,
+          "minimum": 0,
+          "title": "Ngl",
+          "type": "integer"
+        },
+        "gpu": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allowed GPU for the server; the first allowed one when omitted.",
+          "title": "Gpu"
+        },
+        "extra_args": {
+          "description": "Extra llama-server flags, e.g. ['--rope-scaling','yarn'].",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Extra Args",
+          "type": "array"
+        },
+        "wait_s": {
+          "default": 30,
+          "description": "Seconds to wait for the job before answering (at most 150; a larger value is cut to 150). The job keeps running in the background: when the answer says still_running, poll job_get.",
+          "maximum": 300,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "gguf"
+      ],
+      "title": "PublishLlamaArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "unpublish",
+    "description": "Remove a published Ollama tag or llama.cpp backend (confirm=true). Retirar publicación.\nSinónimos: ollama rm, quitar del hub, despublicar",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "artifact": {
+          "description": "The published GGUF or the Ollama artifact.",
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Artifact",
+          "type": "string"
+        },
+        "target": {
+          "default": "all",
+          "enum": [
+            "all",
+            "ollama",
+            "llama"
+          ],
+          "title": "Target",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Name",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "artifact"
+      ],
+      "title": "UnpublishArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "settings_get",
+    "description": "Settings: allowed GPUs, paths, defaults for training, Galton link, publishing. Ajustes.\nSinónimos: configuración, GPUs permitidas, rutas, valores por defecto",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "settings_set",
+    "description": "Change settings (allowed GPUs need confirm_reserved for the owner's GPUs). Cambiar ajustes.\nSinónimos: rango LoRA, learning rate, carpeta de trabajo, llama.cpp, Python del entorno",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "values": {
+          "additionalProperties": true,
+          "description": "Setting key to value, e.g. {'train.rank': 32}.",
+          "minProperties": 1,
+          "title": "Values",
+          "type": "object"
+        },
+        "confirm_reserved": {
+          "default": false,
+          "description": "Allow a GPU that belongs to the owner. Only when the owner said so.",
+          "title": "Confirm Reserved",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "values"
+      ],
+      "title": "SettingsSetArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "secret_set",
+    "description": "Store the Hugging Face token (write-only, never shown back). Guardar token.\nSinónimos: token de Hugging Face, modelos con acceso restringido",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "name": {
+          "const": "hf.token",
+          "default": "hf.token",
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "default": "",
+          "description": "The Hugging Face token; empty removes it. It is never shown back.",
+          "maxLength": 400,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "title": "SecretSetArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "gpu_status",
+    "description": "Per GPU: memory used and free, allowed or reserved, who holds leases. Estado de las GPU.\nSinónimos: VRAM libre, quién usa la GPU, leases, cola del hub",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "capture_proxy",
+    "description": "Start, stop or inspect the capture proxy that records model calls as training data. Proxy de captura.\nChat-completions endpoint in front of a llama.cpp or vLLM server: it forwards each call, records the token ids and log-probabilities and builds a prefix tree per session. Point the harness at base_url (or base_url with /<session> or /<harness>/<session>).\nSinónimos: capturar turnos de Faustus, grabar llamadas, datos de entrenamiento, RL, logprobs, ids de tokens, llama-server, vLLM",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "default": "status",
+          "description": "status: address and counters. check: also ask the upstream which server it is. start/stop: turn the proxy on or off. configure: change the settings below without changing on/off.",
+          "enum": [
+            "status",
+            "check",
+            "start",
+            "stop",
+            "configure"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "upstream_url": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Model server to capture, e.g. http://127.0.0.1:8093 (llama.cpp) or http://host:8002 (vLLM).",
+          "title": "Upstream Url"
+        },
+        "upstream_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "auto",
+                "llama_server",
+                "vllm"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Kind of server; auto detects it.",
+          "title": "Upstream Type"
+        },
+        "top_logprobs": {
+          "anyOf": [
+            {
+              "maximum": 20,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Alternatives per token asked from the server; above 1 they are stored too.",
+          "title": "Top Logprobs"
+        },
+        "faithful_sampling": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "For RL: neutralise top_k, top_p and min_p so the logged log-probabilities describe the sampling distribution. Off by default.",
+          "title": "Faithful Sampling"
+        },
+        "timeout_s": {
+          "anyOf": [
+            {
+              "maximum": 7200,
+              "minimum": 10,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout S"
+        }
+      },
+      "title": "CaptureProxyArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "capture_sessions",
+    "description": "List capture sessions with calls, tokens, reward and unverified counts. Sesiones capturadas.\nSinónimos: qué se ha capturado, arneses, rollouts, conversaciones grabadas, por fecha",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "harness": {
+          "default": "",
+          "description": "Only sessions of this harness.",
+          "maxLength": 80,
+          "title": "Harness",
+          "type": "string"
+        },
+        "since": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Updated since: ISO date/time or seconds since 1970.",
+          "title": "Since"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Created until: ISO date/time or seconds since 1970.",
+          "title": "Until"
+        },
+        "limit": {
+          "default": 50,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Offset",
+          "type": "integer"
+        }
+      },
+      "title": "CaptureSessionsArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "capture_session",
+    "description": "One capture session as a tree of calls, or one call in full with token log-probabilities. Árbol de captura.\nEach call has its parent (the call whose whole sequence is an exact prefix of its prompt), token counts, verification state and a preview.\nSinónimos: ver llamadas, ramas, prefijo, tokens, logprobs, sin verificar, plantilla",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "session": {
+          "description": "Capture session id.",
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Session",
+          "type": "string"
+        },
+        "node": {
+          "default": "",
+          "description": "A call id of the session: returns that call in full (messages, tools, tokens with log-probabilities).",
+          "maxLength": 80,
+          "title": "Node",
+          "type": "string"
+        },
+        "max_tokens": {
+          "default": 200,
+          "description": "Tokens of the call to list when node is given.",
+          "maximum": 5000,
+          "minimum": 0,
+          "title": "Max Tokens",
+          "type": "integer"
+        },
+        "limit": {
+          "default": 500,
+          "description": "Calls to list.",
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "session"
+      ],
+      "title": "CaptureSessionArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "capture_outcome",
+    "description": "Set the reward or outcome of a capture session (or of one call). Marcar resultado de captura.\nLeave the reward empty when nothing verified the result: exports can require or skip it.\nSinónimos: recompensa, éxito, fallo, verificador, etiquetar rollout",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "session": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Session",
+          "type": "string"
+        },
+        "reward": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Numeric reward of the session (or of one call when node is given). Leave empty when nothing verified the outcome.",
+          "title": "Reward"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Label such as success or failure.",
+          "title": "Outcome"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Note",
+          "type": "string"
+        },
+        "node": {
+          "default": "",
+          "description": "Set the reward of this call instead of the whole session.",
+          "maxLength": 80,
+          "title": "Node",
+          "type": "string"
+        },
+        "clear": {
+          "default": false,
+          "description": "Remove the reward and outcome.",
+          "title": "Clear",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "session"
+      ],
+      "title": "CaptureOutcomeArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "capture_export",
+    "description": "Export captured calls as a dataset, SFT tokens and RL tokens with logprobs. Exportar captura.\nLoss mask: tokens the model sampled train, context does not. Balances by harness (balance_by_harness) and filters by session, harness, date and reward; unverified calls are left out unless asked. dry_run reports the split per harness without writing.\nSinónimos: dataset de entrenamiento desde Faustus, equilibrar por arnés, máscara de pérdida, SFT, RL, JSONL",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "sessions": {
+          "description": "Only these sessions; all when empty.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5000,
+          "title": "Sessions",
+          "type": "array"
+        },
+        "harness": {
+          "description": "Only these harnesses.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Harness",
+          "type": "array"
+        },
+        "since": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only sequences whose last call is at or after this time (ISO or seconds).",
+          "title": "Since"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only sequences whose last call is at or before this time.",
+          "title": "Until"
+        },
+        "require_reward": {
+          "default": false,
+          "description": "Only sequences with a reward set (by capture_outcome).",
+          "title": "Require Reward",
+          "type": "boolean"
+        },
+        "min_reward": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only sequences with a reward of at least this.",
+          "title": "Min Reward"
+        },
+        "include_unverified": {
+          "default": false,
+          "description": "Also use calls whose token ids could not be verified (off by default).",
+          "title": "Include Unverified",
+          "type": "boolean"
+        },
+        "loss_on": {
+          "default": "all",
+          "description": "all: every token the model sampled along the path; last: only the final call's.",
+          "enum": [
+            "all",
+            "last"
+          ],
+          "title": "Loss On",
+          "type": "string"
+        },
+        "dedupe_shared": {
+          "default": true,
+          "description": "A token shared by several paths is trained on once (later paths keep it as context).",
+          "title": "Dedupe Shared",
+          "type": "boolean"
+        },
+        "balance_by_harness": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "const": "min",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "min: as many sequences per harness as the smallest one has; a number: at most that many per harness.",
+          "title": "Balance By Harness"
+        },
+        "seed": {
+          "default": 42,
+          "description": "Seed of the sample taken when balancing.",
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "formats": {
+          "anyOf": [
+            {
+              "items": {
+                "enum": [
+                  "dataset",
+                  "sft",
+                  "rl"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "dataset: chat records registered as a dataset the trainer can use (needs dataset_name or dataset). sft: token file with input_ids and labels (-100 on context). rl: token file with loss mask, per-token log-probabilities and reward. Default: sft and rl, plus dataset when a name is given.",
+          "title": "Formats"
+        },
+        "dataset_name": {
+          "default": "",
+          "description": "New dataset to register the chat records in.",
+          "maxLength": 80,
+          "title": "Dataset Name",
+          "type": "string"
+        },
+        "dataset": {
+          "default": "",
+          "description": "Existing dataset to add a version to instead.",
+          "maxLength": 120,
+          "title": "Dataset",
+          "type": "string"
+        },
+        "dry_run": {
+          "default": false,
+          "description": "Only report what would be exported: sequences and loss tokens per harness, before and after balancing. Writes nothing.",
+          "title": "Dry Run",
+          "type": "boolean"
+        }
+      },
+      "title": "CaptureExportArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "capture_delete",
+    "description": "Delete capture sessions and their calls (confirm=true). Borrar sesiones capturadas.\nDatasets already exported keep their records.\nSinónimos: limpiar capturas, eliminar rollouts",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "sessions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5000,
+          "title": "Sessions",
+          "type": "array"
+        },
+        "all": {
+          "default": false,
+          "description": "Delete every session.",
+          "title": "All",
+          "type": "boolean"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "title": "CaptureDeleteArgs",
+      "type": "object"
+    },
+    "module": "training"
+  },
+  {
+    "name": "galton_overview",
+    "description": "Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.\nStart here: what was measured, what is new or stale, what the routing table says, whether a run is in progress.\nSinónimos: resumen, qué modelos tengo, qué modelo uso, mediciones, pruebas, novedades, regresiones",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "galton_status",
+    "description": "Health: scheduler, watch, llama-server, GPUs, settings. Estado de Galton.\nSinónimos: configuración, planificador, vigilancia, ajustes, servidor llama.cpp",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "models_list",
+    "description": "List models (servers, Ollama, GGUF files) with measured/stale flags. Lista de modelos.\nFilter by text, kind, vision, enabled, measured (never/stale/fresh).\nSinónimos: qué modelos hay, instalados, cuáles no he medido, cuantizaciones, visión",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "text": {
+          "default": "",
+          "description": "Matches name, family, quantisation, provider or alias.",
+          "maxLength": 80,
+          "title": "Text",
+          "type": "string"
+        },
+        "kind": {
+          "default": "",
+          "enum": [
+            "",
+            "server",
+            "gguf"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "enabled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enabled"
+        },
+        "vision": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vision"
+        },
+        "measured": {
+          "default": "any",
+          "description": "never: no results; stale: the file changed since it was measured; fresh: measured at its current version.",
+          "enum": [
+            "any",
+            "never",
+            "stale",
+            "fresh"
+          ],
+          "title": "Measured",
+          "type": "string"
+        },
+        "include_missing": {
+          "default": false,
+          "description": "Also list models that are no longer installed.",
+          "title": "Include Missing",
+          "type": "boolean"
+        },
+        "include_adhoc": {
+          "default": false,
+          "description": "Also list evaluation-only entries created from specs.",
+          "title": "Include Adhoc",
+          "type": "boolean"
+        },
+        "limit": {
+          "default": 100,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "ModelsListArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "models_refresh",
+    "description": "Rediscover models: Ollama, llama-server ports, GGUF folders. Buscar modelos nuevos.\nDetects new models, changed files (stale results), models that disappeared and servers that now serve another model (the old entry is marked not served, never deleted).\nSinónimos: escanear, actualizar lista, detectar modelos, descubrir",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "model_get",
+    "description": "One model: aliases, metadata, where it would run, scores, speed, memory. Detalle de un modelo.\nSinónimos: cuánto ocupa, qué tal rinde, alias, nombres, cuántos tokens por segundo",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "model": {
+          "description": "Model id (c_…), name or any alias.",
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model"
+      ],
+      "title": "ModelRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "model_add",
+    "description": "Register a server URL or a GGUF file to measure. Añadir un modelo.\nA GGUF is run by Galton with its own llama-server on an allowed GPU; a server is called as it is. Remote endpoints stay off until remote_ok.\nSinónimos: añadir servidor, añadir gguf, endpoint, ruta del modelo",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "url": {
+          "default": "",
+          "description": "Base URL of a running server (llama-server style or Ollama), e.g. http://127.0.0.1:8081.",
+          "maxLength": 500,
+          "title": "Url",
+          "type": "string"
+        },
+        "model": {
+          "default": "",
+          "description": "Model name on that server (needed when the server offers several).",
+          "maxLength": 300,
+          "title": "Model",
+          "type": "string"
+        },
+        "api": {
+          "default": "",
+          "description": "chat: llama-server and other chat-completions servers. Empty: detected.",
+          "enum": [
+            "",
+            "chat",
+            "ollama"
+          ],
+          "title": "Api",
+          "type": "string"
+        },
+        "path": {
+          "default": "",
+          "description": "Absolute path of a .gguf file Galton will run itself with llama-server (instead of url).",
+          "maxLength": 1000,
+          "title": "Path",
+          "type": "string"
+        },
+        "mmproj": {
+          "default": "",
+          "description": "Absolute path of the vision projector for that file.",
+          "maxLength": 1000,
+          "title": "Mmproj",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Name",
+          "type": "string"
+        },
+        "remote_ok": {
+          "default": false,
+          "description": "Remote endpoints cost money and send prompts off this computer: true only if the user explicitly said so.",
+          "title": "Remote Ok",
+          "type": "boolean"
+        }
+      },
+      "title": "ModelAddArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "model_update",
+    "description": "Enable or disable a model, rename it, add aliases, allow a remote endpoint. Editar un modelo.\nSinónimos: activar, desactivar, renombrar, alias, permitir remoto, proyector de visión",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "model": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "enabled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enabled"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "aliases": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Replace the list of aliases.",
+          "title": "Aliases"
+        },
+        "add_aliases": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Names to add: every name other apps see this model under.",
+          "title": "Add Aliases"
+        },
+        "remote_ok": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allow measuring a remote endpoint (cost warning: only if the user asked).",
+          "title": "Remote Ok"
+        },
+        "vision": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vision"
+        },
+        "mmproj": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Absolute path of the vision projector ('' clears it).",
+          "title": "Mmproj"
+        }
+      },
+      "required": [
+        "model"
+      ],
+      "title": "ModelUpdateArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "model_remove",
+    "description": "Remove a model and its stored results (confirm=true). Quitar un modelo.\nInstalled models come back on the next refresh; disabling is the gentle way.\nSinónimos: borrar modelo, eliminar",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "model": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "model"
+      ],
+      "title": "ModelRemoveArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "suites_list",
+    "description": "List test suites with category and case count. Lista de suites de pruebas.\nBuilt-in: escritura-es, razonamiento, matematicas, codigo-python, extraccion, herramientas, instrucciones, contexto-largo, rag-citas, vision, traduccion, resumen, rapida.\nSinónimos: baterías, conjuntos de pruebas, benchmarks, tests",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "category": {
+          "default": "",
+          "description": "One of writing_es, reasoning, math, code, extraction, tool_use, instruction, long_context, rag, vision, translation, summary, custom.",
+          "maxLength": 30,
+          "title": "Category",
+          "type": "string"
+        },
+        "builtin": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "true: only the built-in suites; false: only yours.",
+          "title": "Builtin"
+        }
+      },
+      "title": "SuitesListArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "suite_get",
+    "description": "One suite with its cases (prompt preview, checker, weight). Detalle de una suite.\nSinónimos: casos, preguntas, pruebas de una suite",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "suite": {
+          "description": "Suite id (s_…) or name.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Suite",
+          "type": "string"
+        },
+        "include_cases": {
+          "default": true,
+          "title": "Include Cases",
+          "type": "boolean"
+        },
+        "limit": {
+          "default": 200,
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Offset",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "suite"
+      ],
+      "title": "SuiteGetArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "case_get",
+    "description": "One case in full: prompt, tools, checker, reference answer, result count. Detalle de un caso.\nSinónimos: ver caso, pregunta completa, respuesta esperada",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "case": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Case",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case"
+      ],
+      "title": "CaseGetArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "suite_create",
+    "description": "Create your own suite, optionally with cases. Crear una suite propia.\nCategories other than custom feed the routing table once measured.\nSinónimos: nueva suite, mis pruebas, conjunto propio",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "$defs": {
+        "CaseFields": {
+          "properties": {
+            "title": {
+              "default": "",
+              "description": "Empty: taken from the prompt.",
+              "maxLength": 160,
+              "title": "Title",
+              "type": "string"
+            },
+            "prompt": {
+              "default": "",
+              "description": "What the model is asked.",
+              "maxLength": 100000,
+              "title": "Prompt",
+              "type": "string"
+            },
+            "messages": {
+              "anyOf": [
+                {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A whole conversation [{role, content}] instead of prompt.",
+              "title": "Messages"
+            },
+            "system": {
+              "default": "",
+              "maxLength": 20000,
+              "title": "System",
+              "type": "string"
+            },
+            "expected": {
+              "default": "",
+              "description": "The right answer. Without a checker: a number is compared as a number, text must be contained in the answer.",
+              "maxLength": 20000,
+              "title": "Expected",
+              "type": "string"
+            },
+            "checker": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A checker object ({type: exact|contains|regex|choice|number|math_equiv|json|tool_call|python_tests|constraints|needle|citations|judge|family|none|all|any, ...}) or a shorthand: exact:Madrid, contains:uno|dos, any:a|b, number:42, choice:B, regex:^\\d+$, math:x**2, judge:rubric, none.",
+              "title": "Checker"
+            },
+            "weight": {
+              "default": 1.0,
+              "exclusiveMinimum": 0,
+              "maximum": 100,
+              "title": "Weight",
+              "type": "number"
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Tags",
+              "type": "array"
+            },
+            "notes": {
+              "default": "",
+              "maxLength": 4000,
+              "title": "Notes",
+              "type": "string"
+            },
+            "tools": {
+              "description": "Function definitions (chat-completions tools format) offered to the model (for tool_call cases).",
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "title": "Tools",
+              "type": "array"
+            },
+            "max_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 65536,
+                  "minimum": 16,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Max Tokens"
+            },
+            "min_context": {
+              "anyOf": [
+                {
+                  "maximum": 1048576,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Skip models whose context is smaller.",
+              "title": "Min Context"
+            },
+            "image_paths": {
+              "description": "Absolute paths of images to attach (PNG, JPEG, WebP, GIF): the case then needs a vision model.",
+              "items": {
+                "type": "string"
+              },
+              "title": "Image Paths",
+              "type": "array"
+            }
+          },
+          "title": "CaseFields",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "name": {
+          "maxLength": 120,
+          "minLength": 2,
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Description",
+          "type": "string"
+        },
+        "category": {
+          "default": "custom",
+          "description": "One of writing_es, reasoning, math, code, extraction, tool_use, instruction, long_context, rag, vision, translation, summary, custom. 'custom' suites never feed the routing table.",
+          "maxLength": 30,
+          "title": "Category",
+          "type": "string"
+        },
+        "max_tokens": {
+          "default": 512,
+          "description": "Default answer length for its cases.",
+          "maximum": 65536,
+          "minimum": 16,
+          "title": "Max Tokens",
+          "type": "integer"
+        },
+        "cases": {
+          "items": {
+            "$ref": "#/$defs/CaseFields"
+          },
+          "maxItems": 500,
+          "title": "Cases",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "SuiteCreateArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "suite_update",
+    "description": "Rename or change the description, category or answer length of your suite. Editar suite.\nSinónimos: renombrar suite, cambiar categoría",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "suite": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Suite",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "maxLength": 30,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "max_tokens": {
+          "anyOf": [
+            {
+              "maximum": 65536,
+              "minimum": 16,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Tokens"
+        }
+      },
+      "required": [
+        "suite"
+      ],
+      "title": "SuiteUpdateArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "suite_duplicate",
+    "description": "Copy any suite (also a built-in one) into an editable suite of your own. Duplicar una suite.\nSinónimos: copiar suite, partir de una suite",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "suite": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Suite",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "description": "Default: «<name> (copia)».",
+          "maxLength": 120,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "suite"
+      ],
+      "title": "SuiteDuplicateArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "suite_remove",
+    "description": "Delete one of your suites and its cases (confirm=true). Borrar suite propia.\nSinónimos: eliminar suite",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "suite": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Suite",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "suite"
+      ],
+      "title": "SuiteRemoveArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "case_add",
+    "description": "Add a case (prompt + expected answer or checker) to your suite. Añadir un caso de prueba.\nSave a case from a conversation when the user asks: the prompt, what a right answer contains, and how to check it.\nSinónimos: guardar esta pregunta, nuevo caso, prueba propia, respuesta esperada, comprobador",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "title": {
+          "default": "",
+          "description": "Empty: taken from the prompt.",
+          "maxLength": 160,
+          "title": "Title",
+          "type": "string"
+        },
+        "prompt": {
+          "default": "",
+          "description": "What the model is asked.",
+          "maxLength": 100000,
+          "title": "Prompt",
+          "type": "string"
+        },
+        "messages": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A whole conversation [{role, content}] instead of prompt.",
+          "title": "Messages"
+        },
+        "system": {
+          "default": "",
+          "maxLength": 20000,
+          "title": "System",
+          "type": "string"
+        },
+        "expected": {
+          "default": "",
+          "description": "The right answer. Without a checker: a number is compared as a number, text must be contained in the answer.",
+          "maxLength": 20000,
+          "title": "Expected",
+          "type": "string"
+        },
+        "checker": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A checker object ({type: exact|contains|regex|choice|number|math_equiv|json|tool_call|python_tests|constraints|needle|citations|judge|family|none|all|any, ...}) or a shorthand: exact:Madrid, contains:uno|dos, any:a|b, number:42, choice:B, regex:^\\d+$, math:x**2, judge:rubric, none.",
+          "title": "Checker"
+        },
+        "weight": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "title": "Weight",
+          "type": "number"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "notes": {
+          "default": "",
+          "maxLength": 4000,
+          "title": "Notes",
+          "type": "string"
+        },
+        "tools": {
+          "description": "Function definitions (chat-completions tools format) offered to the model (for tool_call cases).",
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Tools",
+          "type": "array"
+        },
+        "max_tokens": {
+          "anyOf": [
+            {
+              "maximum": 65536,
+              "minimum": 16,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Tokens"
+        },
+        "min_context": {
+          "anyOf": [
+            {
+              "maximum": 1048576,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Skip models whose context is smaller.",
+          "title": "Min Context"
+        },
+        "image_paths": {
+          "description": "Absolute paths of images to attach (PNG, JPEG, WebP, GIF): the case then needs a vision model.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Image Paths",
+          "type": "array"
+        },
+        "suite": {
+          "description": "One of your suites (built-in suites are read-only: duplicate them first).",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Suite",
+          "type": "string"
+        }
+      },
+      "required": [
+        "suite"
+      ],
+      "title": "CaseAddArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "case_update",
+    "description": "Change a case of your suite: prompt, expected answer, checker, weight. Editar un caso.\nIf the task changed, earlier results measured the old version (forget_results deletes them).\nSinónimos: corregir caso, cambiar respuesta esperada, peso",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "case": {
+          "description": "Case id (k_…).",
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Case",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "maxLength": 160,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "prompt": {
+          "anyOf": [
+            {
+              "maxLength": 100000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt"
+        },
+        "messages": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Messages"
+        },
+        "system": {
+          "anyOf": [
+            {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "System"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected"
+        },
+        "checker": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checker"
+        },
+        "weight": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 100,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weight"
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tags"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "tools": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tools"
+        },
+        "max_tokens": {
+          "anyOf": [
+            {
+              "maximum": 65536,
+              "minimum": 16,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Tokens"
+        },
+        "min_context": {
+          "anyOf": [
+            {
+              "maximum": 1048576,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Context"
+        },
+        "image_paths": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Paths"
+        },
+        "forget_results": {
+          "default": false,
+          "description": "Delete the earlier results of this case when its prompt or checker changed (they measured the old version).",
+          "title": "Forget Results",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "case"
+      ],
+      "title": "CaseUpdateArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "case_remove",
+    "description": "Delete a case of your suite (confirm=true). Borrar un caso.\nSinónimos: eliminar caso, quitar pregunta",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "case": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Case",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "case"
+      ],
+      "title": "CaseRemoveArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "cases_import",
+    "description": "Import cases from JSONL or CSV text or an absolute path. Importar casos.\nColumns: prompt (required), title, system, expected, checker (full object or exact:/contains:/number:/regex:/choice:/judge: shorthand), weight, tags, notes.\nSinónimos: cargar preguntas, csv, jsonl, importar pruebas",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "suite": {
+          "description": "One of your suites.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Suite",
+          "type": "string"
+        },
+        "text": {
+          "default": "",
+          "description": "JSONL (one object per line) or CSV with a header row. Columns: prompt (required), title, system, expected, checker, weight, tags, notes.",
+          "maxLength": 2000000,
+          "title": "Text",
+          "type": "string"
+        },
+        "path": {
+          "default": "",
+          "description": "Absolute path of a .jsonl, .json or .csv file instead of text.",
+          "maxLength": 1000,
+          "title": "Path",
+          "type": "string"
+        },
+        "format": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "jsonl",
+            "csv"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "default_checker": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Used for rows without checker and without expected answer.",
+          "title": "Default Checker"
+        }
+      },
+      "required": [
+        "suite"
+      ],
+      "title": "CasesImportArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "benchmark_import",
+    "description": "Import IFMTBench (instruction-following translation) as your suite. Importar benchmark de traducción.\nDownloads the data from a pinned commit into the data folder, checks its SHA-256 and builds a seeded stratified sample (default 30 per constraint type plus 30 multi-constraint). Glossary rule, layout, structured data and code/tag checks are exact; style, context and a glossary the rule rejects use the judge model (settings judge.contestant) and stay pending without one. Data CC BY 4.0, scoring ported from the benchmark's Apache-2.0 code.\nSinónimos: traducción, glosario, terminología, formato, benchmark externo, seguir instrucciones al traducir, estilo, etiquetas, código",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "source": {
+          "const": "ifmtbench",
+          "default": "ifmtbench",
+          "description": "ifmtbench: instruction-following translation (glossary, style, context, layout, structured data, code and tags), CC BY 4.0 data.",
+          "title": "Source",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "description": "Name of the new suite (default IFMTBench). It must not exist yet.",
+          "maxLength": 120,
+          "title": "Name",
+          "type": "string"
+        },
+        "per_type": {
+          "default": 30,
+          "description": "Cases taken from each single-constraint type (6 types). 0: none. The whole file holds up to 1,644 per type.",
+          "maximum": 2000,
+          "minimum": 0,
+          "title": "Per Type",
+          "type": "integer"
+        },
+        "multi": {
+          "default": 30,
+          "description": "Cases taken from the multi-constraint file, spread evenly over its 5 combinations. 0: none.",
+          "maximum": 2838,
+          "minimum": 0,
+          "title": "Multi",
+          "type": "integer"
+        },
+        "seed": {
+          "default": 2026,
+          "description": "Fixes the sample: the same seed and sizes give the same cases.",
+          "maximum": 2147483647,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "category": {
+          "default": "custom",
+          "description": "One of writing_es, reasoning, math, code, extraction, tool_use, instruction, long_context, rag, vision, translation, summary, custom. 'custom' keeps the suite out of the routing table; 'translation' lets it feed the translation route.",
+          "maxLength": 30,
+          "title": "Category",
+          "type": "string"
+        },
+        "refresh": {
+          "default": false,
+          "description": "Download the data again even if the verified copy is on disk.",
+          "title": "Refresh",
+          "type": "boolean"
+        },
+        "keep_unsatisfiable": {
+          "default": false,
+          "description": "Also sample items whose own reference translation fails their rule checks (about 3 in 10 of the multi-constraint structured-data ones: Markdown that is not a table). Off: they are left out and counted.",
+          "title": "Keep Unsatisfiable",
+          "type": "boolean"
+        }
+      },
+      "title": "BenchmarkImportArgs",
+      "type": "object"
+    },
+    "x-timeout-s": 660.0,
+    "module": "evaluation"
+  },
+  {
+    "name": "case_try",
+    "description": "Run one case (saved or draft) on one model and show answer + checker detail. Probar un caso.\nNothing is stored. Uses the same session rules as a run (leases, allowed GPUs).\nSinónimos: probar con, prueba rápida, ver qué responde, depurar un comprobador",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
+          "description": "A model id/name, or a spec {kind: gguf|ollama|server, ...}.",
+          "title": "Model"
+        },
+        "case": {
+          "default": "",
+          "description": "A saved case id (k_…). Or describe a draft with prompt and checker/expected below.",
+          "maxLength": 60,
+          "title": "Case",
+          "type": "string"
+        },
+        "prompt": {
+          "default": "",
+          "maxLength": 100000,
+          "title": "Prompt",
+          "type": "string"
+        },
+        "system": {
+          "default": "",
+          "maxLength": 20000,
+          "title": "System",
+          "type": "string"
+        },
+        "expected": {
+          "default": "",
+          "maxLength": 20000,
+          "title": "Expected",
+          "type": "string"
+        },
+        "checker": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checker"
+        },
+        "tools": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Tools",
+          "type": "array"
+        },
+        "settings": {
+          "additionalProperties": true,
+          "description": "Run settings: temperature, top_p, max_tokens, effort, repeats, seed, context, timeout_s, wait_s, device, load_local.",
+          "title": "Settings",
+          "type": "object"
+        }
+      },
+      "required": [
+        "model"
+      ],
+      "title": "CaseTryArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "run_plan",
+    "description": "Preview a run: cases per model, memory, where each would run, problems. Plan de una ejecución.\nNothing starts. GGUF files run on an allowed GPU under a lease; servers are called as they are.\nSinónimos: qué pasaría, cuánta memoria, dónde correría, dry run",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "suites": {
+          "description": "Suite ids, slugs or names; ['all'] means every suite but the quick one.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 40,
+          "minItems": 1,
+          "title": "Suites",
+          "type": "array"
+        },
+        "contestants": {
+          "description": "Model ids or names, or specs: {kind: 'gguf', path: 'D:\\\\m\\\\x.gguf', mmproj?}, {kind: 'ollama', model: 'qwen3:8b'}, {kind: 'server', url: 'http://127.0.0.1:8081', model: '…'}.",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "maxItems": 40,
+          "minItems": 1,
+          "title": "Contestants",
+          "type": "array"
+        },
+        "settings": {
+          "additionalProperties": true,
+          "description": "Run settings: temperature, top_p, max_tokens, effort, repeats, seed, context, timeout_s, wait_s, device, load_local. effort is off|low|medium|high|max. device is auto|gpu|cpu: auto runs a small GGUF (file up to runner.cpu_max_gb) on the CPU when no allowed GPU is free, gpu never does, cpu always does. A model that reasons gets runner.reasoning_tokens more tokens than the answer budget, unless effort is off. load_local=false makes the run refuse to start llama-server or load a model into Ollama (it only uses what is already served).",
+          "title": "Settings",
+          "type": "object"
+        }
+      },
+      "required": [
+        "suites",
+        "contestants"
+      ],
+      "title": "RunSpec",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "run_start",
+    "description": "Start a run: suites x models (ids, names or specs of a file/server). Lanzar una medición.\nQueued on the GPU lane; returns the run id (use wait_s to wait). Another app can pass {kind:'gguf', path} to evaluate a file it just made.\nSinónimos: medir, evaluar, benchmark, probar modelo, ejecutar pruebas, comparar base y afinado",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "suites": {
+          "description": "Suite ids, slugs or names; ['all'] means every suite but the quick one.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 40,
+          "minItems": 1,
+          "title": "Suites",
+          "type": "array"
+        },
+        "contestants": {
+          "description": "Model ids or names, or specs: {kind: 'gguf', path: 'D:\\\\m\\\\x.gguf', mmproj?}, {kind: 'ollama', model: 'qwen3:8b'}, {kind: 'server', url: 'http://127.0.0.1:8081', model: '…'}.",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "maxItems": 40,
+          "minItems": 1,
+          "title": "Contestants",
+          "type": "array"
+        },
+        "settings": {
+          "additionalProperties": true,
+          "description": "Run settings: temperature, top_p, max_tokens, effort, repeats, seed, context, timeout_s, wait_s, device, load_local. effort is off|low|medium|high|max. device is auto|gpu|cpu: auto runs a small GGUF (file up to runner.cpu_max_gb) on the CPU when no allowed GPU is free, gpu never does, cpu always does. A model that reasons gets runner.reasoning_tokens more tokens than the answer budget, unless effort is off. load_local=false makes the run refuse to start llama-server or load a model into Ollama (it only uses what is already served).",
+          "title": "Settings",
+          "type": "object"
+        },
+        "label": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Label",
+          "type": "string"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Wait this long for the run to finish before answering (0: return at once with the run id).",
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "suites",
+        "contestants"
+      ],
+      "title": "RunStartArgs",
+      "type": "object"
+    },
+    "x-timeout-s": 660.0,
+    "module": "evaluation"
+  },
+  {
+    "name": "run_status",
+    "description": "Progress of a run: per model state, cases done, memory, errors. Estado de una ejecución.\nSinónimos: cómo va, progreso, ejecución en curso",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "default": "",
+          "description": "Run id (r_…). Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "title": "RunRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "run_cancel",
+    "description": "Cancel a run: the request in flight is dropped, results kept, shared servers untouched. Cancelar ejecución.\nOnly a llama-server that Galton started itself for a GGUF file is stopped. A server somebody else runs (llama-server, Ollama, an endpoint) is never stopped, killed or unloaded.\nSinónimos: parar, detener medición",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "default": "",
+          "description": "Run id (r_…). Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "title": "RunRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "run_discard",
+    "description": "Discard a run's results from all statistics and routes (confirm=true). Descartar una ejecución.\nThe run stays in the history with the reason and a discarded badge. Use it when a run measured the wrong thing, for example when the model behind a shared server changed during it. run_restore undoes it.\nSinónimos: anular resultados, invalidar medición, resultados erróneos, ignorar ejecución",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "description": "Run id (r_…) of a run that has finished, failed or been cancelled.",
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Run",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why its results cannot be trusted (for example: the model behind a shared server changed during the run). Shown on the run.",
+          "maxLength": 500,
+          "minLength": 3,
+          "title": "Reason",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "run",
+        "reason"
+      ],
+      "title": "RunDiscardArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "run_restore",
+    "description": "Undo run_discard: the results of the run count again. Restaurar una ejecución descartada.\nSinónimos: recuperar resultados, volver a contar, deshacer descarte",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "description": "Run id (r_…) of a discarded run.",
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run"
+      ],
+      "title": "RunRestoreArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "run_resume",
+    "description": "Continue an interrupted run, asking only what it did not measure. Continuar donde se quedó.\nFor a run that failed (Galton was restarted) or was cancelled and not discarded. Queues a new run with the same suites, models and settings and `continues` set to the earlier one; cases already measured on the current version of each model are not asked again, answers still waiting for the judge are graded, and the earlier results keep counting.\nSinónimos: reanudar, retomar, seguir la ejecución, se reinició Galton, terminar lo que falta",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "description": "Run id (r_…) of a run that failed (for example because Galton was restarted) or was cancelled, and was not discarded.",
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run"
+      ],
+      "title": "RunResumeArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "runs_list",
+    "description": "Recent runs with state and progress. Historial de ejecuciones.\nSinónimos: mediciones anteriores, cola",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "state": {
+          "default": "",
+          "enum": [
+            "",
+            "queued",
+            "waiting_gpu",
+            "waiting_server",
+            "running",
+            "done",
+            "failed",
+            "cancelled"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "limit": {
+          "default": 20,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "RunsListArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "run_results",
+    "description": "Per-case results of a run: answer, score, checker detail, timing. Resultados de una ejecución.\nFilter by model, suite, case, failed/passed. Answers are untrusted text.\nSinónimos: qué falló, respuestas, por qué suspendió, detalle por caso",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "default": "",
+          "description": "Run id. Empty: the latest.",
+          "maxLength": 60,
+          "title": "Run",
+          "type": "string"
+        },
+        "model": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Model",
+          "type": "string"
+        },
+        "suite": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Suite",
+          "type": "string"
+        },
+        "case": {
+          "default": "",
+          "maxLength": 60,
+          "title": "Case",
+          "type": "string"
+        },
+        "only_failed": {
+          "default": false,
+          "title": "Only Failed",
+          "type": "boolean"
+        },
+        "only_passed": {
+          "default": false,
+          "title": "Only Passed",
+          "type": "boolean"
+        },
+        "include_output": {
+          "default": true,
+          "description": "Include the model's answer (shortened for the assistant).",
+          "title": "Include Output",
+          "type": "boolean"
+        },
+        "limit": {
+          "default": 40,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Offset",
+          "type": "integer"
+        }
+      },
+      "title": "RunResultsArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "galton_run",
+    "description": "Measure these models now (quick suite by default). Medir estos modelos ahora.\nNames Galton has not seen yet trigger one rediscovery; names still unknown are listed in not_found. Same run as run_start, simpler arguments.\nSinónimos: medir modelo recién publicado, probar este modelo, benchmark rápido de modelos",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "models": {
+          "description": "Model names or ids (an Ollama tag, a GGUF file name, an id from models_list). A name not seen yet triggers one rediscovery.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 40,
+          "minItems": 1,
+          "title": "Models",
+          "type": "array"
+        },
+        "suites": {
+          "description": "Suites to run (default: the quick one).",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Suites",
+          "type": "array"
+        },
+        "label": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Label",
+          "type": "string"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Wait this long for the run to finish before answering (0: return at once).",
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "models"
+      ],
+      "title": "GaltonRunArgs",
+      "type": "object"
+    },
+    "x-timeout-s": 660.0,
+    "module": "evaluation"
+  },
+  {
+    "name": "measure_new",
+    "description": "Run the quick suite on every model that is new or changed. Medir lo nuevo.\nSinónimos: medir novedades, modelos sin medir, re-medir cambiados",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "suite": {
+          "default": "s_rapida",
+          "description": "Suite to measure with (default: the quick one).",
+          "maxLength": 200,
+          "title": "Suite",
+          "type": "string"
+        },
+        "include_stale": {
+          "default": true,
+          "description": "Also re-measure models whose file changed.",
+          "title": "Include Stale",
+          "type": "boolean"
+        }
+      },
+      "title": "MeasureNewArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "judge_run",
+    "description": "Grade the answers that waited for the judge model. Pasar el juez a lo pendiente.\nNeeds settings judge.contestant.\nSinónimos: calificar respuestas abiertas, juez",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "x-timeout-s": 660.0,
+    "module": "evaluation"
+  },
+  {
+    "name": "leaderboard",
+    "description": "Ranking by category or suite with 95 % intervals, speed and memory. Clasificación de modelos.\nRanked by the lower bound of the interval; stale results are not ranked; fits_16gb tells whether it fits one 16 GB GPU; truncated counts answers cut off by the token budget and warnings say when that makes a score understate the model.\nSinónimos: mejor modelo, ranking, tabla, puntuaciones, qué modelo es mejor en código",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "category": {
+          "default": "",
+          "description": "A task (general, writing_es, code, extraction, tool_use, long_context, rag, vision, summary, translation, math) or a suite category (writing_es, reasoning, math, code, extraction, tool_use, instruction, long_context, rag, vision, translation, summary, custom). Empty: everything.",
+          "maxLength": 30,
+          "title": "Category",
+          "type": "string"
+        },
+        "suite": {
+          "default": "",
+          "description": "One suite instead of a category.",
+          "maxLength": 200,
+          "title": "Suite",
+          "type": "string"
+        },
+        "days": {
+          "default": 0,
+          "description": "Only results of the last N days (0: all).",
+          "maximum": 3650,
+          "minimum": 0,
+          "title": "Days",
+          "type": "integer"
+        },
+        "include_stale": {
+          "default": false,
+          "title": "Include Stale",
+          "type": "boolean"
+        },
+        "include_disabled": {
+          "default": false,
+          "title": "Include Disabled",
+          "type": "boolean"
+        },
+        "limit": {
+          "default": 30,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "LeaderboardArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "compare",
+    "description": "Paired comparison of two models: wins/losses, McNemar, bootstrap, verdict. Comparar dos modelos.\nVerdict better / worse / no clear difference with p-value and n; a warning under 20 shared cases.\nSinónimos: es mejor, mejora la nueva cuantización, diferencia significativa, A contra B",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "a": {
+          "description": "First model (id, name or alias).",
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "A",
+          "type": "string"
+        },
+        "b": {
+          "description": "Second model.",
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "B",
+          "type": "string"
+        },
+        "category": {
+          "default": "",
+          "maxLength": 30,
+          "title": "Category",
+          "type": "string"
+        },
+        "suite": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Suite",
+          "type": "string"
+        },
+        "include_stale": {
+          "default": false,
+          "title": "Include Stale",
+          "type": "boolean"
+        },
+        "max_cases": {
+          "default": 40,
+          "description": "How many of the most different cases to list.",
+          "maximum": 300,
+          "minimum": 0,
+          "title": "Max Cases",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "a",
+        "b"
+      ],
+      "title": "CompareArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "gates_correlation",
+    "description": "Do the checks of a case fail together? phi, lift, kappa, redundant gates. Correlación entre comprobaciones.\nPer pair of gates: phi, lift, kappa, P(A fails|B fails) with bootstrap 95 % intervals and a minimum-sample guard; findings in Spanish and English and which gate to drop.\nSinónimos: comprobaciones redundantes, fallos correlacionados, puertas, verificadores, juez redundante, kappa, phi",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "runs": {
+          "description": "Run ids to analyse together (they should share cases). Empty: every run that still counts.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Runs",
+          "type": "array"
+        },
+        "category": {
+          "default": "",
+          "description": "A task (general, writing_es, code, extraction, tool_use, long_context, rag, vision, summary, translation, math) or a suite category (writing_es, reasoning, math, code, extraction, tool_use, instruction, long_context, rag, vision, translation, summary, custom). Empty: everything.",
+          "maxLength": 30,
+          "title": "Category",
+          "type": "string"
+        },
+        "suite": {
+          "default": "",
+          "description": "One suite instead of a category.",
+          "maxLength": 200,
+          "title": "Suite",
+          "type": "string"
+        },
+        "include_stale": {
+          "default": false,
+          "title": "Include Stale",
+          "type": "boolean"
+        },
+        "min_samples": {
+          "default": 20,
+          "description": "Answers a pair of gates must share before any conclusion is drawn about it.",
+          "maximum": 1000,
+          "minimum": 2,
+          "title": "Min Samples",
+          "type": "integer"
+        },
+        "strong_phi": {
+          "default": 0.7,
+          "description": "phi from which two gates count as carrying the same signal (the interval must also stay above 0.5).",
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Strong Phi",
+          "type": "number"
+        },
+        "resamples": {
+          "default": 1000,
+          "description": "Bootstrap resamples for the intervals.",
+          "maximum": 5000,
+          "minimum": 100,
+          "title": "Resamples",
+          "type": "integer"
+        }
+      },
+      "title": "GatesCorrelationArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "recommend",
+    "description": "Best measured model for a task described in words, with why and runner-up. Qué modelo usar.\nGuesses the category from keywords (es/en) or takes category; says so when there is not enough evidence.\nSinónimos: recomienda un modelo, cuál uso para, el mejor para traducir",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "task": {
+          "description": "What the model will be used for, in plain words (any language).",
+          "maxLength": 500,
+          "minLength": 3,
+          "title": "Task",
+          "type": "string"
+        },
+        "category": {
+          "default": "",
+          "description": "Force a task category: general, writing_es, code, extraction, tool_use, long_context, rag, vision, summary, translation, math.",
+          "maxLength": 30,
+          "title": "Category",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task"
+      ],
+      "title": "RecommendArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "routes_get",
+    "description": "The routing table: winner per task, what changes if published now. Tabla de rutas.\nOther Hoard apps read the published file through Hoard Link.\nSinónimos: rutas, qué modelo usa cada app, diferencias con lo publicado",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "routes_publish",
+    "description": "Publish the routing table to routes.json for Hoard Link. Publicar rutas.\nAtomic write; categories with too few checked cases are left out; emits galton.routes.updated.\nSinónimos: aplicar, publicar tabla, actualizar rutas",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "note": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "title": "RoutesPublishArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "arena_next",
+    "description": "A blind pair of answers to the same prompt to vote on. Siguiente par de la arena.\nSinónimos: comparar a ciegas, votar, preferencia humana",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "category": {
+          "default": "",
+          "maxLength": 30,
+          "title": "Category",
+          "type": "string"
+        }
+      },
+      "title": "ArenaNextArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "arena_vote",
+    "description": "Vote a|b|tie|both_bad on an arena pair. Votar en la arena.\nSinónimos: elegir respuesta, empate, ambas malas",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "pair": {
+          "description": "Pair id from arena_next.",
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Pair",
+          "type": "string"
+        },
+        "vote": {
+          "enum": [
+            "a",
+            "b",
+            "tie",
+            "both_bad"
+          ],
+          "title": "Vote",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pair",
+        "vote"
+      ],
+      "title": "ArenaVoteArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "arena_ratings",
+    "description": "Bradley-Terry ratings from the arena votes, per category. Puntuaciones de la arena.\nSinónimos: elo, ranking humano",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "category": {
+          "default": "",
+          "maxLength": 30,
+          "title": "Category",
+          "type": "string"
+        }
+      },
+      "title": "ArenaRatingsArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "evaluation_settings_get",
+    "description": "All settings with values, types and defaults, plus the GPU state. Ver ajustes.\nSinónimos: configuración, GPUs permitidas, política de rutas, juez, horas de silencio",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "evaluation",
+    "native_name": "settings_get"
+  },
+  {
+    "name": "evaluation_settings_set",
+    "description": "Change settings: allowed GPUs, llama-server path, judge, runner, watch, routes policy. Cambiar ajustes.\nAllowing a GPU reserved for the owner needs confirm_reserved=true and an explicit request from the user.\nSinónimos: permitir GPU, ruta de llama-server, política, horas de silencio, ejecución de código",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "values": {
+          "additionalProperties": true,
+          "description": "Setting key -> value. See settings_get for the keys and types.",
+          "title": "Values",
+          "type": "object"
+        },
+        "merge": {
+          "default": false,
+          "description": "For object settings (routes.policy): change only the fields given and keep the others as they are now. Without it the fields not given go back to their defaults.",
+          "title": "Merge",
+          "type": "boolean"
+        },
+        "confirm_reserved": {
+          "default": false,
+          "description": "Needed to allow a GPU that is reserved for the owner of this computer: only if the user explicitly said so.",
+          "title": "Confirm Reserved",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "values"
+      ],
+      "title": "SettingsSetArgs",
+      "type": "object"
+    },
+    "module": "evaluation",
+    "native_name": "settings_set"
+  },
+  {
+    "name": "evaluation_gpu_status",
+    "description": "Per GPU: total/used/free, allowed or reserved, leases and queue. Estado de las GPU.\nSinónimos: memoria de vídeo, VRAM libre, quién usa la GPU, reservas",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "evaluation",
+    "native_name": "gpu_status"
+  },
+  {
+    "name": "notices_list",
+    "description": "Notices: regressions, improvements, new or changed models, failed runs. Avisos.\nSinónimos: regresión, novedades, qué ha pasado",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "unseen": {
+          "default": false,
+          "title": "Unseen",
+          "type": "boolean"
+        },
+        "kind": {
+          "default": "",
+          "description": "regression, improvement, new_model, changed_model, run_failed…",
+          "maxLength": 30,
+          "title": "Kind",
+          "type": "string"
+        },
+        "limit": {
+          "default": 30,
+          "maximum": 300,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "mark_seen": {
+          "default": false,
+          "description": "Mark the listed notices as seen.",
+          "title": "Mark Seen",
+          "type": "boolean"
+        }
+      },
+      "title": "NoticesArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "housekeeping_run",
+    "description": "Tidy caches, unused images and old unvoted arena pairs; stop leftover servers. Mantenimiento.\nSinónimos: limpiar, ordenar",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "rulebench_tasks",
+    "description": "Rule bench tasks and the exact prompts for variant A/B/C and a pressure. Tareas del banco de reglas.\nTwenty small repositories (bugs, small features, refactor traps with dead code and other people's comments) with hidden tests and a reference patch.\nSinónimos: reglas de código, prompt de sistema, variantes, alcance de cambios, presión",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "task_id": {
+          "default": "",
+          "description": "One task: its system and user prompt for the variant and pressure. Empty: the list.",
+          "maxLength": 80,
+          "title": "Task Id",
+          "type": "string"
+        },
+        "variant": {
+          "default": "C",
+          "description": "A no rules, B the four code rules in their original wording, C positive and short.",
+          "enum": [
+            "A",
+            "B",
+            "C"
+          ],
+          "title": "Variant",
+          "type": "string"
+        },
+        "pressure": {
+          "default": "neutral",
+          "description": "contra adds 'do it fast and tidy up the file' to the request.",
+          "enum": [
+            "neutral",
+            "favor",
+            "contra"
+          ],
+          "title": "Pressure",
+          "type": "string"
+        }
+      },
+      "title": "RulebenchTasksArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "rulebench_score",
+    "description": "Score an answer to a rule-bench task: hidden tests, lines beyond the reference, lost comments. Puntuar.\nApplies the answer's file blocks in a scratch folder and runs the hidden tests (needs checks.allow_code_execution). Also reports test-first order.\nSinónimos: evaluar cambio, líneas fuera de alcance, código muerto borrado, comentarios ajenos, test antes que código",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "task_id": {
+          "maxLength": 80,
+          "title": "Task Id",
+          "type": "string"
+        },
+        "answer": {
+          "description": "The model's answer: one ```file:<path> block per changed file.",
+          "maxLength": 200000,
+          "title": "Answer",
+          "type": "string"
+        },
+        "variant": {
+          "default": "",
+          "description": "Label stored with the sample.",
+          "maxLength": 40,
+          "title": "Variant",
+          "type": "string"
+        },
+        "pressure": {
+          "default": "",
+          "description": "Label stored with the sample.",
+          "maxLength": 40,
+          "title": "Pressure",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id",
+        "answer"
+      ],
+      "title": "RulebenchScoreArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "harness_catalog",
+    "description": "Harnesses, variants, tasks and tools of the harness bench. Catálogo de arneses y tareas.\nFour base harnesses (native_tools, json_text, xml_text, react_text), the .long and .trim variants, command-line harnesses (off by default) and the 24 tasks with their kinds.\nSinónimos: arnés, bucle de agente, tareas con herramientas, function calling, ReAct, XML, JSON",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "harness_matrix_start",
+    "description": "Run a model x harness x task matrix: model or harness at fault. Lanzar matriz de arneses.\nSame model under each harness, same token cap and turn limit in every cell. Reports pass@1, format failures apart from wrong answers, needless tool calls, turns, tokens; a trial whose verifier never ran is None, not 0. Queued on the GPU lane; use wait_s to wait, dry_run to count the trials only.\nSinónimos: medir arneses, mismo modelo distinto arnés, fallo de formato, function calling nativo, ReAct, evaluar agente",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "models": {
+          "description": "Model ids or names, or specs {kind: 'server', url, model} / {kind: 'ollama', model} / {kind: 'gguf', path}.",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Models",
+          "type": "array"
+        },
+        "harnesses": {
+          "description": "Harness ids: native_tools, json_text, xml_text, react_text, each with optional .long (long system prompt) and/or .trim (older observations replaced by a note), or cli:<name> for a configured command-line harness. Empty: the four base harnesses.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 24,
+          "title": "Harnesses",
+          "type": "array"
+        },
+        "tasks": {
+          "description": "Task ids (see harness_catalog). Empty: all 24, or those of `kinds`.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Tasks",
+          "type": "array"
+        },
+        "kinds": {
+          "description": "Only tasks of these kinds: calc, convert, docs, files, chain, notool, recovery.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Kinds",
+          "type": "array"
+        },
+        "k": {
+          "default": 1,
+          "description": "Samples per task and cell. With k above 1 the temperature defaults to 0.7 and pass@k and pass^k are reported.",
+          "maximum": 10,
+          "minimum": 1,
+          "title": "K",
+          "type": "integer"
+        },
+        "settings": {
+          "additionalProperties": true,
+          "description": "The same for every cell: max_tokens (per reply, default 1024), max_turns (default 8), max_format_errors (default 3), plus the run settings temperature, top_p, max_tokens, effort, seed, context, timeout_s, wait_s, device, load_local.",
+          "title": "Settings",
+          "type": "object"
+        },
+        "label": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Label",
+          "type": "string"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Wait this long for the matrix to finish before answering (0: return at once with its id).",
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        },
+        "dry_run": {
+          "default": false,
+          "description": "Only count the trials and show the settings every cell will share; start nothing.",
+          "title": "Dry Run",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "models"
+      ],
+      "title": "HarnessMatrixStartArgs",
+      "type": "object"
+    },
+    "x-timeout-s": 660.0,
+    "module": "evaluation"
+  },
+  {
+    "name": "harness_matrix_status",
+    "description": "Progress of a harness matrix: per model state, trials done, errors. Estado de la matriz.\nSinónimos: cómo va la matriz de arneses, progreso",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "matrix": {
+          "default": "",
+          "description": "Matrix id (m_…). Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Matrix",
+          "type": "string"
+        }
+      },
+      "title": "HarnessMatrixRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "harness_matrix_result",
+    "description": "Harness matrix as a table with a short conclusion: harness vs model. Resultado de la matriz de arneses.\nPer cell: pass@1 with interval, format failure rate, wrong-answer rate, extra tool calls, turns, tokens, None count. Conclusion: whether the difference between harnesses is larger or smaller than between models, and the best harness per model.\nSinónimos: tabla modelo por arnés, mapa de calor, mejor arnés por modelo, qué falla, el modelo o el arnés",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "matrix": {
+          "default": "",
+          "description": "Matrix id (m_…). Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Matrix",
+          "type": "string"
+        }
+      },
+      "title": "HarnessMatrixRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "harness_cell",
+    "description": "One matrix cell: its tasks and, for one task, the traces and the reason of each failure. Detalle de una celda.\nEvery turn with the tool calls, results, refused calls and format errors.\nSinónimos: trazas, por qué falló el formato, llamadas sobrantes, depurar un arnés",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "matrix": {
+          "default": "",
+          "description": "Matrix id. Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Matrix",
+          "type": "string"
+        },
+        "model": {
+          "description": "Model name or id as shown in the matrix.",
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "harness": {
+          "description": "Harness id of the column, for example json_text.long.",
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Harness",
+          "type": "string"
+        },
+        "task": {
+          "default": "",
+          "description": "A task id: adds the full traces (every turn, call, result and format failure) of its trials.",
+          "maxLength": 80,
+          "title": "Task",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "harness"
+      ],
+      "title": "HarnessCellArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "harness_matrix_cancel",
+    "description": "Cancel a harness matrix: results kept, shared servers untouched. Cancelar matriz de arneses.\nSinónimos: parar matriz, detener",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "matrix": {
+          "default": "",
+          "description": "Matrix id (m_…). Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Matrix",
+          "type": "string"
+        }
+      },
+      "title": "HarnessMatrixRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "harness_matrix_list",
+    "description": "Recent harness matrices with state and conclusion. Historial de matrices de arneses.\nSinónimos: matrices anteriores, mediciones de arneses",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "limit": {
+          "default": 15,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "HarnessMatrixListArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "agentbench_catalog",
+    "description": "Agent bench: benchmarks, their task subsets and the configured agent harnesses. Catálogo del banco de agentes.\nPublished agentic benchmarks (terminal work, repository fixes, multi-language edits, dialogues with tools, algorithmic problems), the fixed subset Galton uses of each with its dev and test split, and the harness lines of the setting agentbench.harnesses.\nSinónimos: benchmarks de agentes, arneses reales, terminal, swe, polyglot, tau, livecodebench",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "agentbench_start",
+    "description": "Run real agent harnesses on published benchmarks with one model. Lanzar campaña de agentes.\nEach task runs in its own container: the harness is installed, works on the task, then the task's hidden tests decide. Same tasks, same model, same limits for every harness. Trials whose verifier never ran are None, not 0, and are retried. Runs in the background; dry_run shows the subsets.\nSinónimos: comparar arneses, qué agente es mejor con este modelo, campaña, benchmark de agentes",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "benchmarks": {
+          "description": "Benchmark ids from agentbench_catalog (tb2, swev, polyglot, tau3, lcb). Empty: all.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Benchmarks",
+          "type": "array"
+        },
+        "harnesses": {
+          "description": "Harness names from the setting agentbench.harnesses. Empty: every line that is switched on.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Harnesses",
+          "type": "array"
+        },
+        "model": {
+          "default": "",
+          "description": "Model id the server knows. Empty: the setting agentbench.model.",
+          "maxLength": 200,
+          "title": "Model",
+          "type": "string"
+        },
+        "base_url": {
+          "default": "",
+          "description": "Address of the server that serves it (common chat-completions protocol, ending in /v1). Empty: the setting agentbench.base_url.",
+          "maxLength": 300,
+          "title": "Base Url",
+          "type": "string"
+        },
+        "k": {
+          "default": 1,
+          "description": "Attempts per task and harness.",
+          "maximum": 10,
+          "minimum": 1,
+          "title": "K",
+          "type": "integer"
+        },
+        "splits": {
+          "description": "dev: the tasks a harness may be tuned on; test: only measured.",
+          "items": {
+            "enum": [
+              "dev",
+              "test"
+            ],
+            "type": "string"
+          },
+          "title": "Splits",
+          "type": "array"
+        },
+        "label": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Label",
+          "type": "string"
+        },
+        "slots": {
+          "default": 0,
+          "description": "Trials in flight at once (0: the setting).",
+          "maximum": 64,
+          "minimum": 0,
+          "title": "Slots",
+          "type": "integer"
+        },
+        "adopt": {
+          "default": "",
+          "description": "Name of a campaign whose jobs another process runs: only read its job folders, launch nothing.",
+          "maxLength": 80,
+          "title": "Adopt",
+          "type": "string"
+        },
+        "dry_run": {
+          "default": false,
+          "description": "Only show the task subsets of each benchmark; start nothing.",
+          "title": "Dry Run",
+          "type": "boolean"
+        }
+      },
+      "title": "AgentBenchStartArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "agentbench_status",
+    "description": "Progress of an agent-bench campaign. Estado de la campaña de agentes.\nSinónimos: cómo va la campaña, progreso del banco de agentes",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "campaign": {
+          "default": "",
+          "description": "Campaign id or name. Empty: the running one, else the latest.",
+          "maxLength": 80,
+          "title": "Campaign",
+          "type": "string"
+        }
+      },
+      "title": "AgentBenchRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "agentbench_result",
+    "description": "Agent-bench board: pass rate per benchmark and harness, with ranking. Resultado de la campaña.\nPer cell: verified trials, pass rate with its 95 % interval, None trials apart, failure reasons, tokens, time. Per benchmark: ranking, the focus harness's paired wins and losses against each other harness with an exact sign test.\nSinónimos: clasificación de arneses, quién gana, mapa de calor, comparación por tarea",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "campaign": {
+          "default": "",
+          "description": "Campaign id or name. Empty: the running one, else the latest.",
+          "maxLength": 80,
+          "title": "Campaign",
+          "type": "string"
+        },
+        "split": {
+          "default": "",
+          "description": "Only the trials of that split (empty: all).",
+          "enum": [
+            "",
+            "dev",
+            "test"
+          ],
+          "title": "Split",
+          "type": "string"
+        },
+        "focus": {
+          "default": "faustus",
+          "description": "Harness compared, task by task, against every other one.",
+          "maxLength": 40,
+          "title": "Focus",
+          "type": "string"
+        }
+      },
+      "title": "AgentBenchResultArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "agentbench_cell",
+    "description": "One cell of a campaign: every trial of a harness on a benchmark. Detalle de una celda.\nSinónimos: qué tareas falló, por qué falló",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "campaign": {
+          "default": "",
+          "maxLength": 80,
+          "title": "Campaign",
+          "type": "string"
+        },
+        "benchmark": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Benchmark",
+          "type": "string"
+        },
+        "harness": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Harness",
+          "type": "string"
+        }
+      },
+      "required": [
+        "benchmark",
+        "harness"
+      ],
+      "title": "AgentBenchCellArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "agentbench_trial",
+    "description": "One trial with the logs the harness and the verifier left. Detalle de una prueba con sus registros.\nSinónimos: log del agente, salida de los tests, depurar arnés",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "trial": {
+          "description": "Trial id from agentbench_cell.",
+          "minimum": 1,
+          "title": "Trial",
+          "type": "integer"
+        },
+        "limit": {
+          "default": 20000,
+          "description": "Characters kept from the end of each log file.",
+          "maximum": 200000,
+          "minimum": 500,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "trial"
+      ],
+      "title": "AgentBenchTrialArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "agentbench_sync",
+    "description": "Read a campaign's job folders again into the database. Releer las carpetas de la campaña.\nSinónimos: actualizar resultados",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "campaign": {
+          "default": "",
+          "description": "Campaign id or name. Empty: the running one, else the latest.",
+          "maxLength": 80,
+          "title": "Campaign",
+          "type": "string"
+        }
+      },
+      "title": "AgentBenchRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "agentbench_cancel",
+    "description": "Cancel an agent-bench campaign: trials already finished are kept. Cancelar campaña de agentes.\nSinónimos: parar campaña",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "campaign": {
+          "default": "",
+          "description": "Campaign id or name. Empty: the running one, else the latest.",
+          "maxLength": 80,
+          "title": "Campaign",
+          "type": "string"
+        }
+      },
+      "title": "AgentBenchRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "agentbench_list",
+    "description": "Recent agent-bench campaigns. Historial de campañas de agentes.\nSinónimos: campañas anteriores",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "limit": {
+          "default": 15,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "AgentBenchListArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  }
+]

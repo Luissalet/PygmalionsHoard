@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import APP_THREAD_PREFIXES, lingering_threads, needs_posix
+from tests.conftest import APP_THREAD_PREFIXES, lingering_threads, needs_posix
 from pygmalion_hoard import procs
 from pygmalion_hoard.config import Config
 from pygmalion_hoard.errors import PygmalionError
@@ -19,7 +19,7 @@ from pygmalion_hoard.hoard_link import family
 from pygmalion_hoard.jobs import JobManager
 from pygmalion_hoard.services import Services
 
-from helpers import FakeLeaseFactory, fake_inventory
+from tests.helpers import FakeLeaseFactory, fake_inventory
 
 ROOT = Path(__file__).resolve().parents[1]
 

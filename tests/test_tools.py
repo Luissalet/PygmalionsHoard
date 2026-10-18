@@ -5,9 +5,9 @@ import json
 import httpx
 import pytest
 
-from conftest import needs_posix
+from tests.conftest import needs_posix
 from gguf_builder import build_gguf
-from helpers import chat_records
+from tests.helpers import chat_records
 from pygmalion_hoard.agent_tools import TOOLS, TOOLS_BY_NAME, call_tool, tool_catalog, uncapped
 from pygmalion_hoard.errors import PygmalionError
 

@@ -24,8 +24,8 @@ jobs:
       - name: Install Python dependencies
         run: python -m pip install -r requirements.txt
       - name: Run tests
-        run: python -m pytest -q
+        run: python -m pytest tests evaluation_tests fusion_tests --import-mode=importlib -q
       - name: Build the client
         run: |
           npm ci --include=dev
-          npx vite build
+          npm run build

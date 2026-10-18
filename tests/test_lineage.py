@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from conftest import call
-from models import make_model
+from tests.conftest import call
+from tests.models import make_model
 from pygmalion_hoard.errors import PygmalionError
 from pygmalion_hoard.lineage import is_quantized, portable, verdict_of
 

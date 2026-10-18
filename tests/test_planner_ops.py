@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from conftest import call
-from models import make_model
+from tests.conftest import call
+from tests.models import make_model
 from pygmalion_hoard.errors import PygmalionError
 
 BIG = {"hidden_size": 4096, "num_hidden_layers": 32, "num_attention_heads": 32, "num_key_value_heads": 8, "intermediate_size": 14336,
@@ -78,7 +78,7 @@ def test_plan_ignores_unknown_overrides_and_none_values(ctx, base_model, dataset
 
 
 def test_plan_without_a_gpu_inventory_says_so(tmp_path, base_model):
-    from conftest import build_services
+    from tests.conftest import build_services
     c = build_services(tmp_path / "nogpu", inventory=[])
     try:
         folder = make_model(c.work / "hf" / "acme--x", seed=1)

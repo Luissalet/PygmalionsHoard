@@ -247,8 +247,13 @@ class Store:
     def delete_job(self, jid: str) -> None:
         self.db.execute("DELETE FROM jobs WHERE id = ?", (jid,))
 
-    def next_queued(self, lane: str) -> Optional[dict[str, Any]]:
-        return _job(self.db.one("SELECT * FROM jobs WHERE state = 'queued' AND lane = ? ORDER BY created_ts ASC, id ASC LIMIT 1", (lane,)))
+    def queued_ids(self) -> set[str]:
+        return {row["id"] for row in self.db.query("SELECT id FROM jobs WHERE state = 'queued'")}
+
+    def next_queued(self, lane: str, exclude_ids=()) -> Optional[dict[str, Any]]:
+        excluded = tuple(exclude_ids)
+        clause = " AND id NOT IN (SELECT value FROM json_each(?))" if excluded else ""
+        return _job(self.db.one("SELECT * FROM jobs WHERE state = 'queued' AND lane = ?" + clause + " ORDER BY created_ts ASC, id ASC LIMIT 1", (lane, dumps(excluded)) if excluded else (lane,)))
 
     def claim_job(self, job_id: str) -> bool:
         """Move a queued job to running in one statement; False when it is no longer queued (cancelled in the meantime)."""

@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/Luissalet/GaltonsHoard",
+  "commit": "64fbd681a74371fda3692cf4efa110f5d7a670f2",
+  "license": "MIT",
+  "incorporation": "Native source incorporated in Pygmalion; no external process or checkout dependency."
+}

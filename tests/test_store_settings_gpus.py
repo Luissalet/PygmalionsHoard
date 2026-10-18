@@ -5,8 +5,8 @@ import time
 
 import pytest
 
-from conftest import build_services
-from helpers import FakeLeaseFactory, fake_inventory
+from tests.conftest import build_services
+from tests.helpers import FakeLeaseFactory, fake_inventory
 from pygmalion_hoard.db import Database
 from pygmalion_hoard.errors import PygmalionError
 from pygmalion_hoard.settings import Settings, normalize, parse_intlist

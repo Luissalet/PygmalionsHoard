@@ -110,7 +110,7 @@ class Services:
         self._stopped = False
         self.jobs = JobManager(deps, Runners(deps).table(), clock=clock_fn, enabled=config.scheduler,
                                paused=lambda: self.settings.bool("scheduler.paused"), emit=self.emit,
-                               base_url=lambda: f"http://127.0.0.1:{config.port}")
+                               base_url=lambda: f"http://127.0.0.1:{config.port}{config.url_prefix}")
         self._bases_lock = threading.Lock()
         self._dash_cache: Optional[tuple[float, dict[str, Any], Optional[dict[str, Any]]]] = None  # (when, slow blocks, env check they were built on)
         from .ops import Operations
@@ -119,6 +119,7 @@ class Services:
     # ------------------------------------------------------------------ lifecycle
     def start(self) -> None:
         self.work.ensure()
+        self.jobs.defer_existing_jobs = self.config.defer_existing_jobs
         self.jobs.start()
 
     def stop(self, timeout: float = 20.0) -> list[str]:
@@ -142,6 +143,8 @@ class Services:
             self._link = None
         if late:
             log.warning("stopped with threads still running: %s", ", ".join(late))
+            self._stopped = False
+            raise RuntimeError("Workers are still stopping; database remains open: " + ", ".join(late))
         self.db.close()
         return late
 

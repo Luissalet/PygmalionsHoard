@@ -31,6 +31,7 @@ def running_app(tmp_path):
     child = subprocess.Popen(command, cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         assert net.wait_healthy(f"http://127.0.0.1:{port}", "pygmalion-hoard", timeout=40), "the app did not start"
+        assert httpx.put(f"http://127.0.0.1:{port}/api/modules/training",json={"enabled":True},trust_env=False).status_code == 200
         yield {"port": port, "env": env, "command": command, "data": tmp_path / "data"}
     finally:
         child.terminate()
@@ -69,7 +70,7 @@ def test_the_shared_bridge_lists_and_calls_the_tools_of_the_running_app(running_
         return tools, settings, missing
 
     tools, settings, missing = asyncio.run(go())
-    assert len(tools) == len(TOOLS)
+    assert len(tools) == len(TOOLS) + 67
     assert not settings.is_error and "values" in settings.body or "settings" in settings.body or not settings.is_error
     assert missing.is_error and missing.body["code"] == "not_found" and missing.body["hint"] and missing.body["key"]
 
@@ -113,7 +114,7 @@ def test_old_settings_rows_written_as_plain_text_still_work(ctx):
 
 
 def test_the_token_and_url_files_are_stable_and_atomic(tmp_path):
-    from conftest import build_services
+    from tests.conftest import build_services
 
     a = build_services(tmp_path / "a")
     token = a.svc.token
@@ -202,7 +203,7 @@ def test_a_secret_is_written_atomically_and_owner_only(ctx):
 def test_a_dataset_version_file_is_replaced_whole_and_a_failed_write_leaves_no_temp_file(ctx, monkeypatch):
     from pygmalion_hoard.hoard_link import atomic
 
-    from helpers import chat_records
+    from tests.helpers import chat_records
 
     def build(name):
         return ctx.svc.datasets.build({"name": name, "kind": "chat", "sources": [{"type": "jsonl", "text": "\n".join(json.dumps(r) for r in chat_records(30))}]})
@@ -222,7 +223,7 @@ def test_a_dataset_version_file_is_replaced_whole_and_a_failed_write_leaves_no_t
 
 
 def test_the_workers_write_their_files_through_the_shared_atomic_module(tmp_path, monkeypatch):
-    import models  # noqa: F401  (puts the workers folder on sys.path)
+    from tests import models  # noqa: F401  (puts the workers folder on sys.path)
     import _atomic
     import train_lora
 
@@ -235,7 +236,7 @@ def test_the_workers_write_their_files_through_the_shared_atomic_module(tmp_path
 
 
 def test_the_worker_atomic_helpers_fall_back_when_the_shared_copy_is_missing(tmp_path, monkeypatch):
-    import models  # noqa: F401
+    from tests import models  # noqa: F401
     import _atomic
 
     monkeypatch.setattr(_atomic, "_atomic", None)
@@ -292,8 +293,8 @@ def test_run_capture_reports_a_timeout_and_a_missing_program_without_raising(tmp
 
 # ---------------------------------------------------------------- waiting for jobs
 def test_waiting_is_cut_to_the_shared_limit_and_a_job_still_running_says_so(ctx, monkeypatch):
-    from conftest import call
-    from helpers import chat_records
+    from tests.conftest import call
+    from tests.helpers import chat_records
 
     svc = ctx.svc
     seen = []
@@ -313,8 +314,8 @@ def test_waiting_is_cut_to_the_shared_limit_and_a_job_still_running_says_so(ctx,
 
 
 def test_a_job_that_finishes_inside_the_wait_is_not_reported_as_running(ctx):
-    from conftest import call
-    from helpers import chat_records
+    from tests.conftest import call
+    from tests.helpers import chat_records
 
     done = call(ctx.svc, "dataset_create", wait_s=30, name="Rapida", sources=[{"type": "jsonl", "text": "\n".join(json.dumps(r) for r in chat_records(30))}])
     assert done["done"] is True and done["state"] == "done" and "still_running" not in done

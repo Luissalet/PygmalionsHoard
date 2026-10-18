@@ -93,7 +93,7 @@ def test_pages_that_poll_for_their_first_data_ask_for_the_immediate_tick():
 def test_the_brand_mark_is_the_app_icon_not_a_letter():
     app = (SRC / "App.jsx").read_text(encoding="utf-8")
     brand = app[app.index("<aside"):app.index("</aside>")]
-    assert re.search(r'<img src="/icon-192\.png"', brand) and ">P<" not in brand and "brand-mark" not in brand
+    assert re.search(r'<img src="/training/icon-192\.png"', brand) and ">P<" not in brand and "brand-mark" not in brand
     assert (ROOT / "client" / "public" / "icon-192.png").is_file() and (ROOT / "pygmalion_hoard" / "static" / "icon-192.png").is_file()
 
 

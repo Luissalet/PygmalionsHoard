@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-import models  # noqa: F401
+from tests import models  # noqa: F401
 import train_lora as T
 
 

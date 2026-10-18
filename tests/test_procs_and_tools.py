@@ -176,7 +176,7 @@ def test_work_paths_follow_the_setting(ctx):
 
 
 def test_default_work_folder_is_inside_the_data_folder(tmp_path):
-    from conftest import build_services
+    from tests.conftest import build_services
     c = build_services(tmp_path / "z")
     try:
         c.svc.settings.set({"paths.work": ""})

@@ -9,7 +9,7 @@ import json
 
 import pytest
 
-from conftest import call, needs_posix
+from tests.conftest import call, needs_posix
 from pygmalion_hoard import calib
 from pygmalion_hoard.errors import PygmalionError
 from test_evaluate import DatasetGalton, FakeGalton, attach, qa

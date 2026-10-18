@@ -14,7 +14,7 @@ import _stio as S
 import ctx_extend as X
 import merge_lora as L
 import merge_models as M
-from models import make_adapter, make_model, read_all
+from tests.models import make_adapter, make_model, read_all
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -250,7 +250,7 @@ def test_adapter_for_another_base_is_refused(tmp_path):
     ad = make_adapter(tmp_path / "ad", base)
     other = make_model(tmp_path / "other")
     # same names, different shapes: rebuild the other base with wider layers
-    from models import tensor_names
+    from tests.models import tensor_names
     entries = [(n, "F32", [s[0] * 2, *s[1:]]) for n, s in tensor_names(2)]
     S.write_shard(other / "model.safetensors", entries, lambda n: b"\0" * S.tensor_nbytes({"dtype": "F32", "shape": next(e[2] for e in entries if e[0] == n)}))
     with pytest.raises(C.WorkerError) as exc:
@@ -315,7 +315,7 @@ def test_a_shape_misfit_is_found_before_anything_is_written_and_tries_the_librar
     base = make_model(tmp_path / "base")
     ad = make_adapter(tmp_path / "ad", base)
     other = make_model(tmp_path / "other")
-    from models import tensor_names
+    from tests.models import tensor_names
     entries = [(n, "F32", [s[0] * 2, *s[1:]]) for n, s in tensor_names(2)]
     S.write_shard(other / "model.safetensors", entries, lambda n: b"\0" * S.tensor_nbytes({"dtype": "F32", "shape": next(e[2] for e in entries if e[0] == n)}))
     out = tmp_path / "out"

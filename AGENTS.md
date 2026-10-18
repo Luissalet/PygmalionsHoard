@@ -1,5 +1,8 @@
 # Working on Pygmalion's Hoard
 
+Production is the unified studio: `pygmalion_hoard/fusion`, `galton_hoard`, `evaluation-client`, `evaluation_tests`. Read `docs/FUSION.md` before changing shared lifecycle or evaluation wiring. All modules default OFF; static MCP discovery must not import services or autostart anything. `main.create_app` remains the isolated training-domain factory for domain regression tests. Run `python -m pytest tests evaluation_tests fusion_tests --import-mode=importlib` and `npm run build`. Evaluation API docs: `python scripts/evaluation/gen_api_doc.py --check`. Never restore the external Galton transport in production or change real data locations in committed defaults.
+
+
 A local model tuning and extension studio (package `pygmalion_hoard`, service `pygmalion-hoard`, app id `pygmalion`, port 5202). It builds datasets, trains LoRA and QLoRA adapters, merges, extends context, converts, quantizes, evaluates through Galton's Hoard and publishes. Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) first.
 
 ## Commands

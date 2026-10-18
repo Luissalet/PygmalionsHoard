@@ -42,7 +42,7 @@ def test_no_default_folder_of_the_host_is_used(tmp_path, fresh):
 
 
 def test_a_fresh_install_has_nothing_configured_by_the_machine(ctx, tmp_path):
-    from conftest import build_services
+    from tests.conftest import build_services
     c = build_services(tmp_path / "fresh-install", with_tools=False)
     try:
         c.svc.settings.set({"env.python": "", "llama.bin_dir": "", "llama.src_dir": "", "publish.ollama_exe": ""})

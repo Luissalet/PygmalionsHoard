@@ -151,8 +151,8 @@ export default function Trabajos({ param }) {
     run("c", async () => { await api.call("job_cancel", { job: job.id }); notify(t("cancel_requested")); changed(); reload(); });
   };
   const resume = (job) => run("r", async () => { await api.call("job_resume", { job: job.id }); notify(t("resumed")); changed(); reload(); });
-  const active = jobs.filter((j) => ACTIVE.includes(j.state));
-  const history = jobs.filter((j) => !ACTIVE.includes(j.state));
+  const active = jobs.filter((j) => ACTIVE.includes(j.state) && !j.held);
+  const history = jobs.filter((j) => !ACTIVE.includes(j.state) || j.held);
   return (
     <div className="space-y-6">
       <PageHead title={t("nav_jobs")} subtitle={t("jobs_sub")} actions={<>

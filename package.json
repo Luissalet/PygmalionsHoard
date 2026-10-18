@@ -6,7 +6,7 @@
   "description": "A local studio to adapt language models: datasets, LoRA and QLoRA, merges, GGUF quantization, context extension, evaluation and publishing.",
   "scripts": {
     "client": "vite",
-    "build": "vite build",
+    "build": "vite build && vite build --config vite.evaluation.config.js",
     "dev": "python scripts/dev.py",
     "start": "python -m pygmalion_hoard",
     "open": "python scripts/launch.py",

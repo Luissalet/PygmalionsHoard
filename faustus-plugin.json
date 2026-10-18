@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "pygmalion",
   "name": "Pygmalion's Hoard",
-  "purpose": "A local model tuning and extension studio: it prepares datasets (from files, the family's other apps or synthetic generation with a teacher model), trains LoRA and QLoRA adapters on the allowed GPUs, merges adapters and whole models (linear, slerp, ties, dare), extends the context length with YaRN, converts to GGUF, builds importance matrices, quantizes, measures perplexity, evaluates every result against its baseline through Galton's Hoard, and publishes the winner to Ollama or as a llama.cpp backend for Faustus. Every artifact keeps its lineage and a recipe that can be exported and replayed. All jobs queue on two lanes (gpu and cpu), hold a GPU lease from the hub while they run, can be cancelled and resumed, and everything stays on the computer.",
+  "purpose": "Local model development and evaluation studio: datasets, LoRA/QLoRA, merges, GGUF, context, capture, lineage, publishing; complete incorporated evaluation engine with suites, runs, comparison, arena, routing, rule and harness tests, simulated users and agent campaigns. Training, evaluation and automatic evaluations are independent and default OFF. Discovery never starts engines.",
   "capabilities": [
     "fine-tuning",
     "lora",
@@ -31,7 +31,15 @@
     "gpu-lease",
     "job-queue",
     "job-events",
-    "dashboard"
+    "dashboard",
+    "benchmark",
+    "harness-bench",
+    "agent-bench",
+    "arena",
+    "model-routing",
+    "simulated-users",
+    "rule-bench",
+    "independent-modules"
   ],
   "placeholders": [
     "PYGMALION_DIR",
@@ -103,6 +111,9 @@
       "panel": "/api/copilot/panel.js",
       "proxy": "/api/copilot/proxy",
       "launcher": "/api/copilot/launcher.js"
-    }
+    },
+    "absorbed_apps": [
+      "galton"
+    ]
   }
 }

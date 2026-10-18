@@ -20,6 +20,8 @@ dependencies = [
   "numpy>=1.26",
   "safetensors>=0.4",
   "tzdata>=2024.1",
+  "sympy>=1.14",
+  "pillow>=11",
 ]
 
 [project.optional-dependencies]
@@ -30,13 +32,14 @@ icon = ["pillow>=11"]
 pygmalion-hoard = "pygmalion_hoard.__main__:main"
 
 [tool.setuptools.packages.find]
-include = ["pygmalion_hoard*"]
+include = ["pygmalion_hoard*", "galton_hoard*"]
 
 [tool.setuptools.package-data]
-pygmalion_hoard = ["static/**/*", "calib/*.txt", "workers/*.py"]
+pygmalion_hoard = ["static/**/*", "calib/*.txt", "workers/*.py", "fusion/*.json", "fusion/web/**/*"]
+galton_hoard = ["static/**/*", "suites/*.json", "simusers/*.json", "agentbench/*.json", "rulebench/**/*.json"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-q"
+testpaths = ["tests", "evaluation_tests", "fusion_tests"]
+addopts = "-q --import-mode=importlib"
 asyncio_mode = "auto"
 filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning", "ignore::FutureWarning"]

@@ -8,8 +8,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from conftest import call, finish, needs_posix
-from models import make_model, read_all
+from tests.conftest import call, finish, needs_posix
+from tests.models import make_model, read_all
 from pygmalion_hoard import procs
 from pygmalion_hoard.errors import PygmalionError
 from pygmalion_hoard.jobs import JobManager

@@ -3,7 +3,7 @@
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from conftest import build_services
+from tests.conftest import build_services
 
 from pygmalion_hoard.hoard_link.guard import check_request, install_guard, parse_allowed_hosts
 from pygmalion_hoard.main import create_app

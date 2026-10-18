@@ -37,11 +37,11 @@ async function request(method, path, { params, body } = {}) {
 }
 
 // Every read and write goes through the same tool handlers the assistant uses.
-const call = (name, args) => request("POST", "/api/ui/call", { body: { name, arguments: args || {} } });
+const call = (name, args) => request("POST", "/training/api/ui/call", { body: { name, arguments: args || {} } });
 
 export const api = {
-  health: () => request("GET", "/api/health"),
-  dashboard: () => request("GET", "/api/dashboard"),
+  health: () => request("GET", "/training/api/health"),
+  dashboard: () => request("GET", "/training/api/dashboard"),
   call,
 };
 

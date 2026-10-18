@@ -19,9 +19,9 @@ from pygmalion_hoard import procs, settings as settings_module, workdir  # noqa:
 from pygmalion_hoard.config import Config  # noqa: E402
 from pygmalion_hoard.services import Services  # noqa: E402
 
-import helpers  # noqa: E402
-from helpers import FakeLeaseFactory, chat_records, fake_inventory, make_toolchain  # noqa: E402
-from models import make_model  # noqa: E402
+from tests import helpers  # noqa: E402
+from tests.helpers import FakeLeaseFactory, chat_records, fake_inventory, make_toolchain  # noqa: E402
+from tests.models import make_model  # noqa: E402
 
 FAKE_WORKERS = Path(__file__).resolve().parent / "fake_workers"
 needs_posix = pytest.mark.skipif(not helpers.EXECUTABLE_TOOLS, reason=helpers.POSIX_ONLY)

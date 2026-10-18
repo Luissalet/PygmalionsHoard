@@ -8,8 +8,8 @@ import sys
 import httpx
 import pytest
 
-from conftest import build_services
-from models import make_model
+from tests.conftest import build_services
+from tests.models import make_model
 from pygmalion_hoard import envcheck, hf
 from pygmalion_hoard.errors import PygmalionError
 
@@ -199,7 +199,7 @@ def test_health_counts_follow_the_store(ctx, base_model):
 
 
 def test_the_dashboard_follows_an_environment_check_made_through_the_tool(ctx):
-    from conftest import call
+    from tests.conftest import call
     assert ctx.svc.dashboard()["env"] == {"checked": False}
     call(ctx.svc, "env_check", fresh=True)
     assert ctx.svc.dashboard()["env"]["checked"] is True
@@ -207,8 +207,8 @@ def test_the_dashboard_follows_an_environment_check_made_through_the_tool(ctx):
 
 def test_dashboard_counts_read_the_same_folders_as_bases_list(ctx):
     """Two models on disk that nobody listed yet: the dashboard counts them, and bases_list returns the same two (no duplicates)."""
-    from conftest import call
-    from models import make_model
+    from tests.conftest import call
+    from tests.models import make_model
     make_model(ctx.work / "hf" / "acme--one", seed=1)
     make_model(ctx.work / "hf" / "acme--two", seed=2)
     (ctx.work / "hf" / "notes").mkdir()                              # not a model folder
@@ -221,7 +221,7 @@ def test_dashboard_counts_read_the_same_folders_as_bases_list(ctx):
 
 def test_dashboard_bases_drop_when_a_folder_is_removed(ctx):
     import shutil
-    from models import make_model
+    from tests.models import make_model
     folder = make_model(ctx.work / "hf" / "acme--gone", seed=3)
     assert ctx.svc.counts()["bases"] == 1
     shutil.rmtree(folder)

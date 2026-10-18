@@ -35,9 +35,11 @@ class Config:
     port_strict: bool = False
     allowed_hosts: tuple[str, ...] = ()
     data_dir_configured: bool = False
+    url_prefix: str = ""
     http_timeout_s: float = 25.0
     offline: bool = False  # never touch the network (tests): Hugging Face, the hub and Galton answer "offline"
     scheduler: bool = True  # background job lanes and the housekeeping tick; tests and the MCP-only mode switch it off
+    defer_existing_jobs: bool = False  # merged studio keeps old queued jobs for explicit resume
     workers_dir: Optional[Path] = None  # replaces pygmalion_hoard/workers (tests point it at fake workers)
     secrets: dict[str, str] = field(default_factory=dict)  # from .env (+ environment); never written back
 

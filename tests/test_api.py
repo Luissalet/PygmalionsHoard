@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 
-from conftest import needs_posix
+from tests.conftest import needs_posix
 from pygmalion_hoard import SERVICE, __version__
 from pygmalion_hoard.main import STATIC_DIR
 

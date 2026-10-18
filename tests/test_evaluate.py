@@ -8,7 +8,7 @@ import threading
 import httpx
 import pytest
 
-from conftest import call
+from tests.conftest import call
 from gguf_builder import build_gguf
 from pygmalion_hoard import evaluate as E
 from pygmalion_hoard.errors import PygmalionError

@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   root: 'client',
+  base: '/training/',
   plugins: [react(), tailwindcss()],
   build: {
     outDir: '../pygmalion_hoard/static',
