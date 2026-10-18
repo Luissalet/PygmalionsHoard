@@ -45,13 +45,17 @@ class Module:
     def native_call(self, name, arguments):
         from pygmalion_hoard.errors import PygmalionError
         from galton_hoard.agent_tools import call_tool
+        from galton_hoard.errors import GaltonError
         with self.native_condition:
             if self.app is None or self.stopping or self.cleanup_pending:
                 raise PygmalionError("galton_unavailable", "galton_refused", tool=name, detail="Activa Evaluación en Funciones.")
             self.native_active += 1
             svc = self.app.state.services
         try:
-            return call_tool(svc, name, arguments)
+            try:
+                return call_tool(svc, name, arguments, caller="pygmalion")
+            except (GaltonError, ValidationError) as exc:
+                raise PygmalionError("galton_unavailable", "galton_refused", tool=name, detail=str(exc)) from exc
         finally:
             with self.native_condition:
                 self.native_active -= 1

@@ -113,7 +113,7 @@ async def test_stopping_drains_native_calls_before_database_close(monkeypatch,tm
         assert release.is_set();closed.append(True)
     native=FastAPI(lifespan=lifespan)
     module=Module({'id':'evaluation'},tmp_path,lambda *args:native)
-    def slow(*args):entered.set();release.wait(3);return {'ok':True}
+    def slow(*args,**kwargs):entered.set();release.wait(3);return {'ok':True}
     monkeypatch.setattr(agent_tools,'call_tool',slow)
     await module.set_enabled(True)
     thread=threading.Thread(target=lambda:module.native_call('slow',{}));thread.start()
@@ -204,5 +204,14 @@ def test_training_evaluator_finishes_against_native_evaluation_engine(client,app
     assert result['run'] and result['contestants']['parent']!=result['contestants']['child']
     assert result['verdict'] in ('better','no_clear_difference')
     assert evaluation.store.run(result['run'])['state']=='done'
+    assert evaluation.store.run(result['run'])['caller']=='pygmalion'
     assert training.store.artifact(child['id'])['metrics']['galton']['run']==result['run']
     assert evaluation.fake_world.calls
+
+
+def test_native_errors_keep_the_training_evaluator_contract(client,app):
+    from pygmalion_hoard.errors import PygmalionError
+    switch(client,'training');switch(client,'evaluation')
+    bridge=app.state.modules['training'].app.state.services.galton
+    with pytest.raises(PygmalionError) as caught:bridge.call('model_get',{'model':'missing-native'})
+    assert caught.value.code=='galton_unavailable' and 'missing-native' in caught.value.message
