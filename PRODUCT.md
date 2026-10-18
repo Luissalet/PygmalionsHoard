@@ -1,10 +1,15 @@
-# Pygmalion’s Hoard
+# Pygmalion's Hoard
 
+Aplicación local de la familia Hoard para Luis. Entrenamiento, adaptación y evaluación de modelos.
 
+## Uso
 
-Local model development and evaluation studio. The owner explicitly requested merging Galton while preserving both complete capabilities and all existing data. Main workflows: datasets, training, merges, quantization and publishing; model evaluation, comparative results, harness and agent testing. Modules start independently and default OFF. Automatic evaluation has a separate switch, also OFF. Discovery never starts servers. No real model or hardware is required for interface QA.
+La persona abre la aplicación explícitamente y activa sólo las funciones que necesita. Entrenamiento, Evaluación y Evaluaciones automáticas. Todos los controles comienzan desactivados. Consultar herramientas MCP no arranca aplicaciones ni motores. La elección posterior se conserva. Las interfaces nativas siguen disponibles, con todas sus funciones, dentro del mismo producto.
 
+## Datos y ejecución
 
+Los historiales permanecen en sus carpetas originales. Desactivar conserva datos y ajustes, espera a los trabajos en curso y termina los procesos del módulo. Las pruebas usan datos sintéticos. No se inicia una carga de modelos como efecto de abrir este panel.
 
-Platform: Windows/Linux local web application, same-origin native pages in one ASGI process. Existing Pygmalion icon, rose-marble palette and family Hoard typography remain the visual authority. This scope adds a Functions control surface; existing domain pages remain available.
+## Presentación confirmada
 
+Luis pide coherencia con los Hoards: icono propio existente, tema oscuro de la familia, títulos Cinzel y texto Source Sans 3, navegación y botón canónico de Faustus. La superficie Funciones es operativa: controles comprensibles, estado visible y acceso directo a cada interfaz. Escritorio y móvil; no hay cambio de identidad ni portada comercial.
