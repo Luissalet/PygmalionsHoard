@@ -215,3 +215,18 @@ def test_native_errors_keep_the_training_evaluator_contract(client,app):
     bridge=app.state.modules['training'].app.state.services.galton
     with pytest.raises(PygmalionError) as caught:bridge.call('model_get',{'model':'missing-native'})
     assert caught.value.code=='galton_unavailable' and 'missing-native' in caught.value.message
+
+def test_native_pwa_workers_and_caches_stay_inside_each_module(client):
+    import re
+    for key in ('training','evaluation'):
+        switch(client,key)
+        page=client.get('/'+key+'/')
+        scripts=re.findall(r'<script[^>]+src="([^"]+)"',page.text)
+        built=client.get(next(path for path in scripts if '/assets/' in path))
+        assert built.status_code==200 and '"/'+key+'/sw.js"' in built.text
+        manifest=client.get('/'+key+'/manifest.webmanifest').json()
+        assert manifest['start_url']=='/'+key+'/' and manifest['scope']=='/'+key+'/'
+        worker=client.get('/'+key+'/sw.js')
+        assert worker.status_code==200 and worker.headers['service-worker-allowed']=='/'+key+'/'
+        assert 'name.startsWith("'+key+'-")' in worker.text
+        assert 'pathname.startsWith("/'+key+'/api/")' in worker.text

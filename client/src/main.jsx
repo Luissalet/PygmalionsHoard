@@ -15,7 +15,7 @@ createRoot(document.getElementById("root")).render(
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
   try {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      navigator.serviceWorker.register("/training/sw.js").catch(() => {});
     });
   } catch {
     // installing is optional
