@@ -3291,5 +3291,6 @@
       "module": "evaluation",
       "token_file": "data/native/evaluation/data/mcp-token"
     }
-  ]
+  ],
+  "default_timeout_s": 660.0
 }
