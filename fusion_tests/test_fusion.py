@@ -230,3 +230,77 @@ def test_native_pwa_workers_and_caches_stay_inside_each_module(client):
         assert worker.status_code==200 and worker.headers['service-worker-allowed']=='/'+key+'/'
         assert 'name.startsWith("'+key+'-")' in worker.text
         assert 'pathname.startsWith("/'+key+'/api/")' in worker.text
+
+@pytest.fixture
+def fake_copilot(monkeypatch):
+    requests=[]
+    real_client=httpx.AsyncClient
+    def respond(request):
+        requests.append(request)
+        if request.url.path=='/api/hoard-copilot/capabilities':
+            return httpx.Response(200,json={'contract_version':'1.0'})
+        if request.url.path=='/api/hoard-copilot/sessions':
+            return httpx.Response(200,json=json.loads(request.content))
+        raise AssertionError('Unexpected copilot request: '+str(request.url))
+    def fake_client(*args,**kwargs):
+        kwargs['transport']=httpx.MockTransport(respond)
+        return real_client(*args,**kwargs)
+    monkeypatch.setattr(httpx,'AsyncClient',fake_client)
+    return requests
+
+
+def test_native_copilot_preserves_ids_spaces_context_and_prefixed_routes(client,app,fake_copilot):
+    original={}
+    for key in ('training','evaluation'):
+        module=app.state.modules[key]
+        module.data_dir.mkdir(parents=True,exist_ok=True)
+        space=module.data_dir/'copilot-space-id'
+        if not space.exists():space.write_text('saved-'+key+'-space',encoding='utf-8')
+        original[key]=space.read_text(encoding='utf-8')
+        switch(client,key)
+    infos={}
+    for key,app_id in [('training','pygmalion'),('evaluation','galton')]:
+        headers={'Referer':'http://127.0.0.1:5202/'+key+'/#/ajustes'}
+        info=client.get('/api/copilot/info',headers=headers)
+        assert info.status_code==200,info.text
+        info=info.json();infos[key]=info
+        assert info['app_id']==info['tool_server_id']==app_id
+        assert info['data_space_id']==original[key]
+        direct=client.get('/'+key+'/api/copilot/info',follow_redirects=False)
+        assert direct.status_code==200 and direct.json()==info
+        payload={'path':'/api/hoard-copilot/sessions','method':'POST','body':{'context':{'origin':{'page':'preserved'}},'hoard_context':{'origin':{'selection':'kept'}}}}
+        for path,ref in [('/api/copilot/proxy',headers),('/'+key+'/api/copilot/proxy',{})]:
+            result=client.post(path,json=payload,headers=ref,follow_redirects=False)
+            assert result.status_code==200,result.text
+            body=result.json()
+            for field in ('context','hoard_context'):
+                assert body[field]['origin']['app_id']==app_id
+                assert body[field]['origin']['data_space_id']==original[key]
+            assert body['context']['origin']['page']=='preserved'
+            assert body['hoard_context']['origin']['selection']=='kept'
+    assert infos['training']['data_space_id']!=infos['evaluation']['data_space_id']
+    central=client.get('/api/copilot/info').json()
+    assert central['app_id']==central['tool_server_id']=='pygmalion'
+    assert central['data_space_id']==(app.state.data_dir/'copilot-space-id').read_text(encoding='utf-8')
+    for referer in ('http://elsewhere.invalid:5202/evaluation/','http://127.0.0.1:5202/evaluation-other/','http://[invalid/evaluation/'):
+        assert client.get('/api/copilot/info',headers={'Referer':referer}).json()==central
+    assert fake_copilot
+
+
+def test_disabled_copilot_does_not_open_native_history_or_start_engines(client,app,fake_copilot):
+    def files():
+        return {str(p.relative_to(app.state.data_dir)):p.read_bytes() for p in app.state.data_dir.rglob('*') if p.is_file()}
+    before=files()
+    for key in ('training','evaluation'):
+        headers={'Referer':'http://127.0.0.1:5202/'+key+'/'}
+        for path in ('/api/copilot/info','/'+key+'/api/copilot/info'):
+            result=client.get(path,headers=headers,follow_redirects=False)
+            assert result.status_code==409 and result.json()['error']=='module_disabled'
+        for path in ('/api/copilot/proxy','/'+key+'/api/copilot/proxy'):
+            result=client.post(path,headers=headers,json={'path':'/api/hoard-copilot/sessions'},follow_redirects=False)
+            assert result.status_code==409
+    assert not fake_copilot
+    assert files()==before and not list(app.state.data_dir.rglob('*.db'))
+    assert all(module.app is None for module in app.state.modules.values())
+    assert client.get('/api/copilot/info').status_code==200
+    assert files()==before

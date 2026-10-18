@@ -26,3 +26,9 @@ OFF is saved before waiting. Native API requests share a lifetime and tracked st
 ## Verification
 
 Run `python -m pytest tests evaluation_tests fusion_tests --import-mode=importlib`; fake workers, invented data, no GPU/real model. Build both native clients with `npm run build`; check both API docs generators. Browser verification must inspect Functions on desktop/mobile and navigate native pages after explicit enabling. A source regression does not certify inference quality of a real model.
+
+## Assistant conversation spaces
+
+Native `/training/api/copilot/*` and `/evaluation/api/copilot/*` dispatch to their own active engine, without redirecting to the shell. The canonical shared launcher may request root `/api/copilot/info` and `/api/copilot/proxy`: the shell selects the native engine only when Referer belongs to this same origin and points inside `/training/` or `/evaluation/`. Root/no-module requests retain the central shell assistant. Shared launcher/panel assets may use the central route.
+
+Each native engine keeps its original `app_id`, `tool_server_id` and the existing `copilot-space-id` from its mapped data folder; context fields remain intact and the native relay applies its own origin. A request for a disabled module returns409 before reading its token/history or opening its engine. Neither discovery nor assistant queries enable a module. This is product routing only; the shared SDK and compiled client code remain unchanged.
