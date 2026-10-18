@@ -190,3 +190,19 @@ def test_all_historical_queued_jobs_wait_for_explicit_resume(client,app):
     assert svc.jobs.view(previous[0])['resumable']
     resumed=svc.jobs.resume(previous[0]['id'])
     assert resumed['state']=='queued' and previous[0]['id'] not in svc.jobs._held_jobs
+
+def test_training_evaluator_finishes_against_native_evaluation_engine(client,app):
+    from evaluation_tests.helpers import add_gguf
+    switch(client,'training');switch(client,'evaluation')
+    training=app.state.modules['training'].app.state.services
+    evaluation=app.state.modules['evaluation'].app.state.services
+    add_gguf(evaluation,'fusion-parent',accuracy=.5,seed=1)
+    add_gguf(evaluation,'fusion-child',accuracy=1)
+    parent=training.store.create_artifact('ollama','fusion-parent',path='fusion-parent')
+    child=training.store.create_artifact('ollama','fusion-child',path='fusion-child',parents=[parent['id']])
+    result=training.evaluator.run(child['id'],against=parent['id'],intent='smoke',suites=['rapida'],regression=False,settings={'effort':'off'})
+    assert result['run'] and result['contestants']['parent']!=result['contestants']['child']
+    assert result['verdict'] in ('better','no_clear_difference')
+    assert evaluation.store.run(result['run'])['state']=='done'
+    assert training.store.artifact(child['id'])['metrics']['galton']['run']==result['run']
+    assert evaluation.fake_world.calls

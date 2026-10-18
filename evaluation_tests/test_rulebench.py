@@ -170,7 +170,7 @@ def test_run_bench_and_verdict_with_a_fake_model():
 
 
 def test_cli_dry_run_lists_the_plan():
-    done = subprocess.run([sys.executable, str(ROOT / "scripts" / "rulebench_eval.py"), "--dry-run", "--k", "5",
+    done = subprocess.run([sys.executable, str(ROOT / "scripts" / "evaluation" / "rulebench_eval.py"), "--dry-run", "--k", "5",
                            "--pressures", "neutral,contra", "--tasks", "bug-discount,feat-clamp"],
                           capture_output=True, text=True, cwd=ROOT, timeout=60)
     assert done.returncode == 0, done.stderr

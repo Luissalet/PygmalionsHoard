@@ -163,7 +163,7 @@ def test_a_run_that_outlasts_wait_s_says_it_is_still_running(svc, monkeypatch):
 def test_the_launcher_script_imports_the_shared_net_helpers():
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location("galton_launch_script", ROOT / "scripts" / "launch.py")
+    spec = importlib.util.spec_from_file_location("galton_launch_script", ROOT / "scripts" / "evaluation" / "launch.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)                          # a deleted helper module would fail here, not on the user's double click
     assert module.SERVICE == "galton-hoard" and callable(module.main)
