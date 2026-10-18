@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "id": "galton",
+  "name": "Galton's Hoard",
+  "purpose": "Evaluation capabilities absorbed natively by Pygmalion’s Hoard. Compatibility identity for preserved family calls and original data; no standalone startup.",
+  "capabilities": [
+    "model-benchmarks",
+    "model-evaluation",
+    "model-comparison",
+    "model-routing",
+    "leaderboard",
+    "regression-watch",
+    "gguf",
+    "llama-cpp",
+    "ollama",
+    "long-context",
+    "tool-calling",
+    "vision-benchmarks",
+    "code-benchmarks",
+    "spanish",
+    "statistics",
+    "arena",
+    "gpu-leases",
+    "job-events",
+    "dashboard"
+  ],
+  "placeholders": [
+    "PYGMALION_DIR",
+    "APP_URL",
+    "TOKEN_FILE",
+    "PYTHON"
+  ],
+  "defaults": {
+    "APP_URL": "http://127.0.0.1:5202/evaluation",
+    "TOKEN_FILE": "{PYGMALION_DIR}/data/native/evaluation/data/mcp-token",
+    "PYTHON": "{PYGMALION_DIR}/venv/Scripts/python.exe",
+    "PYGMALION_DIR": "{COMPAT_DIR}/../..",
+    "DATA_DIR": "{PYGMALION_DIR}/data/native/evaluation/data"
+  },
+  "app": {
+    "url_default": "http://127.0.0.1:5202/evaluation",
+    "ui_url": "http://127.0.0.1:5202/",
+    "health": {
+      "path": "/api/health",
+      "expect": {
+        "service": "absorbed-galton"
+      }
+    },
+    "identify": {
+      "service": [
+        "galton-hoard"
+      ],
+      "title": [
+        "galton's hoard",
+        "banco de pruebas de modelos"
+      ]
+    }
+  },
+  "mcp": {
+    "transport": "stdio",
+    "command": "{PYTHON}",
+    "args": [
+      "{PYGMALION_DIR}/compatibility/mcp_server.py"
+    ],
+    "env": {
+      "HOARD_COMPAT_ID": "galton",
+      "HOARD_COMPAT_URL": "http://127.0.0.1:5202"
+    },
+    "optional_env": []
+  },
+  "x-family": {
+    "copilot": true,
+    "absorbed_by": {
+      "id": "pygmalion",
+      "repository": "https://github.com/Luissalet/PygmalionsHoard",
+      "module": "evaluation",
+      "standalone": false
+    },
+    "standalone": false,
+    "compatibility": true,
+    "source_data": "Moved into the merged application; no dependency on the retired repository."
+  },
+  "notes": "Native compatibility identity owned by Pygmalion's Hoard. Data, tokens and all runtime files belong to the merged application. No retired repository is required. Start the owner explicitly and enable its module."
+}
