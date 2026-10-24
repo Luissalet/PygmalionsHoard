@@ -466,6 +466,21 @@ Annotations: readOnlyHint, idempotentHint.
 | `limit` (integer) | no |  |
 | `offset` (integer) | no |  |
 
+## `run_results_export`
+
+Prepare stored results as CSV and JSON text. Descargar resultados guardados.
+
+All selected rows, not the table's last 600. No answers, reasoning or tool calls. only_failed matches the run page (not passed and not skipped), including pending/unavailable. Both texts share one collection read during the stated interval, not an atomic/final snapshot of a live run. CSV null is empty; JSON retains types and integer digits. The normal assistant context cap still applies; use the uncapped UI for a complete large download.
+Sinónimos: exportar evaluación, descargar tabla, métricas por caso, csv, json
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | yes | Explicit saved run id. |
+| `model` (string) | no | Model id or name; empty selects every model. |
+| `only_failed` (boolean) | no | Match the run page: not passed and not skipped, including pending/unavailable. |
+
 ## `galton_run`
 
 Measure these models now (quick suite by default). Medir estos modelos ahora.

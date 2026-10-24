@@ -6,7 +6,9 @@ Pygmalion incorpora todas las funciones de Galton de forma nativa. Un servidor e
 
 Entrenamiento conserva datasets, LoRA/QLoRA, fusiones, contexto, conversión, cuantización, captura, linaje y publicación. Evaluación conserva modelos y suites, importaciones, ejecuciones y reanudación, resultados, comparación y estadísticas, arena, rutas, pruebas de reglas, usuarios simulados, matrices de arneses (también por un eje de idioma español/inglés), un banco de vídeo hecho con código y campañas de agentes. Las evaluaciones de entrenamiento llaman a este motor dentro del mismo proceso. La vigilancia periódica necesita además el control de Evaluaciones automáticas; los ajustes históricos permanecen intactos y no reanudamos colas antiguas al abrir un módulo. Los trabajos anteriores se pueden reanudar explícitamente.
 
-Las páginas originales se encuentran en `/training/` y `/evaluation/`, sin marcos embebidos. Se conservan `/capture/...` para los arneses existentes. El catálogo combinado expone **141 herramientas**: las 50 de entrenamiento, 89 de evaluación y `pygmalion_modules` / `pygmalion_set_module`. Tres colisiones se publican con prefijo: `evaluation_settings_get`, `evaluation_settings_set`, `evaluation_gpu_status`.
+Las páginas originales se encuentran en `/training/` y `/evaluation/`, sin marcos embebidos. Se conservan `/capture/...` para los arneses existentes. El catálogo combinado expone **148 herramientas**: las 50 de entrenamiento, 96 de evaluación y `pygmalion_modules` / `pygmalion_set_module`. Tres colisiones se publican con prefijo: `evaluation_settings_get`, `evaluation_settings_set`, `evaluation_gpu_status`.
+
+En Resultados de una evaluación guardada, Preparar descarga recoge todas las filas del modelo y del filtro Sólo fallos elegidos, incluidas las que no caben entre las últimas600 de la tabla. CSV y JSON descargan los mismos textos nativos preparados, conservando los dígitos de los enteros; no incluyen respuestas, razonamientos ni tool_calls. Si la evaluación sigue cambiando, se informa del intervalo de lectura, sin prometer una captura atómica/final. CSV escribe null como celda vacía; JSON conserva los tipos. API/MCP ofrecen el mismo `run_results_export` de lectura: el límite de contexto vigente puede recortar una respuesta grande para el asistente; la UI descarga los textos completos.
 
 Los datos se utilizan en su ubicación original mediante `data/modules.json` (`data_paths.training` y `data_paths.evaluation`). No se copian ni convierten bases de datos, datasets, modelos, resultados o linaje. `python scripts/adopt_evaluation.py --evaluation-data <carpeta>` configura la ubicación con todos los módulos OFF. Desactivar detiene workers y solicitudes antes de cerrar sus bases; los datos permanecen.
 
@@ -16,7 +18,7 @@ Esta fusión no cambia las leases de GPU ni el servicio global de modelos. Las p
 
 Evalúa los trajes de Darwin's Hoard (configuraciones de trabajo reutilizables para un tipo de encargo): casos con comprobaciones de aceptación ejecutables (el fichero existe, esquema JSON, tolerancia numérica, expresión regular o una rúbrica de juez), tres brazos (herramientas genéricas, traje actual, mejora candidata) y, por caso y brazo, si el entregable es correcto, los minutos que una persona tardó en corregirlo (opcional, los introduce una persona), el tiempo total, los defectos y los tokens. Los agregados llevan su dispersión, y un caso con el que se construyó la mejora queda marcado y fuera de la puntuación. Los resultados van a Darwin's Hoard (`/api/evaluations`) o a un JSON que él importa; allí el traje pasa a «evaluado». Página **Trajes**, herramientas `pygmalion_suit_eval_*`, detalle en [docs/evaluation/SUITEVAL.md](docs/evaluation/SUITEVAL.md).
 
-### Herramientas de evaluación (89):
+### Herramientas de evaluación (96):
 
 - `galton_overview` — Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.
 - `galton_status` — Health: scheduler, watch, llama-server, GPUs, settings. Estado de Galton.
@@ -48,6 +50,7 @@ Evalúa los trajes de Darwin's Hoard (configuraciones de trabajo reutilizables p
 - `run_resume` — Continue an interrupted run, asking only what it did not measure. Continuar donde se quedó.
 - `runs_list` — Recent runs with state and progress. Historial de ejecuciones.
 - `run_results` — Per-case results of a run: answer, score, checker detail, timing. Resultados de una ejecución.
+- `run_results_export` — Preparar metadatos de resultados guardados como texto CSV/JSON, con el modelo y criterio de fallos de la ficha.
 - `galton_run` — Measure these models now (quick suite by default). Medir estos modelos ahora.
 - `measure_new` — Run the quick suite on every model that is new or changed. Medir lo nuevo.
 - `judge_run` — Grade the answers that waited for the judge model. Pasar el juez a lo pendiente.

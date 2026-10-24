@@ -767,6 +767,52 @@ def test_speechbench_tools(svc, tmp_path):
     assert call(svc, "speechbench_cancel", run=run)["cancelling"] is False
 
 
+def test_results_export_all_selected_rows_and_native_precision(svc):
+    import csv
+    import io
+
+    model = add_gguf(svc, 'Norte, "ñ"')
+    other = add_gguf(svc, "Sur")
+    suite = svc.store.suites()[0]
+    case = svc.store.create_case(suite_id=suite["id"], title='Caso, "uno"\r\n🧭', prompt={"text": "Ficticio"})
+    run = svc.store.create_run(label="Exportación ficticia", state="running", suites=[suite["id"]], contestants=[model["id"], other["id"]])
+    ids = []
+    for index in range(701):
+        ids.append(svc.store.add_result(run_id=run["id"], contestant_id=model["id"], suite_id=suite["id"], case_id=case["id"],
+                                       score=0, latency_ms=None if index == 0 else 0, passed=False, skipped=False,
+                                       judge_pending=index == 1, unavailable=index == 2, detail={"literal": 'coma, "ñ"\r\n🧭'},
+                                       output="NEVER_EXPORT_OUTPUT", reasoning="NEVER_EXPORT_REASONING"))
+    big = 9007199254740993
+    svc.db.execute("UPDATE results SET id = ? WHERE id = ?", (big, ids[-1]))
+    ids[-1] = big
+    svc.store.add_result(run_id=run["id"], contestant_id=model["id"], suite_id=suite["id"], case_id=case["id"], skipped=True)
+    svc.store.add_result(run_id=run["id"], contestant_id=other["id"], suite_id=suite["id"], case_id=case["id"])
+    before = svc.db.query("SELECT * FROM results ORDER BY id")
+    with uncapped():
+        out = call(svc, "run_results_export", run=run["id"], model=model["id"], only_failed=True)
+    payload = json.loads(out["json_text"])
+    csv_rows = list(csv.DictReader(io.StringIO(out["csv_text"], newline="")))
+    assert out["count"] == len(csv_rows) == len(payload["results"]) == 701
+    assert [row["id"] for row in payload["results"]] == ids
+    assert [int(row["id"]) for row in csv_rows] == ids
+    assert all(row["contestant"] == model["id"] for row in payload["results"])
+    assert payload["results"][1]["judge_pending"] and payload["results"][2]["unavailable"]
+    assert csv_rows[0]["score"] == "0.0" and csv_rows[0]["latency_ms"] == "" and csv_rows[1]["latency_ms"] == "0.0"
+    assert payload["results"][0]["latency_ms"] is None and payload["results"][1]["latency_ms"] == 0
+    assert csv_rows[0]["title"] == case["title"] and json.loads(csv_rows[0]["detail"]) == payload["results"][0]["detail"]
+    assert csv_rows[0]["export_read_started_at"] == payload["read_started_at"] == out["read_started_at"]
+    assert "NEVER_EXPORT" not in out["json_text"] + out["csv_text"]
+    assert "output" not in payload["results"][0] and "reasoning" not in payload["results"][0] and "tool_calls" not in payload["results"][0]
+    assert out["state_at_start"] == "running" and svc.db.query("SELECT * FROM results ORDER BY id") == before
+    capped = call(svc, "run_results_export", run=run["id"], model=model["id"], only_failed=True)
+    assert "truncated" in capped, "MCP/agent retains the existing context cap"
+    empty = svc.store.create_run(label="Vacía", state="done")
+    with uncapped():
+        zero = call(svc, "run_results_export", run=empty["id"])
+    assert zero["count"] == 0 and json.loads(zero["json_text"])["results"] == []
+    assert list(csv.DictReader(io.StringIO(zero["csv_text"]))) == []
+
+
 def test_every_tool_was_called():
     missing = sorted(set(TOOLS_BY_NAME) - CALLED)
     assert not missing, f"tools never called in this module: {missing}"

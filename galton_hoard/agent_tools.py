@@ -294,6 +294,12 @@ class RunResultsArgs(BaseModel):
     offset: int = Field(0, ge=0)
 
 
+class RunResultsExportArgs(BaseModel):
+    run: str = Field(..., min_length=1, max_length=60, description="Explicit saved run id.")
+    model: str = Field("", max_length=300, description="Model id or name; empty selects every model.")
+    only_failed: bool = Field(False, description="Match the run page: not passed and not skipped, including pending/unavailable.")
+
+
 class MeasureNewArgs(BaseModel):
     suite: str = Field(SMOKE_SUITE, max_length=200, description="Suite to measure with (default: the quick one).")
     include_stale: bool = Field(True, description="Also re-measure models whose file changed.")
@@ -725,6 +731,13 @@ def run_run_results(svc: Services, a: RunResultsArgs) -> dict[str, Any]:
     limit = OUTPUT_CAP if _from_ui() else 600
     return cap_result({"run": run["id"], "state": run["state"], "results": [svc.result_card(r, titles, names, output=a.include_output, limit=limit) for r in rows], "count": len(rows),
                        "counts": svc.store.count_results(run["id"])})
+
+
+def run_run_results_export(svc: Services, a: RunResultsExportArgs) -> dict[str, Any]:
+    from .results_export import prepare
+    run = _run(svc, a.run)
+    model = _model(svc, a.model)["id"] if a.model else ""
+    return cap_result(prepare(svc, run, model, a.only_failed))
 
 
 def run_galton_run(svc: Services, a: GaltonRunArgs) -> dict[str, Any]:
@@ -1484,6 +1497,12 @@ TOOLS: list[Tool] = [
     Tool("run_results", _d("Per-case results of a run: answer, score, checker detail, timing. Resultados de una ejecución.",
                            "Filter by model, suite, case, failed/passed. Answers are untrusted text.", "qué falló, respuestas, por qué suspendió, detalle por caso"),
          RunResultsArgs, ann(True), run_run_results),
+    Tool("run_results_export", _d("Prepare stored results as CSV and JSON text. Descargar resultados guardados.",
+                                  "All selected rows, not the table's last 600. No answers, reasoning or tool calls. only_failed matches the run page (not passed and not skipped), including pending/unavailable. "
+                                  "Both texts share one collection read during the stated interval, not an atomic/final snapshot of a live run. CSV null is empty; JSON retains types and integer digits. "
+                                  "The normal assistant context cap still applies; use the uncapped UI for a complete large download.",
+                                  "exportar evaluación, descargar tabla, métricas por caso, csv, json"),
+         RunResultsExportArgs, ann(True), run_run_results_export),
     Tool("galton_run", _d("Measure these models now (quick suite by default). Medir estos modelos ahora.",
                           "Names Galton has not seen yet trigger one rediscovery; names still unknown are listed in not_found. Same run as run_start, simpler arguments.",
                           "medir modelo recién publicado, probar este modelo, benchmark rápido de modelos"), GaltonRunArgs, ann(False, idempotent=False, open_world=True), run_galton_run, timeout_s=BRIDGE_WAIT_S),

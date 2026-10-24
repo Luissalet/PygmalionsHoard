@@ -1,6 +1,8 @@
 # Architecture
 
-Production entry point: `pygmalion_hoard.fusion.app:create_app`. The shell owns three independent lifetimes, all OFF initially. Its static catalogue combines 50 training tools and 89 tools from the incorporated evaluation engine, plus two module controls. Native pages/API stay under `/training/` and `/evaluation/`. See [FUSION.md](FUSION.md) for data mapping, concurrency, shutdown and compatibility. The diagram below describes the retained training domain.
+Production entry point: `pygmalion_hoard.fusion.app:create_app`. The shell owns three independent lifetimes, all OFF initially. Its static catalogue combines 50 training tools and 96 tools from the incorporated evaluation engine, plus two module controls. Native pages/API stay under `/training/` and `/evaluation/`. See [FUSION.md](FUSION.md) for data mapping, concurrency, shutdown and compatibility. The diagram below describes the retained training domain.
+
+Stored evaluation downloads reuse Store.results and Services.result_card without output text. One native readonly formatter prepares CSV/JSON strings from a single collected selection. The client downloads these strings without numeric reserialization. The collection is read over an explicit interval, not a transaction spanning a live run; the model and visible failure predicate identify its selection. UI uncapped delivery and agent/MCP context capping retain their existing semantics.
 
 
 ```
