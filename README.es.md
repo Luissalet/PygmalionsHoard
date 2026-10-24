@@ -6,13 +6,15 @@ Pygmalion incorpora todas las funciones de Galton de forma nativa. Un servidor e
 
 Entrenamiento conserva datasets, LoRA/QLoRA, fusiones, contexto, conversión, cuantización, captura, linaje y publicación. Evaluación conserva modelos y suites, importaciones, ejecuciones y reanudación, resultados, comparación y estadísticas, arena, rutas, pruebas de reglas, usuarios simulados, matrices de arneses y campañas de agentes. Las evaluaciones de entrenamiento llaman a este motor dentro del mismo proceso. La vigilancia periódica necesita además el control de Evaluaciones automáticas; los ajustes históricos permanecen intactos y no reanudamos colas antiguas al abrir un módulo. Los trabajos anteriores se pueden reanudar explícitamente.
 
-Las páginas originales se encuentran en `/training/` y `/evaluation/`, sin marcos embebidos. Se conservan `/capture/...` para los arneses existentes. El catálogo combinado expone **117 herramientas**: las 50 de entrenamiento, 65 de evaluación y `pygmalion_modules` / `pygmalion_set_module`. Tres colisiones se publican con prefijo: `evaluation_settings_get`, `evaluation_settings_set`, `evaluation_gpu_status`.
+Las páginas originales se encuentran en `/training/` y `/evaluation/`, sin marcos embebidos. Se conservan `/capture/...` para los arneses existentes. El catálogo combinado expone **118 herramientas**: las 50 de entrenamiento, 66 de evaluación y `pygmalion_modules` / `pygmalion_set_module`. Tres colisiones se publican con prefijo: `evaluation_settings_get`, `evaluation_settings_set`, `evaluation_gpu_status`.
+
+En Resultados de una evaluación guardada, Preparar descarga recoge todas las filas del modelo y del filtro Sólo fallos elegidos, incluidas las que no caben entre las últimas600 de la tabla. CSV y JSON descargan los mismos textos nativos preparados, conservando los dígitos de los enteros; no incluyen respuestas, razonamientos ni tool_calls. Si la evaluación sigue cambiando, se informa del intervalo de lectura, sin prometer una captura atómica/final. CSV escribe null como celda vacía; JSON conserva los tipos. API/MCP ofrecen el mismo `run_results_export` de lectura: el límite de contexto vigente puede recortar una respuesta grande para el asistente; la UI descarga los textos completos.
 
 Los datos se utilizan en su ubicación original mediante `data/modules.json` (`data_paths.training` y `data_paths.evaluation`). No se copian ni convierten bases de datos, datasets, modelos, resultados o linaje. `python scripts/adopt_evaluation.py --evaluation-data <carpeta>` configura la ubicación con todos los módulos OFF. Desactivar detiene workers y solicitudes antes de cerrar sus bases; los datos permanecen.
 
 Esta fusión no cambia las leases de GPU ni el servicio global de modelos. Las pruebas del producto usan datos inventados y motores simulados; no certifican nuevos resultados de un modelo real. Inventario y arquitectura: [fusión](docs/FUSION.md), [API de evaluación](docs/evaluation/API.md), [procedencia](provenance/galton/source.json).
 
-### Herramientas de evaluación (65):
+### Herramientas de evaluación (66):
 
 - `galton_overview` — Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.
 - `galton_status` — Health: scheduler, watch, llama-server, GPUs, settings. Estado de Galton.
@@ -44,6 +46,7 @@ Esta fusión no cambia las leases de GPU ni el servicio global de modelos. Las p
 - `run_resume` — Continue an interrupted run, asking only what it did not measure. Continuar donde se quedó.
 - `runs_list` — Recent runs with state and progress. Historial de ejecuciones.
 - `run_results` — Per-case results of a run: answer, score, checker detail, timing. Resultados de una ejecución.
+- `run_results_export` — Preparar metadatos de resultados guardados como texto CSV/JSON, con el modelo y criterio de fallos de la ficha.
 - `galton_run` — Measure these models now (quick suite by default). Medir estos modelos ahora.
 - `measure_new` — Run the quick suite on every model that is new or changed. Medir lo nuevo.
 - `judge_run` — Grade the answers that waited for the judge model. Pasar el juez a lo pendiente.

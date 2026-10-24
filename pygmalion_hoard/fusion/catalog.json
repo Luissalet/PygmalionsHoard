@@ -5150,6 +5150,46 @@
     "module": "evaluation"
   },
   {
+    "name": "run_results_export",
+    "description": "Prepare stored results as CSV and JSON text. Descargar resultados guardados.\nAll selected rows, not the table's last 600. No answers, reasoning or tool calls. only_failed matches the run page (not passed and not skipped), including pending/unavailable. Both texts share one collection read during the stated interval, not an atomic/final snapshot of a live run. CSV null is empty; JSON retains types and integer digits. The normal assistant context cap still applies; use the uncapped UI for a complete large download.\nSinónimos: exportar evaluación, descargar tabla, métricas por caso, csv, json",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "description": "Explicit saved run id.",
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Run",
+          "type": "string"
+        },
+        "model": {
+          "default": "",
+          "description": "Model id or name; empty selects every model.",
+          "maxLength": 300,
+          "title": "Model",
+          "type": "string"
+        },
+        "only_failed": {
+          "default": false,
+          "description": "Match the run page: not passed and not skipped, including pending/unavailable.",
+          "title": "Only Failed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "run"
+      ],
+      "title": "RunResultsExportArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
     "name": "galton_run",
     "description": "Measure these models now (quick suite by default). Medir estos modelos ahora.\nNames Galton has not seen yet trigger one rediscovery; names still unknown are listed in not_found. Same run as run_start, simpler arguments.\nSinónimos: medir modelo recién publicado, probar este modelo, benchmark rápido de modelos",
     "annotations": {

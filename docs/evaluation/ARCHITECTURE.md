@@ -19,7 +19,7 @@
                       ├──► routes.py: policy ─► routes.json (atomic) ─► event galton.routes.updated
                       ├──► watch.py: new/changed models ─► quick run; regression check after each run ─► notice + galton.regression
                       └──► arena.py: blind pairs from stored answers, votes, ratings
- agent_tools.py: one catalogue (65 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
+ agent_tools.py: one catalogue (66 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
  scheduler.py (hoard_link.lanes): lane "gpu" (runs, judging) · lane "io" (refresh every watch.interval_h, watch every minute, housekeeping hourly)
 ```
 

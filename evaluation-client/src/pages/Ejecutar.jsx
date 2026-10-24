@@ -5,6 +5,7 @@ import { useApp } from "../context.js";
 import { Busy, Chip, Empty, ErrorBox, Failure, Field, Icon, ICONS, Modal, Problem, Rel, Section, Spinner, Switch, useBusy, useLoad } from "../components/ui.jsx";
 import { CpuBadge, Progress, StateChip } from "../components/parts.jsx";
 import { usePoll } from "../components/hooks.js";
+import ResultsExport from "../components/ResultsExport.jsx";
 import { ACTIVE_STATES, CATEGORIES, EFFORTS, RESUMABLE_STATES as RESUMABLE } from "../meta.js";
 import { duration, elapsed, gb, num, shortClock } from "../format.js";
 
@@ -381,6 +382,7 @@ function RunDetail({ id }) {
             <label className="flex items-center gap-2"><Switch checked={filter.failed} onChange={(v) => setFilter((f) => ({ ...f, failed: v }))} label={t("only_failed")} /><span>{t("only_failed")}</span></label>
           </>
         )}>
+        <ResultsExport runId={id} model={filter.contestant} onlyFailed={filter.failed} modelName={run.contestants.find((c) => c.id === filter.contestant)?.name} />
         {!shown.length ? <Empty>{active ? t("waiting_results") : t("no_results")}</Empty> : (
           <div className="panel scroll-x" style={{ padding: 0 }}>
             <table className="tbl">

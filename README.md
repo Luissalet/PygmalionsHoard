@@ -6,13 +6,15 @@ Pygmalion incorporates every Galton capability natively in one ASGI process on p
 
 Training retains datasets, LoRA/QLoRA, merges, context extension, conversion, quantization, capture, lineage and publishing. Evaluation retains model discovery, suites and benchmark imports, runs/resume/results, statistics/comparison, arena, routing, rule testing, simulated users, harness matrices and agent campaigns. Training evaluations call the incorporated evaluator directly in process. Periodic discovery, watch and housekeeping additionally require the Automatic evaluation switch; saved settings remain unchanged. Opening a module never resumes historical queued jobs or campaigns. Resume them explicitly when wanted.
 
-Native pages live at `/training/` and `/evaluation/`, without frames. Existing `/capture/...` endpoints remain available. The combined MCP catalogue has **117 tools**: 50 training, 65 evaluation and `pygmalion_modules` / `pygmalion_set_module`. Three collisions use `evaluation_settings_get`, `evaluation_settings_set` and `evaluation_gpu_status`.
+Native pages live at `/training/` and `/evaluation/`, without frames. Existing `/capture/...` endpoints remain available. The combined MCP catalogue has **118 tools**: 50 training, 66 evaluation and `pygmalion_modules` / `pygmalion_set_module`. Three collisions use `evaluation_settings_get`, `evaluation_settings_set` and `evaluation_gpu_status`.
+
+On a saved evaluation's Results section, Prepare download collects every row matching the model and Only failed filters, including rows beyond the table's last600. CSV and JSON download the same prepared native texts, preserving integer digits; no answers, reasoning or tool calls are exported. Reading a live run covers the stated interval rather than an atomic/final snapshot. CSV null is an empty cell; JSON retains types. API/MCP expose the same readonly `run_results_export`; the assistant's existing context cap can truncate a large response, while the UI downloads the complete texts.
 
 Data stays in its original location through `data/modules.json` (`data_paths.training`, `data_paths.evaluation`). No database, dataset, model, result or lineage copy/conversion is required. `python scripts/adopt_evaluation.py --evaluation-data <folder>` configures the existing folder with all modules OFF. Disabling drains workers and requests before database close; saved data remains.
 
 GPU leases and the family's configured global model service remain in force. Product verification uses invented data and fake workers, without certifying a new live-model result. See [fusion architecture](docs/FUSION.md), [evaluation API](docs/evaluation/API.md) and [source provenance](provenance/galton/source.json).
 
-### Evaluation tools (65):
+### Evaluation tools (66):
 
 - `galton_overview` — Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.
 - `galton_status` — Health: scheduler, watch, llama-server, GPUs, settings. Estado de Galton.
@@ -44,6 +46,7 @@ GPU leases and the family's configured global model service remain in force. Pro
 - `run_resume` — Continue an interrupted run, asking only what it did not measure. Continuar donde se quedó.
 - `runs_list` — Recent runs with state and progress. Historial de ejecuciones.
 - `run_results` — Per-case results of a run: answer, score, checker detail, timing. Resultados de una ejecución.
+- `run_results_export` — Prepare stored result metadata as CSV/JSON text, using the run page's model/failure criteria.
 - `galton_run` — Measure these models now (quick suite by default). Medir estos modelos ahora.
 - `measure_new` — Run the quick suite on every model that is new or changed. Medir lo nuevo.
 - `judge_run` — Grade the answers that waited for the judge model. Pasar el juez a lo pendiente.
