@@ -41,8 +41,8 @@ def test_catalog_complete_and_static_without_engines(client, app):
     from pygmalion_hoard.agent_tools import tool_catalog as training
     from galton_hoard.agent_tools import tool_catalog as evaluation
     tools=client.get('/api/agent/tools').json()['tools']
-    assert len(tools)==len(training())+len(evaluation())+2==117
-    assert len({t['name'] for t in tools})==117
+    assert len(tools)==len(training())+len(evaluation())+2==127
+    assert len({t['name'] for t in tools})==127
     by_name={t['name']:t for t in tools}
     for original in training(): assert by_name[original['name']]==original
     for original in evaluation():
@@ -83,6 +83,20 @@ def test_training_and_evaluation_independent_native_bridge(client, app):
     with pytest.raises(Exception,match='Activa|refused|Galton'): train.galton.call('suites_list',{})
     switch(client,'training',False)
     assert not any(m.app is not None for m in app.state.modules.values())
+
+def test_a_page_the_evaluation_module_marks_as_content_goes_through_the_shell_untouched(client, app, tmp_path):
+    switch(client,'evaluation')
+    ev=app.state.modules['evaluation'].app.state.services
+    folder=tmp_path/'page';folder.mkdir()
+    (folder/'index.html').write_text('<!doctype html><html><head><title>Mine</title></head><body><h1>animation</h1></body></html>',encoding='utf-8')
+    run=ev.video_store.create_run(label='t',state='done',model='m',jury='m',prompts=['p'],settings={},progress={},total=3,source='test')
+    ev.video_store.upsert_item(run['id'],'p',state='done',outcome='done',folder=str(folder))
+    screen=client.get('/evaluation/')
+    assert screen.status_code==200 and 'fusion-bar' in screen.text
+    page=client.get(f"/evaluation/api/videobench/{run['id']}/p/play.html")
+    assert page.status_code==200 and '<title>Mine</title>' in page.text and 'fusion-bar' not in page.text and '/static/module-shell.css' not in page.text
+    assert 'x-hoard-raw' not in page.headers and 'sandbox' in page.headers['content-security-policy']
+    switch(client,'evaluation',False)
 
 def test_data_mapping_in_place_and_off_persisted(tmp_path, monkeypatch):
     data=tmp_path/'merged';training=tmp_path/'original-training';evaluation=tmp_path/'original-evaluation'
@@ -129,7 +143,7 @@ def test_stdio_catalog_has_no_engine_import_side_effects(tmp_path):
     code='import mcp_server,sys; print(len(mcp_server.catalog())); assert "galton_hoard.services" not in sys.modules; assert "pygmalion_hoard.services" not in sys.modules'
     result=subprocess.run([sys.executable,'-c',code],cwd=ROOT,capture_output=True,text=True,timeout=30,env={**os.environ,'PYGMALION_DATA_DIR':str(tmp_path)})
     assert result.returncode==0,result.stderr
-    assert result.stdout.strip()=='117'
+    assert result.stdout.strip()=='127'
     assert list(tmp_path.iterdir())==[]
 
 @pytest.mark.asyncio

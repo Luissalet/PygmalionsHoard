@@ -683,6 +683,35 @@ def test_agent_bench_tools_plan_start_follow_and_read_a_campaign(svc, tmp_path):
     assert call(svc, "agentbench_list")["campaigns"][0]["id"] == card["id"]
 
 
+def test_language_bench_tools_list_tasks_and_judge_replies(svc):
+    tasks = call(svc, "langbench_task")
+    assert len(tasks["tasks"]) == 27 and set(tasks["langs"]) == {"en", "es"}
+    both = call(svc, "langbench_task", task=tasks["tasks"][0]["id"], canonical=True)
+    assert both["canonical"] and set(both["versions"]) == {"en", "es"}
+    assert call(svc, "langbench_judge", text="Las zapatillas cuestan 59,90 euros y hay existencias.", lang="es")["score"] == 1.0
+    assert call(svc, "langbench_judge", text="The shoes cost 59.90 euros and they are in stock.", lang="es")["score"] < 0.5
+    assert call(svc, "langbench_judge", text="running shoes", lang="es", argument=True)["in_language_of_data"] is False
+
+
+def test_video_bank_tools_browse_briefs_and_run(svc):
+    from evaluation_tests.test_videobench import fake_render, writer_and_jury
+    svc.settings.set_many({"videobench.browser_python": "fake-python"})
+    svc.videobench.render_fn = fake_render
+    add_gguf(svc, "escribano", responder=writer_and_jury()[0])
+    cat = call(svc, "videobench_catalog", standalone=True, limit=3)
+    assert cat["matching"] >= 50 and len(cat["prompts"]) == 3
+    brief = call(svc, "videobench_prompt", prompt=cat["prompts"][0]["id"])
+    assert brief["prompt"] and brief["post_url"].startswith("https://")
+    assert call(svc, "videobench_start", model="escribano", count=2, dry_run=True)["n"] == 2
+    run = call(svc, "videobench_start", model="escribano", prompts=[cat["prompts"][0]["id"]], wait_s=60)["run"]
+    assert run["state"] == "done"
+    assert call(svc, "videobench_status")["so_far"]["judged"] == 1
+    assert call(svc, "videobench_result")["items"][0]["outcome"] == "done"
+    assert call(svc, "videobench_item", prompt=cat["prompts"][0]["id"])["files"]["sheet.png"]
+    assert call(svc, "videobench_cancel", run=run["id"])["cancelled"] is False
+    assert call(svc, "videobench_list")["count"] == 1
+
+
 def test_every_tool_was_called():
     missing = sorted(set(TOOLS_BY_NAME) - CALLED)
     assert not missing, f"tools never called in this module: {missing}"

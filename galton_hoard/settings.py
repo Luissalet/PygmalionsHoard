@@ -90,6 +90,8 @@ SPECS: list[Spec] = [
     Spec("harnessbench.allow_external", "bool", False, "harness"),
     Spec("harnessbench.external", "str_list", [EXTERNAL_EXAMPLE], "harness"),
     Spec("harnessbench.external_timeout_s", "int", 600, "harness", low=10, high=7200),
+    Spec("videobench.browser_python", "str", "", "videobench"),
+    Spec("videobench.folder", "str", "", "videobench"),
     Spec("agentbench.harnesses", "str_list", [], "agentbench"),
     Spec("agentbench.runner", "str", "", "agentbench"),
     Spec("agentbench.jobs_dir", "str", "", "agentbench"),

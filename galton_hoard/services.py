@@ -26,6 +26,8 @@ from .harnessbench.runner import MatrixRunner, normalise_matrix_settings
 from .harnessbench.store import ACTIVE as MATRIX_ACTIVE, MatrixStore
 from .agentbench.service import AgentBench
 from .agentbench.store import AgentBenchStore
+from .videobench.service import VideoBench
+from .videobench.store import VideoStore
 from .hoard_link import family
 from .hoard_link.docs.sniff import sniff
 from .hoard_link.tokens import read_or_create_token, write_url
@@ -94,6 +96,9 @@ class Services:
         self.matrix_store = MatrixStore(self.db, clock_fn)
         self.matrices = MatrixRunner(self.matrix_store, self.runner, self.settings, clock=clock_fn, emit=self.emit, base_url=lambda: f"http://127.0.0.1:{config.port}{config.url_prefix}")
         self.agentbench = AgentBench(AgentBenchStore(self.db, clock_fn), self.settings, data_dir=config.data_dir, emit=self.emit, clock=clock_fn)
+        self.video_store = VideoStore(self.db, clock_fn)
+        self.videobench = VideoBench(self.video_store, self.runner, self.settings, data_dir=config.data_dir, emit=self.emit, clock=clock_fn,
+                                     base_url=lambda: f"http://127.0.0.1:{config.port}{config.url_prefix}")
         self.arena = Arena(self.store, self.settings)
         self.routes = Routes(self.store, self.settings, config.routes_path, clock=clock_fn, emit=self.emit)
         self.board = Board(self.store, self.settings, self.routes, clock_fn)
@@ -118,6 +123,7 @@ class Services:
             log.exception("could not look for leftover llama-server processes")
         self._abandon_stale_runs()
         self._abandon_stale_matrices()
+        self.videobench.abandon_stale()
         self.scheduler.start()
         if self.config.resume_pending:
             self._requeue_queued_runs()
@@ -161,12 +167,16 @@ class Services:
             campaigns = list(self.agentbench.threads.values())
         for thread, cancel in campaigns:
             cancel.set()
+        video_threads = self.videobench.stop_all(0)
         self.scheduler.stop(timeout)
         deadline = time.monotonic() + timeout
         for thread, cancel in campaigns:
             thread.join(max(0, deadline - time.monotonic()))
+        for thread in video_threads:
+            thread.join(max(0, deadline - time.monotonic()))
         pending = [t for t in self.scheduler._lane._threads if t.is_alive()]
         pending += [t for t, _ in campaigns if t.is_alive()]
+        pending += [t for t in video_threads if t.is_alive()]
         if pending:
             raise RuntimeError("Workers are still stopping; database remains open: " + ", ".join(t.name for t in pending))
         self.db.close()
@@ -246,12 +256,13 @@ class Services:
         return {"matrix": matrix_id, "state": done["state"]}
 
     def start_matrix(self, *, models: list[Any], harnesses: Optional[list[str]] = None, tasks: Optional[list[str]] = None, kinds: Optional[list[str]] = None, k: int = 1,
-                     settings: Optional[dict[str, Any]] = None, label: str = "", source: str = "ui", caller: str = "", wait_s: float = 0.0) -> dict[str, Any]:
+                     settings: Optional[dict[str, Any]] = None, label: str = "", source: str = "ui", caller: str = "", wait_s: float = 0.0,
+                     langs: Optional[list[str]] = None) -> dict[str, Any]:
         rs = normalise_matrix_settings(settings, k)
         rows = self.runner.resolve_contestants(models)
         problems = self.preflight(rows, rs)
         self._refuse_hopeless(rows, problems)
-        matrix = self.matrices.create(models=[c["id"] for c in rows], harnesses=harnesses, tasks=tasks, kinds=kinds, k=k, settings=rs, label=label, source=source, caller=caller)
+        matrix = self.matrices.create(models=[c["id"] for c in rows], harnesses=harnesses, tasks=tasks, kinds=kinds, k=k, settings=rs, label=label, source=source, caller=caller, langs=langs)
         self.submit_matrix(matrix["id"], wait_s)
         card = self.matrices.card(self.matrix_store.matrix(matrix["id"]))
         out = {"matrix": card, "warnings": [text("warn_will_fail", name=p["name"], problem=p["problem"]) for p in problems]}

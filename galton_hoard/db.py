@@ -348,6 +348,63 @@ MIGRATIONS: list[str] = [
     );
     CREATE INDEX ab_trials_cell ON ab_trials(campaign_id, benchmark, harness);
     """,
+    # 10: language bench: a matrix may name languages, and a trial says which one it ran in with the language metrics (NULL: not a language-bench trial)
+    """
+    ALTER TABLE hb_matrices ADD COLUMN langs TEXT NOT NULL DEFAULT '[]';
+    ALTER TABLE hb_trials ADD COLUMN lang TEXT NOT NULL DEFAULT '';
+    ALTER TABLE hb_trials ADD COLUMN search_calls INTEGER;
+    ALTER TABLE hb_trials ADD COLUMN empty_searches INTEGER;
+    ALTER TABLE hb_trials ADD COLUMN arg_calls INTEGER;
+    ALTER TABLE hb_trials ADD COLUMN arg_mismatch INTEGER;
+    ALTER TABLE hb_trials ADD COLUMN lang_consistency REAL;
+    CREATE INDEX hb_trials_lang ON hb_trials(matrix_id, contestant_id, harness, lang);
+    """,
+    # 11: video bank: runs (a model writes animations as code for briefs, a jury scores the renders) and their items
+    """
+    CREATE TABLE vb_runs (
+      id TEXT PRIMARY KEY,
+      created_ts REAL NOT NULL,
+      label TEXT NOT NULL DEFAULT '',
+      state TEXT NOT NULL DEFAULT 'queued',
+      model TEXT NOT NULL DEFAULT '',
+      jury TEXT NOT NULL DEFAULT '',
+      prompts TEXT NOT NULL DEFAULT '[]',
+      settings TEXT NOT NULL DEFAULT '{}',
+      progress TEXT NOT NULL DEFAULT '{}',
+      total INTEGER NOT NULL DEFAULT 0,
+      done INTEGER NOT NULL DEFAULT 0,
+      source TEXT NOT NULL DEFAULT 'ui',
+      caller TEXT NOT NULL DEFAULT '',
+      error TEXT NOT NULL DEFAULT '',
+      cancel INTEGER NOT NULL DEFAULT 0,
+      summary TEXT NOT NULL DEFAULT '{}',
+      started_ts REAL,
+      finished_ts REAL
+    );
+    CREATE TABLE vb_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id TEXT NOT NULL REFERENCES vb_runs(id) ON DELETE CASCADE,
+      prompt_id TEXT NOT NULL,
+      state TEXT NOT NULL DEFAULT 'queued',
+      outcome TEXT NOT NULL DEFAULT '',
+      reason TEXT NOT NULL DEFAULT '',
+      detail TEXT NOT NULL DEFAULT '',
+      html_chars INTEGER,
+      tokens_in INTEGER,
+      tokens_out INTEGER,
+      latency_ms REAL,
+      static TEXT NOT NULL DEFAULT '{}',
+      render TEXT NOT NULL DEFAULT '{}',
+      auto TEXT NOT NULL DEFAULT '{}',
+      jury TEXT NOT NULL DEFAULT '{}',
+      jury_mode TEXT NOT NULL DEFAULT '',
+      mean REAL,
+      folder TEXT NOT NULL DEFAULT '',
+      ts REAL NOT NULL,
+      UNIQUE(run_id, prompt_id)
+    );
+    CREATE INDEX vb_items_run ON vb_items(run_id);
+    """,
 ]
 
 

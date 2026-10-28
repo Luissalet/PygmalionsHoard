@@ -4,15 +4,15 @@
 
 Pygmalion incorporates every Galton capability natively in one ASGI process on port 5202. The **Functions** page has independent Training, Evaluation and Automatic evaluation switches, all OFF on first use. Static MCP discovery never starts a server or engine. Start the app explicitly from Hoard Hub, then enable the function you want.
 
-Training retains datasets, LoRA/QLoRA, merges, context extension, conversion, quantization, capture, lineage and publishing. Evaluation retains model discovery, suites and benchmark imports, runs/resume/results, statistics/comparison, arena, routing, rule testing, simulated users, harness matrices and agent campaigns. Training evaluations call the incorporated evaluator directly in process. Periodic discovery, watch and housekeeping additionally require the Automatic evaluation switch; saved settings remain unchanged. Opening a module never resumes historical queued jobs or campaigns. Resume them explicitly when wanted.
+Training retains datasets, LoRA/QLoRA, merges, context extension, conversion, quantization, capture, lineage and publishing. Evaluation retains model discovery, suites and benchmark imports, runs/resume/results, statistics/comparison, arena, routing, rule testing, simulated users, harness matrices (also along a Spanish/English language axis), a code-made video bank and agent campaigns. Training evaluations call the incorporated evaluator directly in process. Periodic discovery, watch and housekeeping additionally require the Automatic evaluation switch; saved settings remain unchanged. Opening a module never resumes historical queued jobs or campaigns. Resume them explicitly when wanted.
 
-Native pages live at `/training/` and `/evaluation/`, without frames. Existing `/capture/...` endpoints remain available. The combined MCP catalogue has **117 tools**: 50 training, 65 evaluation and `pygmalion_modules` / `pygmalion_set_module`. Three collisions use `evaluation_settings_get`, `evaluation_settings_set` and `evaluation_gpu_status`.
+Native pages live at `/training/` and `/evaluation/`, without frames. Existing `/capture/...` endpoints remain available. The combined MCP catalogue has **127 tools**: 50 training, 75 evaluation and `pygmalion_modules` / `pygmalion_set_module`. Three collisions use `evaluation_settings_get`, `evaluation_settings_set` and `evaluation_gpu_status`.
 
 Data stays in its original location through `data/modules.json` (`data_paths.training`, `data_paths.evaluation`). No database, dataset, model, result or lineage copy/conversion is required. `python scripts/adopt_evaluation.py --evaluation-data <folder>` configures the existing folder with all modules OFF. Disabling drains workers and requests before database close; saved data remains.
 
 GPU leases and the family's configured global model service remain in force. Product verification uses invented data and fake workers, without certifying a new live-model result. See [fusion architecture](docs/FUSION.md), [evaluation API](docs/evaluation/API.md) and [source provenance](provenance/galton/source.json).
 
-### Evaluation tools (65):
+### Evaluation tools (75):
 
 - `galton_overview` — Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.
 - `galton_status` — Health: scheduler, watch, llama-server, GPUs, settings. Estado de Galton.
@@ -56,6 +56,9 @@ GPU leases and the family's configured global model service remain in force. Pro
 - `arena_next` — A blind pair of answers to the same prompt to vote on. Siguiente par de la arena.
 - `arena_vote` — Vote a|b|tie|both_bad on an arena pair. Votar en la arena.
 - `arena_ratings` — Bradley-Terry ratings from the arena votes, per category. Puntuaciones de la arena.
+- `settings_get` — All settings with values, types and defaults, plus the GPU state. Ver ajustes.
+- `settings_set` — Change settings: allowed GPUs, llama-server path, judge, runner, watch, routes policy. Cambiar ajustes.
+- `gpu_status` — Per GPU: total/used/free, allowed or reserved, leases and queue. Estado de las GPU.
 - `evaluation_settings_get` — All settings with values, types and defaults, plus the GPU state. Ver ajustes.
 - `evaluation_settings_set` — Change settings: allowed GPUs, llama-server path, judge, runner, watch, routes policy. Cambiar ajustes.
 - `evaluation_gpu_status` — Per GPU: total/used/free, allowed or reserved, leases and queue. Estado de las GPU.
@@ -70,6 +73,16 @@ GPU leases and the family's configured global model service remain in force. Pro
 - `harness_cell` — One matrix cell: its tasks and, for one task, the traces and the reason of each failure. Detalle de una celda.
 - `harness_matrix_cancel` — Cancel a harness matrix: results kept, shared servers untouched. Cancelar matriz de arneses.
 - `harness_matrix_list` — Recent harness matrices with state and conclusion. Historial de matrices de arneses.
+- `langbench_task` — Language bench: the same tool tasks in Spanish and English, side by side. Tareas del banco de idiomas.
+- `langbench_judge` — Judge the language of a reply, or of a tool argument against the data. Juzgar el idioma de una respuesta.
+- `videobench_catalog` — Video bank: briefs for animations written as code, with their author and post. Catálogo del banco de vídeo.
+- `videobench_prompt` — One video brief: the whole prompt with its author and post. Un encargo de vídeo completo.
+- `videobench_start` — Video bank: a model writes animations as code, a jury scores the renders. Lanzar banco de vídeo.
+- `videobench_status` — Progress of a video-bank run: phase, briefs written, rendered and judged. Estado del banco de vídeo.
+- `videobench_result` — Video-bank run as a table: per brief, renders, moves, jury scores. Resultado del banco de vídeo.
+- `videobench_item` — One video-bank item: the brief, automatic checks, jury scores, fixes and the files. Detalle de un encargo.
+- `videobench_cancel` — Cancel a video-bank run: finished items kept. Cancelar banco de vídeo.
+- `videobench_list` — Recent video-bank runs with state and summary. Historial del banco de vídeo.
 - `agentbench_catalog` — Agent bench: benchmarks, their task subsets and the configured agent harnesses. Catálogo del banco de agentes.
 - `agentbench_start` — Run real agent harnesses on published benchmarks with one model. Lanzar campaña de agentes.
 - `agentbench_status` — Progress of an agent-bench campaign. Estado de la campaña de agentes.

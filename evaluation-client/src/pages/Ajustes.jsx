@@ -247,6 +247,15 @@ export default function Ajustes() {
         </div>
       </Section>
 
+      <Section title={t("videobench_section")}>
+        <div className="panel space-y-3">
+          <p className="help">{t("videobench_help")}</p>
+          {field("videobench.browser_python", t("vb_set_python"), t("vb_set_python_hint"))}
+          {field("videobench.folder", t("vb_set_folder"), t("ab_set_dir_hint"))}
+          {saveBar(["videobench.browser_python", "videobench.folder"])}
+        </div>
+      </Section>
+
       <Section title={t("agentbench_section")}>
         <div className="panel space-y-3">
           <p className="help">{t("agentbench_help")}</p>

@@ -4,15 +4,15 @@
 
 Pygmalion incorpora todas las funciones de Galton de forma nativa. Un servidor en el puerto 5202, sin ejecutar el servidor anterior. En la pantalla **Funciones** hay tres controles independientes: Entrenamiento, Evaluación y Evaluaciones automáticas. Todos están desactivados en la primera apertura; el catálogo MCP no inicia el servidor ni sus módulos. Activa sólo lo que quieras usar desde el Hub y desde esta pantalla.
 
-Entrenamiento conserva datasets, LoRA/QLoRA, fusiones, contexto, conversión, cuantización, captura, linaje y publicación. Evaluación conserva modelos y suites, importaciones, ejecuciones y reanudación, resultados, comparación y estadísticas, arena, rutas, pruebas de reglas, usuarios simulados, matrices de arneses y campañas de agentes. Las evaluaciones de entrenamiento llaman a este motor dentro del mismo proceso. La vigilancia periódica necesita además el control de Evaluaciones automáticas; los ajustes históricos permanecen intactos y no reanudamos colas antiguas al abrir un módulo. Los trabajos anteriores se pueden reanudar explícitamente.
+Entrenamiento conserva datasets, LoRA/QLoRA, fusiones, contexto, conversión, cuantización, captura, linaje y publicación. Evaluación conserva modelos y suites, importaciones, ejecuciones y reanudación, resultados, comparación y estadísticas, arena, rutas, pruebas de reglas, usuarios simulados, matrices de arneses (también por un eje de idioma español/inglés), un banco de vídeo hecho con código y campañas de agentes. Las evaluaciones de entrenamiento llaman a este motor dentro del mismo proceso. La vigilancia periódica necesita además el control de Evaluaciones automáticas; los ajustes históricos permanecen intactos y no reanudamos colas antiguas al abrir un módulo. Los trabajos anteriores se pueden reanudar explícitamente.
 
-Las páginas originales se encuentran en `/training/` y `/evaluation/`, sin marcos embebidos. Se conservan `/capture/...` para los arneses existentes. El catálogo combinado expone **117 herramientas**: las 50 de entrenamiento, 65 de evaluación y `pygmalion_modules` / `pygmalion_set_module`. Tres colisiones se publican con prefijo: `evaluation_settings_get`, `evaluation_settings_set`, `evaluation_gpu_status`.
+Las páginas originales se encuentran en `/training/` y `/evaluation/`, sin marcos embebidos. Se conservan `/capture/...` para los arneses existentes. El catálogo combinado expone **127 herramientas**: las 50 de entrenamiento, 75 de evaluación y `pygmalion_modules` / `pygmalion_set_module`. Tres colisiones se publican con prefijo: `evaluation_settings_get`, `evaluation_settings_set`, `evaluation_gpu_status`.
 
 Los datos se utilizan en su ubicación original mediante `data/modules.json` (`data_paths.training` y `data_paths.evaluation`). No se copian ni convierten bases de datos, datasets, modelos, resultados o linaje. `python scripts/adopt_evaluation.py --evaluation-data <carpeta>` configura la ubicación con todos los módulos OFF. Desactivar detiene workers y solicitudes antes de cerrar sus bases; los datos permanecen.
 
 Esta fusión no cambia las leases de GPU ni el servicio global de modelos. Las pruebas del producto usan datos inventados y motores simulados; no certifican nuevos resultados de un modelo real. Inventario y arquitectura: [fusión](docs/FUSION.md), [API de evaluación](docs/evaluation/API.md), [procedencia](provenance/galton/source.json).
 
-### Herramientas de evaluación (65):
+### Herramientas de evaluación (75):
 
 - `galton_overview` — Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.
 - `galton_status` — Health: scheduler, watch, llama-server, GPUs, settings. Estado de Galton.
@@ -56,6 +56,9 @@ Esta fusión no cambia las leases de GPU ni el servicio global de modelos. Las p
 - `arena_next` — A blind pair of answers to the same prompt to vote on. Siguiente par de la arena.
 - `arena_vote` — Vote a|b|tie|both_bad on an arena pair. Votar en la arena.
 - `arena_ratings` — Bradley-Terry ratings from the arena votes, per category. Puntuaciones de la arena.
+- `settings_get` — All settings with values, types and defaults, plus the GPU state. Ver ajustes.
+- `settings_set` — Change settings: allowed GPUs, llama-server path, judge, runner, watch, routes policy. Cambiar ajustes.
+- `gpu_status` — Per GPU: total/used/free, allowed or reserved, leases and queue. Estado de las GPU.
 - `evaluation_settings_get` — All settings with values, types and defaults, plus the GPU state. Ver ajustes.
 - `evaluation_settings_set` — Change settings: allowed GPUs, llama-server path, judge, runner, watch, routes policy. Cambiar ajustes.
 - `evaluation_gpu_status` — Per GPU: total/used/free, allowed or reserved, leases and queue. Estado de las GPU.
@@ -70,6 +73,16 @@ Esta fusión no cambia las leases de GPU ni el servicio global de modelos. Las p
 - `harness_cell` — One matrix cell: its tasks and, for one task, the traces and the reason of each failure. Detalle de una celda.
 - `harness_matrix_cancel` — Cancel a harness matrix: results kept, shared servers untouched. Cancelar matriz de arneses.
 - `harness_matrix_list` — Recent harness matrices with state and conclusion. Historial de matrices de arneses.
+- `langbench_task` — Language bench: the same tool tasks in Spanish and English, side by side. Tareas del banco de idiomas.
+- `langbench_judge` — Judge the language of a reply, or of a tool argument against the data. Juzgar el idioma de una respuesta.
+- `videobench_catalog` — Video bank: briefs for animations written as code, with their author and post. Catálogo del banco de vídeo.
+- `videobench_prompt` — One video brief: the whole prompt with its author and post. Un encargo de vídeo completo.
+- `videobench_start` — Video bank: a model writes animations as code, a jury scores the renders. Lanzar banco de vídeo.
+- `videobench_status` — Progress of a video-bank run: phase, briefs written, rendered and judged. Estado del banco de vídeo.
+- `videobench_result` — Video-bank run as a table: per brief, renders, moves, jury scores. Resultado del banco de vídeo.
+- `videobench_item` — One video-bank item: the brief, automatic checks, jury scores, fixes and the files. Detalle de un encargo.
+- `videobench_cancel` — Cancel a video-bank run: finished items kept. Cancelar banco de vídeo.
+- `videobench_list` — Recent video-bank runs with state and summary. Historial del banco de vídeo.
 - `agentbench_catalog` — Agent bench: benchmarks, their task subsets and the configured agent harnesses. Catálogo del banco de agentes.
 - `agentbench_start` — Run real agent harnesses on published benchmarks with one model. Lanzar campaña de agentes.
 - `agentbench_status` — Progress of an agent-bench campaign. Estado de la campaña de agentes.

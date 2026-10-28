@@ -89,8 +89,12 @@ def reference_responder(references: dict[str, str], *, accuracy: float = 1.0, se
 def harness_task(req: ChatRequest) -> Optional[dict[str, Any]]:
     """The harness-bench task a request belongs to (its first user message is the task prompt), or ``None``."""
     from .harnessbench.tasks import TASKS
+    from .langbench import LANGS, SPECS_BY_ID, localize
     first = next((str(m.get("content", "")) for m in req.messages if m.get("role") == "user"), "")
-    return next((t for t in TASKS if t["prompt"] == first), None)
+    found = next((t for t in TASKS if t["prompt"] == first), None)
+    if found is not None:
+        return found
+    return next((t for t in (localize(i, lang) for i in SPECS_BY_ID for lang in LANGS) if t["prompt"] == first), None)
 
 
 def harness_dialect(req: ChatRequest) -> str:

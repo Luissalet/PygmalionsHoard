@@ -721,7 +721,7 @@ Annotations: idempotentHint.
 
 Harnesses, variants, tasks and tools of the harness bench. Catálogo de arneses y tareas.
 
-Four base harnesses (native_tools, json_text, xml_text, react_text), the .long and .trim variants, command-line harnesses (off by default) and the 24 tasks with their kinds.
+Four base harnesses (native_tools, json_text, xml_text, react_text), the .long and .trim variants, command-line harnesses (off by default), the 24 base tasks with their kinds and the language bench (27 tasks in es and en, pass langs to run them).
 Sinónimos: arnés, bucle de agente, tareas con herramientas, function calling, ReAct, XML, JSON
 
 Annotations: readOnlyHint, idempotentHint.
@@ -730,7 +730,7 @@ Annotations: readOnlyHint, idempotentHint.
 
 Run a model x harness x task matrix: model or harness at fault. Lanzar matriz de arneses.
 
-Same model under each harness, same token cap and turn limit in every cell. Reports pass@1, format failures apart from wrong answers, needless tool calls, turns, tokens; a trial whose verifier never ran is None, not 0. Queued on the GPU lane; use wait_s to wait, dry_run to count the trials only.
+Same model under each harness, same token cap and turn limit in every cell. Reports pass@1, format failures apart from wrong answers, needless tool calls, turns, tokens; a trial whose verifier never ran is None, not 0. With langs [es, en] it runs the language-bench tasks and adds the language axis (language consistency, empty searches, calls against English, arguments in another language than the data). Queued on the GPU lane; use wait_s to wait, dry_run to count the trials only.
 Sinónimos: medir arneses, mismo modelo distinto arnés, fallo de formato, function calling nativo, ReAct, evaluar agente
 
 Annotations: openWorldHint.
@@ -739,8 +739,9 @@ Annotations: openWorldHint.
 |---|---|---|
 | `models` (array) | yes | Model ids or names, or specs {kind: 'server', url, model} / {kind: 'ollama', model} / {kind: 'gguf', path}. |
 | `harnesses` (array) | no | Harness ids: native_tools, json_text, xml_text, react_text, each with optional .long (long system prompt) and/or .trim (older observations replaced by a note), or cli:<name> for a configured command-line harness. Empty: the four base harnesses. |
-| `tasks` (array) | no | Task ids (see harness_catalog). Empty: all 24, or those of `kinds`. |
-| `kinds` (array) | no | Only tasks of these kinds: calc, convert, docs, files, chain, notool, recovery. |
+| `tasks` (array) | no | Task ids (see harness_catalog). Empty: all 24 base tasks, all 27 language-bench tasks when `langs` is set, or those of `kinds`. |
+| `kinds` (array) | no | Only tasks of these kinds. Base: calc, convert, docs, files, chain, notool, recovery. Language bench: lookup, filter, aggregate, cart, recovery, write, notool. |
+| `langs` (array) | no | Run the language-bench tasks in these languages (es, en): the same 27 tasks with the same ids, tools and enum values, localised. Adds the language axis to the matrix: one column per harness and language, with language consistency, empty searches, tool calls against the English run and tool arguments in another language than the data. Empty: the base tasks. |
 | `k` (integer) | no | Samples per task and cell. With k above 1 the temperature defaults to 0.7 and pass@k and pass^k are reported. |
 | `settings` (object) | no | The same for every cell: max_tokens (per reply, default 1024), max_turns (default 8), max_format_errors (default 3), plus the run settings temperature, top_p, max_tokens, effort, seed, context, timeout_s, wait_s, device, load_local. |
 | `label` (string) | no |  |
@@ -763,7 +764,7 @@ Annotations: readOnlyHint, idempotentHint.
 
 Harness matrix as a table with a short conclusion: harness vs model. Resultado de la matriz de arneses.
 
-Per cell: pass@1 with interval, format failure rate, wrong-answer rate, extra tool calls, turns, tokens, None count. Conclusion: whether the difference between harnesses is larger or smaller than between models, and the best harness per model.
+Per cell: pass@1 with interval, format failure rate, wrong-answer rate, extra tool calls, turns, tokens, None count. Conclusion: whether the difference between harnesses is larger or smaller than between models, and the best harness per model. In a language matrix the columns are harness@lang and a language block compares each language with English.
 Sinónimos: tabla modelo por arnés, mapa de calor, mejor arnés por modelo, qué falla, el modelo o el arnés
 
 Annotations: readOnlyHint, idempotentHint.
@@ -785,7 +786,7 @@ Annotations: readOnlyHint, idempotentHint.
 |---|---|---|
 | `matrix` (string) | no | Matrix id. Empty: the running one, else the latest. |
 | `model` (string) | yes | Model name or id as shown in the matrix. |
-| `harness` (string) | yes | Harness id of the column, for example json_text.long. |
+| `harness` (string) | yes | Harness id of the column, for example json_text.long; in a language matrix add the language, for example json_text.long@es. |
 | `task` (string) | no | A task id: adds the full traces (every turn, call, result and format failure) of its trials. |
 
 ## `harness_matrix_cancel`
@@ -805,6 +806,153 @@ Annotations: idempotentHint.
 Recent harness matrices with state and conclusion. Historial de matrices de arneses.
 
 Sinónimos: matrices anteriores, mediciones de arneses
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `limit` (integer) | no |  |
+
+## `langbench_task`
+
+Language bench: the same tool tasks in Spanish and English, side by side. Tareas del banco de idiomas.
+
+Lists the 27 tasks (kind, domain) or, for one id, both versions: prompt, tools with their descriptions, oracle calls and final answer. canonical adds the entity map and the type of each string: Preserve (ids, tool names, enums), Translate-Free (instructions) and Translate-Canonical (entities shared by prompts, data and checks).
+Sinónimos: tareas es en, localización, mapa canónico, tools en castellano, idioma de las herramientas
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `task` (string) | no | A language-bench task id. Empty: list every task with its kind and domain. |
+| `canonical` (boolean) | no | Also return the canonical entity map (the Translate-Canonical strings) and the type of each string. |
+
+## `langbench_judge`
+
+Judge the language of a reply, or of a tool argument against the data. Juzgar el idioma de una respuesta.
+
+Local lexical judge: it looks only at the prose (ids, numbers, prices, brands and entity names are ignored) and returns the share of language-marked words in the expected language; with argument=true it says whether a search argument is in the language of the data. No model is called.
+Sinónimos: consistencia de idioma, responde en otro idioma, argumento en inglés, juez local
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `text` (string) | yes | A reply to judge (prose only: ids, numbers, prices and entity names are ignored) or a tool argument. |
+| `lang` (es \| en) | yes | The language the reply was expected in, or the language of the data for a tool argument. |
+| `argument` (boolean) | no | Treat the text as a tool argument and say whether it is in the language of the data (lang) instead of judging a reply. |
+
+## `videobench_catalog`
+
+Video bank: briefs for animations written as code, with their author and post. Catálogo del banco de vídeo.
+
+Public prompts people shared for animations made with code (HTML, canvas, SVG, WebGL): those with the whole prompt published and more than 400 characters. Filter by category, technique or standalone (no attached file, link or image). The list is MIT; every video belongs to its author.
+Sinónimos: prompts de animación, vídeos hechos con código, motion, explainer, 3d, qué pedir a un modelo
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `category` (string) | no | motion, 3d, interactive or explainer. Empty: all. |
+| `tag` (string) | no | A technique tag such as canvas, svg, threejs, shader, css, particles. Empty: all. |
+| `standalone` (boolean/null) | no | true: only briefs that need no attached file, link or image (the ones a run picks by default); false: only the others. Omit: all. |
+| `query` (string) | no | Words that must appear in the brief or its id. |
+| `limit` (integer) | no |  |
+| `offset` (integer) | no |  |
+
+## `videobench_prompt`
+
+One video brief: the whole prompt with its author and post. Un encargo de vídeo completo.
+
+Sinónimos: ver el prompt, autor, post original
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `prompt` (string) | yes | A brief id (see videobench_catalog). Returns the whole prompt with its author and post. |
+
+## `videobench_start`
+
+Video bank: a model writes animations as code, a jury scores the renders. Lanzar banco de vídeo.
+
+Per brief: the model writes a self-contained HTML page with window.seek(t) (the HTML-animation contract of the video editor); a headless browser renders 12 frames and a contact sheet; automatic checks say whether it renders, moves, is deterministic and stays offline; a second session scores the frames on the 7-dimension rubric (sound is not scored: the animation is silent). The jury is a model: its scores are a judgement. Runs in the background; dry_run only shows the plan.
+Sinónimos: medir un modelo haciendo animaciones, HTML motion, jurado, rúbrica, calidad de vídeo con código
+
+Annotations: openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `model` (string/object) | yes | The model that writes the animations: id or name, or a spec {kind: 'server', url, model}. |
+| `jury` (object/string/null) | no | The model that scores the renders, in a fresh session. Empty: the same model (it tends to be kinder to its own pages; the result says so). A model that cannot see images judges from the automatic checks and the text of the page. |
+| `prompts` (array) | no | Brief ids. Empty: a sample chosen by count, seed and the filters. |
+| `count` (integer) | no | How many briefs to sample when `prompts` is empty (the same seed gives the same briefs). |
+| `seed` (integer) | no |  |
+| `category` (string) | no |  |
+| `tag` (string) | no |  |
+| `standalone` (boolean/null) | no | Sample only briefs that need no attached file, link or image. null: any. |
+| `settings` (object) | no | max_tokens (default 16000), timeout_s (900), temperature (0.7), frames (12), duration_cap (30 s), default_duration (10 s), render_timeout_s (240), jury_images (auto\|true\|false), jury_max_tokens (4000), plus the run settings seed, effort, device. |
+| `label` (string) | no |  |
+| `wait_s` (number) | no | Wait this long for the run to finish before answering (0: return at once with its id). |
+| `dry_run` (boolean) | no | Only show which briefs would run, how the jury would judge and whether a browser is available; start nothing. |
+
+## `videobench_status`
+
+Progress of a video-bank run: phase, briefs written, rendered and judged. Estado del banco de vídeo.
+
+Sinónimos: cómo va, progreso del vídeo
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (vb_…). Empty: the running one, else the latest. |
+
+## `videobench_result`
+
+Video-bank run as a table: per brief, renders, moves, jury scores. Resultado del banco de vídeo.
+
+Summary: render rate, usable rate (renders, moves, deterministic, no page errors), mean score, per dimension and per category. Items that never reached the jury are None, not zero, and are left out of the means.
+Sinónimos: tabla de resultados, notas del jurado, qué modelo hace mejores animaciones
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (vb_…). Empty: the running one, else the latest. |
+
+## `videobench_item`
+
+One video-bank item: the brief, automatic checks, jury scores, fixes and the files. Detalle de un encargo.
+
+The jury's summary, critical issues and fixes; render measures (declared length, frames, errors, blocked requests); optionally the page source. The contact sheet and frames are served by the app at /api/videobench/<run>/<brief>/sheet.png.
+Sinónimos: ver el vídeo, hoja de contactos, fallos del jurado, el HTML
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (vb_…). Empty: the running one, else the latest. |
+| `prompt` (string) | yes | The brief id of the item. |
+| `html` (boolean) | no | Include the page the model wrote (can be long). |
+
+## `videobench_cancel`
+
+Cancel a video-bank run: finished items kept. Cancelar banco de vídeo.
+
+Sinónimos: parar, detener
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (vb_…). Empty: the running one, else the latest. |
+
+## `videobench_list`
+
+Recent video-bank runs with state and summary. Historial del banco de vídeo.
+
+Sinónimos: ejecuciones anteriores de vídeo
 
 Annotations: readOnlyHint, idempotentHint.
 

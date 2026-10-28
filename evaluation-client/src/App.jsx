@@ -13,6 +13,7 @@ import Arena from "./pages/Arena.jsx";
 import Arneses from "./pages/Arneses.jsx";
 import Agentes from "./pages/Agentes.jsx";
 import Rutas from "./pages/Rutas.jsx";
+import Videos from "./pages/Videos.jsx";
 import Ajustes from "./pages/Ajustes.jsx";
 
 export { useApp } from "./context.js";
@@ -25,6 +26,7 @@ const PAGES = [
   { path: "clasificacion", key: "nav_board", icon: ICONS.board, component: Clasificacion },
   { path: "arena", key: "nav_arena", icon: ICONS.arena, component: Arena },
   { path: "arneses", key: "nav_harness", icon: ICONS.harness, component: Arneses },
+  { path: "videos", key: "nav_videos", icon: ICONS.video, component: Videos },
   { path: "agentes", key: "nav_agents", icon: ICONS.agents, component: Agentes, badge: "agents" },
   { path: "rutas", key: "nav_routes", icon: ICONS.routes, component: Rutas },
   { path: "ajustes", key: "nav_settings", icon: ICONS.settings, component: Ajustes },
