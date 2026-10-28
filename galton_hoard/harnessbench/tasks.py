@@ -173,7 +173,8 @@ def select_tasks(only: Any = (), kinds: Any = ()) -> list[dict[str, Any]]:
 
 
 def new_world(task: dict[str, Any]) -> World:
-    return World.build(task["world"])
+    """A fresh world for one trial: the language bench builds its own (``make_world``), the base tasks a plain one from their ``world`` spec."""
+    return task["make_world"]() if task.get("make_world") else World.build(task["world"])
 
 
 def is_solved(task: dict[str, Any], world: World, observations: list[str]) -> bool:
@@ -185,7 +186,7 @@ def is_solved(task: dict[str, Any], world: World, observations: list[str]) -> bo
 
 
 def public(task: dict[str, Any]) -> dict[str, Any]:
-    return {"id": task["id"], "kind": task["kind"], "prompt": task["prompt"], "tools": task["tools"], "external": task["external"], "oracle_calls": len(task["oracle"])}
+    return {"id": task["id"], "kind": task["kind"], "prompt": task["prompt"], "tools": task["tools"], "external": task["external"], "oracle_calls": len(task["oracle"]), "set": "base"}
 
 
 def external_files(task: dict[str, Any]) -> dict[str, str]:

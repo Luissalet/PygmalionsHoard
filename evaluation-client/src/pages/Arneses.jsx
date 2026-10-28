@@ -24,6 +24,7 @@ function NewMatrix() {
   const [history, setHistory] = useState(new Set(["none"]));
   const [external, setExternal] = useState(new Set());
   const [kinds, setKinds] = useState(null);                 // null: every kind
+  const [langs, setLangs] = useState(new Set());            // empty: the base tasks; es / en: the language bench
   const [form, setForm] = useState({ k: 1, max_turns: "", max_tokens: "" });
   const [plan, setPlan] = useState(null);
   const [planError, setPlanError] = useState(null);
@@ -31,8 +32,9 @@ function NewMatrix() {
 
   const allModels = modelsLoad.data?.models || [];
   const blocked = useMemo(() => new Set(allModels.filter((m) => m.not_served).map((m) => m.id)), [allModels]);
-  const tasks = catalog.data?.tasks || [];
-  const allKinds = catalog.data?.kinds || [];
+  const language = catalog.data?.languages;
+  const tasks = langs.size ? (language?.tasks || []) : (catalog.data?.tasks || []);
+  const allKinds = (langs.size ? language?.kinds : catalog.data?.kinds) || [];
   const kindCount = (kind) => tasks.filter((x) => x.kind === kind).length;
   const chosenKinds = kinds || new Set(allKinds);
   const configured = (catalog.data?.external?.configured || []).filter((s) => s.enabled);
@@ -52,12 +54,13 @@ function NewMatrix() {
   const args = useMemo(() => {
     const a = { models: [...models].filter((id) => !blocked.has(id)), harnesses, k: Math.max(1, Number(form.k) || 1) };
     if (kinds && kinds.size !== allKinds.length) a.kinds = [...kinds];
+    if (langs.size) a.langs = (language?.langs || ["es", "en"]).filter((x) => langs.has(x));
     const settings = {};
     if (form.max_turns !== "") settings.max_turns = Number(form.max_turns);
     if (form.max_tokens !== "") settings.max_tokens = Number(form.max_tokens);
     if (Object.keys(settings).length) a.settings = settings;
     return a;
-  }, [models, blocked, harnesses, kinds, allKinds.length, form]);
+  }, [models, blocked, harnesses, kinds, allKinds.length, form, langs, language]);
 
   const ready = args.models.length > 0 && args.harnesses.length > 0 && (!kinds || kinds.size > 0);
   useEffect(() => {
@@ -70,6 +73,7 @@ function NewMatrix() {
   }, [args, ready]);
 
   const toggle = (set, setter, id) => setter(() => { const next = new Set(set); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const toggleLang = (code) => { toggle(langs, setLangs, code); setKinds(null); };
   const toggleKind = (kind) => setKinds(() => { const next = new Set(chosenKinds); next.has(kind) ? next.delete(kind) : next.add(kind); return next; });
   const start = () => run("start", async () => {
     const r = await api.call("harness_matrix_start", { ...args, wait_s: 0 });
@@ -127,6 +131,14 @@ function NewMatrix() {
         </div>
       </Section>
       <div className="lg:col-span-2 space-y-3">
+        <Section title={t("hb_langs")}>
+          <div className="panel space-y-1" role="group" aria-label={t("hb_langs")}>
+            <div className="flex flex-wrap gap-x-5 gap-y-1">
+              {["es", "en"].map((code) => <React.Fragment key={code}>{checkbox(langs.has(code), () => toggleLang(code), <span>{t(`hb_lang_${code}`)}</span>)}</React.Fragment>)}
+            </div>
+            <div className="help">{t(langs.size ? "hb_langs_on" : "hb_langs_off", { n: language?.tasks?.length || 0 })}</div>
+          </div>
+        </Section>
         <Section title={t("hb_tasks")} count={tasks.length ? tasks.filter((x) => chosenKinds.has(x.kind)).length : undefined}>
           <div className="panel flex flex-wrap gap-x-5 gap-y-1" role="group" aria-label={t("hb_tasks")}>
             {catalog.loading && !catalog.data && <Spinner />}
@@ -193,6 +205,8 @@ function Trace({ trial }) {
         <Chip className={OUTCOME_CHIP[trial.outcome]}>{t(`hb_out_${trial.outcome}`)}</Chip>
         {trial.reason && <Chip>{t(`hb_reason_${trial.reason}`)}</Chip>}
         <span className="help num">{t("hb_trial_numbers", { turns: trial.turns ?? "—", calls: trial.calls ?? "—", format: trial.format_failures ?? "—", extra: trial.extra_calls ?? "—" })}</span>
+        {trial.lang && <span className="help num">{t("hb_trial_lang", { lang: trial.lang, searches: trial.search_calls ?? "—", empty: trial.empty_searches ?? "—", args: trial.arg_mismatch ?? "—",
+          consistency: trial.lang_consistency == null ? "—" : `${Math.round(trial.lang_consistency * 100)} %` })}</span>}
       </div>
       {trial.detail && <div className="help">{t.msg(trial.detail)}</div>}
       {(trial.trace || []).map((step) => (
@@ -241,9 +255,10 @@ function TaskRow({ row, matrix, model, harness }) {
         <td className="r num">{row.format_failures}</td>
         <td className="r num">{row.extra_calls}</td>
         <td className="r num">{row.turns.filter((x) => x != null).join(", ") || "—"}</td>
+        {row.empty_searches != null && <td className="r num">{row.empty_searches}</td>}
       </tr>
       {open && (
-        <tr><td colSpan={6}>
+        <tr><td colSpan={7}>
           <ErrorBox error={error} />
           {!trials && !error && <Spinner />}
           {trials?.map((trial, i) => <div key={i} className="mb-3">{trials.length > 1 && <div className="label">{t("hb_sample", { n: (trial.sample ?? i) + 1 })}</div>}<Trace trial={trial} /></div>)}
@@ -278,11 +293,14 @@ function CellDetail({ matrix, model, harness, onClose }) {
             <div className="kpi"><b>{s.tokens_out_mean != null ? num(s.tokens_out_mean, 0, lang) : "—"}</b><span>{t("hb_tokens_out")}</span></div>
             <div className="kpi"><b>{s.latency_ms_mean != null ? duration(s.latency_ms_mean) : "—"}</b><span>{t("latency")}</span></div>
             <div className="kpi"><b>{s.none_n}</b><span>{t("hb_none_n")}</span></div>
+            {s.lang && <div className="kpi"><b>{pct(s.lang_consistency, 0, lang)}</b><span>{t("hb_lang_consistency")}</span></div>}
+            {s.lang && <div className="kpi"><b>{pct(s.empty_search_rate, 0, lang)}</b><span>{t("hb_empty_searches")}</span></div>}
+            {s.lang && <div className="kpi"><b>{pct(s.arg_mismatch_rate, 0, lang)}</b><span>{t("hb_arg_mismatch")}</span></div>}
           </div>
           {s.none_n > 0 && <div className="banner banner-warn">{t("hb_none_explain", { n: s.none_n })}{Object.keys(s.none_reasons || {}).length > 0 && <span className="help block">{Object.entries(s.none_reasons).map(([why, n]) => `${n} × ${why}`).join(" · ")}</span>}</div>}
           <div className="panel scroll-x" style={{ padding: 0 }}>
             <table className="tbl">
-              <thead><tr><th>{t("case")}</th><th>{t("kind")}</th><th>{t("status")}</th><th className="r">{t("hb_format_failures")}</th><th className="r">{t("hb_extra_calls")}</th><th className="r">{t("hb_turns")}</th></tr></thead>
+              <thead><tr><th>{t("case")}</th><th>{t("kind")}</th><th>{t("status")}</th><th className="r">{t("hb_format_failures")}</th><th className="r">{t("hb_extra_calls")}</th><th className="r">{t("hb_turns")}</th>{data.lang && <th className="r">{t("hb_empty_short")}</th>}</tr></thead>
               <tbody>{data.tasks.map((row) => <TaskRow key={row.task} row={row} matrix={matrix} model={model.id} harness={harness} />)}</tbody>
             </table>
           </div>
@@ -307,9 +325,50 @@ function HeatCell({ c, k, selected, onPick }) {
           {c.format_fail_rate > 0 && <Chip className="chip-amber" title={t("hb_format_failures")}>{t("hb_fmt_short")} {pct(c.format_fail_rate, 0, lang)}</Chip>}
           {c.extra_calls_mean > 0 && <Chip title={t("hb_extra_calls")}>{t("hb_extra_short")} {num(c.extra_calls_mean, 1, lang)}</Chip>}
           {c.none_n > 0 && <Chip className="chip-info" title={t("hb_none_n")}>None {c.none_n}</Chip>}
+          {c.lang && c.lang_consistency != null && <Chip className={c.lang_consistency < 0.8 ? "chip-amber" : ""} title={t("hb_lang_consistency")}>{t("hb_lang_short")} {pct(c.lang_consistency, 0, lang)}</Chip>}
+          {c.lang && c.empty_search_rate > 0 && <Chip className="chip-amber" title={t("hb_empty_searches")}>{t("hb_empty_short")} {pct(c.empty_search_rate, 0, lang)}</Chip>}
         </span>
       </button>
     </td>
+  );
+}
+
+function LanguageReport({ report, models }) {
+  const { t, lang } = useApp();
+  const others = report.langs.filter((x) => x !== report.base);
+  const fmt = (x, digits = 0) => (x == null ? "—" : pct(x, digits, lang));
+  const delta = (x) => (x == null ? "—" : `${x > 0 ? "+" : ""}${num(x, 1, lang)}`);
+  const e = report.effects;
+  return (
+    <Section title={t("hb_language_axis")}>
+      <div className="panel space-y-2">
+        <p>{report.summary[lang]}</p>
+        <div className="kpis">
+          <div className="kpi"><b>{e.language_points == null ? "—" : num(e.language_points, 1, lang)}</b><span>{t("hb_effect_language")}</span></div>
+          <div className="kpi"><b>{e.harness_points == null ? "—" : num(e.harness_points, 1, lang)}</b><span>{t("hb_effect_harness")}</span></div>
+          <div className="kpi"><b>{e.model_points == null ? "—" : num(e.model_points, 1, lang)}</b><span>{t("hb_effect_model")}</span></div>
+        </div>
+      </div>
+      <div className="panel scroll-x" style={{ padding: 0 }}>
+        <table className="tbl">
+          <thead><tr><th>{t("model")}</th><th>{t("hb_harness")}</th><th>{t("hb_lang")}</th><th className="r">pass@1</th><th className="r">{t("hb_pass_delta", { base: report.base })}</th><th className="r">{t("hb_calls_vs", { base: report.base })}</th>
+            <th className="r">{t("hb_lang_consistency")}</th><th className="r">{t("hb_empty_searches")}</th><th className="r">{t("hb_arg_mismatch")}</th></tr></thead>
+          <tbody>
+            {models.flatMap((x) => Object.entries(report.pairs[x.id] || {}).flatMap(([h, byLang]) => others.map((code) => {
+              const r = byLang[code];
+              return (
+                <tr key={`${x.id}/${h}/${code}`}>
+                  <td style={{ minWidth: 150, overflowWrap: "anywhere" }}>{x.name}</td><td className="mono" style={{ whiteSpace: "nowrap" }}>{h}</td><td><Chip>{code}</Chip></td>
+                  <td className="r num">{fmt(r.pass_at_1)}</td><td className="r num">{delta(r.pass_delta_points)}</td><td className="r num">{r.calls_vs_base == null ? "—" : `×${num(r.calls_vs_base, 2, lang)}`}</td>
+                  <td className="r num">{fmt(r.lang_consistency)}</td><td className="r num">{fmt(r.empty_search_rate)}</td><td className="r num">{fmt(r.arg_mismatch_rate)}</td>
+                </tr>
+              );
+            })))}
+          </tbody>
+        </table>
+      </div>
+      <p className="help">{t("hb_language_legend")}</p>
+    </Section>
   );
 }
 
@@ -342,7 +401,9 @@ function MatrixDetail({ id }) {
   if (!data) return <div className="space-y-3"><a href="#/arneses" className="btn btn-sm"><Icon d={ICONS.back} size={14} />{t("nav_harness")}</a><ErrorBox error={error} />{loading && !error && <Spinner />}</div>;
   const conclusion = data.conclusion;
   const models = data.models;
-  const harnesses = data.harnesses.map((h) => h.id);
+  const columns = data.columns || data.harnesses.map((h) => ({ id: h.id, harness: h.id, lang: "" }));
+  const withLangs = columns.some((c) => c.lang);
+  const harnessIds = data.harnesses.map((h) => h.id);
   const stale = models.filter((x) => x.stale || x.removed);
 
   return (
@@ -389,18 +450,21 @@ function MatrixDetail({ id }) {
         {data.trials === 0 ? <Empty>{active ? t("waiting_results") : t("no_results")}</Empty> : (
           <div className="panel scroll-x" style={{ padding: 0 }}>
             <table className="tbl hb-table">
-              <thead><tr><th>{t("model")}</th>{harnesses.map((h) => <th key={h} scope="col">{h}</th>)}<th className="r">{t("hb_mean")}</th></tr></thead>
+              <thead>
+                {withLangs && <tr><th rowSpan={2}>{t("model")}</th>{harnessIds.map((h) => <th key={h} scope="colgroup" colSpan={columns.filter((c) => c.harness === h).length} style={{ textAlign: "center" }}>{h}</th>)}<th className="r" rowSpan={2}>{t("hb_mean")}</th></tr>}
+                <tr>{!withLangs && <th>{t("model")}</th>}{columns.map((c) => <th key={c.id} scope="col">{c.lang ? <Chip>{c.lang}</Chip> : c.harness}</th>)}{!withLangs && <th className="r">{t("hb_mean")}</th>}</tr>
+              </thead>
               <tbody>
                 {models.map((x) => (
                   <tr key={x.id}>
                     <th scope="row" style={{ overflowWrap: "anywhere", color: "var(--ink)" }}>{x.name}{x.stale && <> <Chip className="chip-amber">{t("hb_stale_chip")}</Chip></>}</th>
-                    {harnesses.map((h) => <HeatCell key={h} c={data.cells[x.id]?.[h]} k={m.k} selected={pick?.model === x.id && pick?.harness === h} onPick={() => setPick(pick?.model === x.id && pick?.harness === h ? null : { model: x.id, harness: h })} />)}
+                    {columns.map((c) => <HeatCell key={c.id} c={data.cells[x.id]?.[c.id]} k={m.k} selected={pick?.model === x.id && pick?.harness === c.id} onPick={() => setPick(pick?.model === x.id && pick?.harness === c.id ? null : { model: x.id, harness: c.id })} />)}
                     <td className="r num">{data.by_model[x.id] == null ? "—" : pct(data.by_model[x.id], 0, lang)}</td>
                   </tr>
                 ))}
                 <tr>
                   <th scope="row">{t("hb_mean")}</th>
-                  {harnesses.map((h) => <td key={h} className="num">{data.by_harness[h] == null ? "—" : pct(data.by_harness[h], 0, lang)}</td>)}
+                  {columns.map((c) => <td key={c.id} className="num">{data.by_harness[c.id] == null ? "—" : pct(data.by_harness[c.id], 0, lang)}</td>)}
                   <td />
                 </tr>
               </tbody>
@@ -409,6 +473,8 @@ function MatrixDetail({ id }) {
         )}
         <p className="help">{t("hb_legend")}</p>
       </Section>
+
+      {data.language && <LanguageReport report={data.language} models={models} />}
 
       {pick && <CellDetail key={`${pick.model}/${pick.harness}`} matrix={id} model={models.find((x) => x.id === pick.model)} harness={pick.harness} onClose={() => setPick(null)} />}
     </div>

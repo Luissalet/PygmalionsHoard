@@ -5,12 +5,18 @@
     python scripts/harnessbench_eval.py --url http://127.0.0.1:8081 --model qwen3-8b --harnesses native_tools,json_text --kinds calc,notool
     python scripts/harnessbench_eval.py --model qwen3-8b@http://127.0.0.1:8081 --model llama3.1-8b@http://127.0.0.1:8082 --k 3 --out matrix.json
     python scripts/harnessbench_eval.py --url ... --model m --harnesses native_tools,xml_text.long.trim --tasks calc-sum,fs-write-greeting
+    python scripts/harnessbench_eval.py --url ... --model m --langs es,en --k 2     # the language bench: same tasks, ids and tools in each language
     python scripts/harnessbench_eval.py --url ... --model m --cli "agent = terminal-agent --base-url {base_url} --model {model} --prompt-file {prompt_file} --workdir {workdir}"
 
 Every cell gets the same output-token cap, turn cap and temperature. The report is JSON on stdout (or --out FILE): the matrix, the automatic conclusion
 (is the difference between harnesses larger than between models) and every trial with its trace; the markdown table goes to stderr. A trial whose
 server failed (timeout, connection) has no result: it is counted apart and left out of the percentages. Point --url at a server that is free, never
 at one that someone else is using.
+
+With --langs the tasks are the language bench (shop and family tasks with the same ids in Spanish and English, localised data and a canonical entity map):
+each matrix column is a harness in one language, and the report adds the language axis (pass@1 and tool calls against English, language consistency of the
+replies judged by a local lexical judge, empty searches, tool arguments in another language than the data). Its figures are not comparable with other
+benchmarks or with a model judge.
 
 Harness ids: native_tools, json_text, xml_text, react_text, each with the optional suffixes .long (long system prompt) and .trim (old results are
 shortened), for example json_text.long.trim. --cli adds a command-line agent; it is started without a shell and receives the task and the endpoint.
@@ -29,6 +35,10 @@ from galton_hoard.errors import GaltonError  # noqa: E402
 from galton_hoard.harnessbench import (  # noqa: E402
     DEFAULT_HARNESSES, KINDS, build_matrix, conclude, parse_external, parse_harness_id, run_external, run_trial, select_tasks,
 )
+from galton_hoard.harnessbench.scoring import language_report  # noqa: E402
+from galton_hoard.harnessbench.store import column_id  # noqa: E402
+from galton_hoard.langbench import tasks as lang_tasks  # noqa: E402
+from galton_hoard.langbench.canon import LANGS  # noqa: E402
 from galton_hoard.harnessbench.external import ExternalSpec  # noqa: E402
 from galton_hoard.harnessbench.runner import markdown_table  # noqa: E402
 
@@ -56,7 +66,8 @@ def main(argv=None) -> int:
     ap.add_argument("--harnesses", default=",".join(DEFAULT_HARNESSES))
     ap.add_argument("--cli", action="append", default=[], help="command-line harness as 'name = command {base_url} {model} {prompt_file} {workdir}' (repeatable)")
     ap.add_argument("--tasks", default="", help="comma separated task ids; default all")
-    ap.add_argument("--kinds", default="", help=f"comma separated, from {', '.join(KINDS)}")
+    ap.add_argument("--kinds", default="", help=f"comma separated, from {', '.join(KINDS)} (with --langs: {', '.join(lang_tasks.KINDS)})")
+    ap.add_argument("--langs", default="", help=f"language bench: comma separated, from {', '.join(LANGS)}; each task runs in every language")
     ap.add_argument("--k", type=int, default=1, help="samples per task (pass@k and pass^k when above 1)")
     ap.add_argument("--max-turns", type=int, default=8)
     ap.add_argument("--max-format-errors", type=int, default=3)
@@ -83,7 +94,18 @@ def main(argv=None) -> int:
             harnesses.append(parse_harness_id(ref))
         except GaltonError as exc:
             ap.error(str(exc.message))
-    tasks = select_tasks(_csv(args.tasks), _csv(args.kinds))
+    langs = _csv(args.langs)
+    for code in langs:
+        if code not in LANGS:
+            ap.error(f"unknown language {code!r}; use {', '.join(LANGS)}")
+    langs = list(dict.fromkeys(langs))
+    if langs:
+        unknown = [t for t in _csv(args.tasks) if t not in lang_tasks.SPECS_BY_ID]
+        if unknown:
+            ap.error(f"{unknown[0]!r} is not a language-bench task; use {', '.join(lang_tasks.I18N_TASK_IDS)}")
+        tasks = [lang_tasks.localize(i, lang) for i in lang_tasks.select(_csv(args.tasks), _csv(args.kinds)) for lang in langs]
+    else:
+        tasks = select_tasks(_csv(args.tasks), _csv(args.kinds))
     if not tasks:
         print("no task matches", file=sys.stderr)
         return 1
@@ -95,7 +117,7 @@ def main(argv=None) -> int:
     if args.dry_run:
         print(plan)
         print("harnesses: " + ", ".join(h.id for h in harnesses))
-        print("tasks: " + ", ".join(t["id"] for t in tasks))
+        print("tasks: " + ", ".join(dict.fromkeys(t["id"] for t in tasks)) + (f"  (each in {', '.join(langs)})" if langs else ""))
         return 0
     if not models:
         ap.error("--model is required unless --dry-run")
@@ -127,7 +149,7 @@ def main(argv=None) -> int:
                         d.pop("trace", None)
                     rows.append(d)
                     fails_in_a_row = fails_in_a_row + 1 if trial.outcome == "none" else 0
-                    print(f"{mid} {h.id} {task['id']}#{sample}: {trial.outcome}{' (' + trial.reason + ')' if trial.reason else ''}", file=sys.stderr)
+                    print(f"{mid} {column_id(h.id, task.get('lang') or '')} {task['id']}#{sample}: {trial.outcome}{' (' + trial.reason + ')' if trial.reason else ''}", file=sys.stderr)
                     if fails_in_a_row >= 4:
                         print(f"{mid}: four trials in a row without a result, the server looks down; stopping this model", file=sys.stderr)
                         break
@@ -136,12 +158,25 @@ def main(argv=None) -> int:
             if fails_in_a_row >= 4:
                 break
     harness_ids = [h.id for h in harnesses]
-    matrix = build_matrix(rows, ids, harness_ids, k)
-    conclusion = conclude(matrix, {i: i for i in ids}, harness_ids)
-    print(markdown_table([{"id": i, "name": i} for i in ids], harness_ids, matrix), file=sys.stderr)
+    names = {i: i for i in ids}
+    extra: dict = {}
+    if langs:
+        columns = [column_id(h, lang) for h in harness_ids for lang in langs]
+        matrix = build_matrix(rows, ids, columns, k)
+        pooled = build_matrix([{**t, "lang": ""} for t in rows], ids, harness_ids, k)
+        conclusion = conclude(pooled, names, harness_ids)
+        language = language_report(rows, matrix, ids, harness_ids, langs, names)
+        conclusion = {**conclusion, "language": language["effects"], "summary": {c: f"{conclusion['summary'][c]} {language['summary'][c]}".strip() for c in ("en", "es")}}
+        extra = {"langs": langs, "columns": columns, "language": language}
+        print(markdown_table([{"id": i, "name": i} for i in ids], columns, matrix), file=sys.stderr)
+        print(language["summary"]["en"], file=sys.stderr)
+    else:
+        matrix = build_matrix(rows, ids, harness_ids, k)
+        conclusion = conclude(matrix, names, harness_ids)
+        print(markdown_table([{"id": i, "name": i} for i in ids], harness_ids, matrix), file=sys.stderr)
     print(conclusion["summary"]["en"], file=sys.stderr)
     report = {"models": ids, "harnesses": harness_ids, "k": k, "settings": {"max_turns": args.max_turns, "max_format_errors": args.max_format_errors, "max_tokens": args.max_tokens,
-                                                                          "temperature": temperature}, **matrix, "conclusion": conclusion, "trials": rows}
+                                                                          "temperature": temperature}, **matrix, **extra, "conclusion": conclusion, "trials": rows}
     text = json.dumps(report, ensure_ascii=False, indent=2)
     if args.out:
         Path(args.out).write_text(text, encoding="utf-8")

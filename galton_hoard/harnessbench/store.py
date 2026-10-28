@@ -11,15 +11,26 @@ from ..errors import GaltonError
 from ..messages import recognise
 from ..util import new_id
 
-MATRIX_JSON = ("models", "harnesses", "tasks", "settings", "progress", "summary")
-MATRIX_FIELDS = ("label", "state", "models", "harnesses", "tasks", "k", "settings", "progress", "total", "done", "source", "caller", "error", "cancel", "summary",
+MATRIX_JSON = ("models", "harnesses", "tasks", "langs", "settings", "progress", "summary")
+MATRIX_FIELDS = ("label", "state", "models", "harnesses", "tasks", "langs", "k", "settings", "progress", "total", "done", "source", "caller", "error", "cancel", "summary",
                  "started_ts", "finished_ts")
 ACTIVE = ("queued", "waiting_gpu", "waiting_server", "running")
 TERMINAL = ("done", "failed", "cancelled")
-_DEFAULTS = {"models": [], "harnesses": [], "tasks": [], "settings": {}, "progress": {}, "summary": {}}
+_DEFAULTS = {"models": [], "harnesses": [], "tasks": [], "langs": [], "settings": {}, "progress": {}, "summary": {}}
 TRIAL_FIELDS = ("task_id", "harness", "sample", "outcome", "passed", "reason", "detail", "turns", "calls", "format_failures", "extra_calls", "extra_repeat",
-                "extra_after_solved", "tokens_in", "tokens_out", "latency_ms", "final")
-LIGHT = "id, matrix_id, contestant_id, digest, harness, task_id, sample, outcome, passed, reason, detail, turns, calls, format_failures, extra_calls, extra_repeat, extra_after_solved, tokens_in, tokens_out, latency_ms, ts"
+                "extra_after_solved", "tokens_in", "tokens_out", "latency_ms", "final", "lang", "search_calls", "empty_searches", "arg_calls", "arg_mismatch", "lang_consistency")
+LIGHT = ("id, matrix_id, contestant_id, digest, harness, task_id, sample, outcome, passed, reason, detail, turns, calls, format_failures, extra_calls, extra_repeat, extra_after_solved, "
+         "tokens_in, tokens_out, latency_ms, lang, search_calls, empty_searches, arg_calls, arg_mismatch, lang_consistency, ts")
+
+
+def column_id(harness: str, lang: str = "") -> str:
+    """The id of a matrix column: the harness alone, or ``harness@lang`` for a language-bench trial."""
+    return f"{harness}@{lang}" if lang else harness
+
+
+def split_column(column: str) -> tuple[str, str]:
+    harness, _, lang = str(column).partition("@")
+    return harness, lang
 
 
 def _enc(value: Any) -> Any:
@@ -119,10 +130,10 @@ class MatrixStore:
         cur = self.db.execute(f"INSERT INTO hb_trials({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})", [matrix_id, contestant_id, digest, self.clock(), *data.values()])
         return int(cur.lastrowid)
 
-    def trials(self, matrix_id: str, *, contestant_id: str = "", harness: str = "", task_id: str = "", outcome: str = "", trace: bool = False,
+    def trials(self, matrix_id: str, *, contestant_id: str = "", harness: str = "", task_id: str = "", outcome: str = "", lang: str = "", trace: bool = False,
                limit: int = 100_000, offset: int = 0) -> list[dict[str, Any]]:
         sql, params = f"SELECT {'*' if trace else LIGHT} FROM hb_trials WHERE matrix_id = ?", [matrix_id]
-        for column, value in (("contestant_id", contestant_id), ("harness", harness), ("task_id", task_id), ("outcome", outcome)):
+        for column, value in (("contestant_id", contestant_id), ("harness", harness), ("task_id", task_id), ("outcome", outcome), ("lang", lang)):
             if value:
                 sql += f" AND {column} = ?"
                 params.append(value)

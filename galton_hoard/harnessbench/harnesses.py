@@ -56,6 +56,27 @@ class Turn:
 # ------------------------------------------------------------------------------------------------- parsing helpers
 _DECODER = json.JSONDecoder()
 
+# The markup some models are trained to write a tool call in. A text harness that did not ask for it reads the reply as a final answer, which would score a
+# call the model did make as a wrong answer; it is a format failure (the harness could not read the call), so it is counted as one and the model is told.
+_FOREIGN_DIALECTS = (
+    ("DSML", re.compile(r"<[|｜]\s*DSML\s*[|｜]")),
+    ("function_calls", re.compile(r"<function_calls>|<invoke|<invoke\s+name=")),
+    ("function=", re.compile(r"<function=\w+")),
+    ("tool_call_token", re.compile(r"<\|tool_call\|>|\[TOOL_CALLS\]|<\|python_tag\|>|<\|tool_calls_begin\|>")),
+)
+
+
+def foreign_dialect(text: str) -> str:
+    """The name of a tool-call markup found in ``text`` that none of the text harnesses asks for, or an empty string."""
+    for name, pattern in _FOREIGN_DIALECTS:
+        if pattern.search(text):
+            return name
+    return ""
+
+
+def _foreign_error(name: str) -> str:
+    return f"the reply holds a tool call written in another markup ({name}) that this harness does not read"
+
 
 def json_objects(text: str) -> list[Any]:
     """Every JSON object found in a text, in order (fences and prose around them are ignored)."""
@@ -233,6 +254,8 @@ class JsonText(Harness):
             return turn
         if re.search(r'"tool"\s*:', text):
             turn.format_error = "the JSON could not be parsed"
+        elif foreign_dialect(text):
+            turn.format_error = _foreign_error(foreign_dialect(text))
         else:
             turn.final = text
         return turn
@@ -264,7 +287,10 @@ class XmlText(Harness):
         text = comp.text.strip()
         turn = Turn()
         if "<tool_call>" not in text:
-            turn.final = text
+            if foreign_dialect(text):
+                turn.format_error = _foreign_error(foreign_dialect(text))
+            else:
+                turn.final = text
             return turn
         for payload in self.PATTERN.findall(text):
             objs = [o for o in json_objects(payload) if isinstance(o, dict)]
@@ -311,6 +337,9 @@ class ReactText(Harness):
             turn.format_error = "the reply has both an Action and a Final Answer"
             return turn
         if not action:
+            if not final and foreign_dialect(text):
+                turn.format_error = _foreign_error(foreign_dialect(text))
+                return turn
             turn.final = final.group(1).strip() if final else text
             return turn
         name = action.group(1).strip().strip("`'\"[]* ")

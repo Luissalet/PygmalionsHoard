@@ -96,6 +96,65 @@ Computed from the cells that have a number, in English and Spanish:
 
 The text is a reading of the numbers, not a test of significance: look at the intervals before acting on a small difference.
 
+## The language axis
+
+A second bank measures the same thing in Spanish and in English. Its 27 tool tasks have the same ids, the same oracle path and the same verifier in both
+languages (`galton_hoard/langbench`); only the words differ: the prompt, the tool descriptions, the data and the answer. Every string of a task has a type,
+after the typology of BabelArena (see `provenance/babelarena/NOTICE`):
+
+| type | what it is | example |
+| --- | --- | --- |
+| Preserve | never translated: ids, numbers, prices, dates, brand and product names | `ORD-1042`, `49.90` |
+| Translate-Free | free text that follows the language of the conversation | notes, titles, replies |
+| Translate-Canonical | a value of a closed set that exists in each language under a fixed spelling | the status `in_transit` / `en tránsito` |
+
+The tasks come in two domains, a shop with a BM25 search over a localized catalogue and a family dataset (documents, dates, utilities, notes), and in the kinds
+`lookup`, `filter`, `aggregate`, `cart`, `recovery`, `write` and `notool`. A model that translates a canonical value (or a search term) into the other language
+gets an empty search, and that is what the bank is built to see.
+
+Pick the languages in the screen Arneses (`es`, `en`), or `harness_matrix_start {"langs": ["es", "en"]}`, or `--langs es,en` in the script. The matrix then has
+one column per harness and language (`json_text@es`, `json_text@en`) and every cell reports, besides the fields above:
+
+| field | meaning |
+| --- | --- |
+| `lang_consistency` | share of the language-marked words of the final reply that are in the requested language. A local lexical judge (no model) that looks at the prose only and ignores ids, numbers, prices and names |
+| `empty_search_rate` | share of search calls that returned nothing |
+| `arg_mismatch_rate` | share of search arguments written in another language than the data |
+| `calls_mean` against the English column | how many more or fewer tool calls the same model needs in the other language |
+
+`language_report` pairs every language with English for the same model and harness and gives the points the language moves, the points the harness moves
+and (with several models) the points the model moves. The model effect is not comparable with one model.
+
+### A call in a dialect the harness did not ask for
+
+Some models write their tool calls in the markup they were trained on, whatever the prompt says (DeepSeek writes `<｜DSML｜ ...` blocks). A text harness that
+reads that as a final answer would score a wrong answer, and the cell would say the model cannot do the task when it cannot speak the harness. The text
+harnesses (`json_text`, `xml_text`, `react_text`) therefore recognise the foreign markup (`foreign_dialect`) and answer it with a format error that names the
+format they expect, like any unreadable call; the trial is a format failure if the model never recovers. The `native_tools` harness is not affected.
+
+### A real measurement
+
+deepseek-v4.1-flash (DeepSeek V4.1 Flash, served by the Sparks node), k = 2, temperature 0.7, 1536 output tokens, 27 tasks x 2 languages x 2 samples = 54 trials per
+cell. Pass@1 with pass^k:
+
+| harness | es | en |
+| --- | --- | --- |
+| native_tools | 92.6 % (92.6 %) | 94.4 % (92.6 %) |
+| json_text | 77.8 % (74.1 %) | 92.6 % (88.9 %) |
+| xml_text | 44.4 % (37.0 %) | 35.2 % (22.2 %) |
+| react_text | 87.0 % (85.2 %) | 92.6 % (85.2 %) |
+
+- Changing the language moves pass@1 by 7.9 points on average (absolute, per harness); changing the harness moves it by 53.7 points. For this model the way of asking for a tool
+  call matters far more than the language of the task.
+- In Spanish `json_text` loses 14.8 points against English. The empty searches are real: in Spanish 5.5 % of the searches came back empty because the
+  model translated a closed value (`in_transit` became `en tránsito`); in English 0.5 %. No search argument was in another language than the data in Spanish; 2 % were in the other language in English.
+- `xml_text` fails on the format (52 % of the trials in Spanish, 65 % in English), not on the answers: the model keeps writing its own markup. Before the foreign-dialect rule the same
+  cell scored 9 to 13 %, because those calls were read as wrong final answers.
+- The language consistency of the replies is 98.7 % in Spanish and 100 % in English. Over all four harnesses Spanish scores 75.5 % and English 78.7 % (3.2 points).
+- One model and 54 trials per cell: read the intervals before concluding. The figures do not compare with BabelArena or with any other benchmark.
+
+The summary and the report with every trial are in `docs/evaluation/measurements/language-bench-deepseek-v4.1-flash.md` and `.json`.
+
 ## Run it
 
 From the app: screen Arneses (`#/arneses`), or the tools `harness_catalog`, `harness_matrix_start`, `harness_matrix_status`, `harness_matrix_result`,
@@ -118,6 +177,7 @@ Without the app, against any chat-completions compatible endpoint (`--url` has n
 python scripts/harnessbench_eval.py --dry-run
 python scripts/harnessbench_eval.py --url http://127.0.0.1:8081 --model NAME --harnesses native_tools,json_text,xml_text --kinds calc,notool --out matrix.json
 python scripts/harnessbench_eval.py --model A@http://127.0.0.1:8081 --model B@http://127.0.0.1:8082 --k 3 --out matrix.json
+python scripts/harnessbench_eval.py --url http://127.0.0.1:8081 --model NAME --langs es,en --k 2 --out matrix.json     # the language axis
 ```
 
 The report has the matrix, the conclusion and every trial with its trace; the table and the conclusion are also printed to stderr.

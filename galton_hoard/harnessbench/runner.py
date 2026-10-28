@@ -22,8 +22,10 @@ from ..runner import RUN_DEFAULTS, SECONDS_PER_REASONING_TOKEN, TERMINAL, Runner
 from . import harnesses as hs
 from .external import ID_PREFIX, ExternalSpec, parse_external, run_external
 from .loop import Trial, run_trial
-from .scoring import build_matrix, conclude
-from .store import MatrixStore
+from ..langbench import tasks as lang_tasks
+from ..langbench.canon import LANGS, TYPOLOGY
+from .scoring import build_matrix, cell_stats, conclude, language_report
+from .store import MatrixStore, column_id, split_column
 from .tasks import KINDS, TASKS, TASKS_BY_ID, public, select_tasks
 from .world import TOOL_SPECS
 
@@ -89,7 +91,9 @@ class MatrixRunner:
                 "how": "Add .long and/or .trim to a harness id, for example json_text.long.trim."},
                 "external": {"allowed": bool(self.settings.get("harnessbench.allow_external")), "configured": [s.info() for s in specs],
                              "how": "Write lines 'name = command' in the setting harnessbench.external; the harness id is cli:<name>."},
-                "tasks": [public(t) for t in TASKS], "kinds": list(KINDS), "tools": {n: s.description for n, s in TOOL_SPECS.items()}}
+                "tasks": [public(t) for t in TASKS], "kinds": list(KINDS), "tools": {n: s.description for n, s in TOOL_SPECS.items()},
+                "languages": {"langs": list(LANGS), "base": "en", "kinds": list(lang_tasks.KINDS), "tasks": [lang_tasks.public(i) for i in lang_tasks.I18N_TASK_IDS], "typology": TYPOLOGY,
+                              "how": "Pass langs (for example [\"es\", \"en\"]) to run the language-bench tasks: the same tasks, ids, tools and enums in each language."}}
 
     def resolve_harnesses(self, refs: Optional[list[str]]) -> list[Any]:
         refs = [str(r).strip() for r in (refs or []) if str(r).strip()] or list(hs.DEFAULT_HARNESSES)
@@ -114,14 +118,38 @@ class MatrixRunner:
         return out
 
     @staticmethod
-    def resolve_tasks(ids: Optional[list[str]], kinds: Optional[list[str]]) -> list[dict[str, Any]]:
-        unknown = [t for t in (ids or []) if t not in TASKS_BY_ID]
+    def resolve_langs(langs: Optional[list[str]]) -> list[str]:
+        out: list[str] = []
+        for lang in [str(x).strip().lower() for x in (langs or []) if str(x).strip()]:
+            if lang not in LANGS:
+                raise GaltonError("invalid", "hb_unknown_lang", lang=lang, options=", ".join(LANGS))
+            if lang not in out:
+                out.append(lang)
+        return out
+
+    @staticmethod
+    def resolve_tasks(ids: Optional[list[str]], kinds: Optional[list[str]], langs: Optional[list[str]] = None) -> list[dict[str, Any]]:
+        """The runnable tasks. Without languages: the base tasks. With languages: the language-bench tasks, each one in every language (task by task, so the
+        two versions of a task run next to each other)."""
+        ids = list(ids or [])
+        if not langs:
+            lost = [t for t in ids if t in lang_tasks.SPECS_BY_ID]
+            if lost:
+                raise GaltonError("invalid", "hb_lang_needed", task=lost[0])
+            unknown = [t for t in ids if t not in TASKS_BY_ID]
+            if unknown:
+                raise GaltonError("not_found", "hb_no_task", task=unknown[0], options=", ".join(TASKS_BY_ID))
+            chosen = select_tasks(ids, kinds or ())
+            if not chosen:
+                raise GaltonError("invalid", "hb_no_tasks")
+            return chosen
+        unknown = [t for t in ids if t not in lang_tasks.SPECS_BY_ID]
         if unknown:
-            raise GaltonError("not_found", "hb_no_task", task=unknown[0], options=", ".join(TASKS_BY_ID))
-        chosen = select_tasks(ids or (), kinds or ())
-        if not chosen:
+            raise GaltonError("not_found", "hb_no_task_lang", task=unknown[0], options=", ".join(lang_tasks.I18N_TASK_IDS))
+        picked = lang_tasks.select(ids, kinds or ())
+        if not picked:
             raise GaltonError("invalid", "hb_no_tasks")
-        return chosen
+        return [lang_tasks.localize(i, lang) for i in picked for lang in langs]
 
     @staticmethod
     def planned(harness_list: list[Any], tasks: list[dict[str, Any]], k: int) -> list[tuple[Any, dict[str, Any], int]]:
@@ -130,7 +158,7 @@ class MatrixRunner:
 
     # ------------------------------------------------------------------ creating a matrix
     def create(self, *, models: list[Any], harnesses: Optional[list[str]] = None, tasks: Optional[list[str]] = None, kinds: Optional[list[str]] = None, k: int = 1,
-               settings: Optional[dict[str, Any]] = None, label: str = "", source: str = "ui", caller: str = "") -> dict[str, Any]:
+               settings: Optional[dict[str, Any]] = None, label: str = "", source: str = "ui", caller: str = "", langs: Optional[list[str]] = None) -> dict[str, Any]:
         rs = normalise_matrix_settings(settings, k)
         rows = self.runner.resolve_contestants(models)
         if not rows:
@@ -142,7 +170,8 @@ class MatrixRunner:
                 raise GaltonError("not_found", "model_gone", name=c["name"])
             self.runner.ensure_served(c)
         harness_list = self.resolve_harnesses(harnesses)
-        chosen = self.resolve_tasks(tasks, kinds)
+        lang_list = self.resolve_langs(langs)
+        chosen = self.resolve_tasks(tasks, kinds, lang_list)
         per_model = len(self.planned(harness_list, chosen, k))
         total = per_model * len(rows)
         if total > MAX_TRIALS:
@@ -150,20 +179,21 @@ class MatrixRunner:
         if total == 0:
             raise GaltonError("invalid", "hb_no_tasks")
         progress = {c["id"]: {"state": "queued", "done": 0, "total": per_model, "error": "", "runs_on": "", "warnings": []} for c in rows}
-        matrix = self.store.create_matrix(label=label or text("label_matrix", models=len(rows), harnesses=len(harness_list), tasks=len(chosen)), state="queued",
-                                          models=[c["id"] for c in rows], harnesses=[h.id for h in harness_list], tasks=[t["id"] for t in chosen], k=k, settings=rs,
+        matrix = self.store.create_matrix(label=label or (text("label_matrix_langs", models=len(rows), harnesses=len(harness_list), tasks=len(set(t["id"] for t in chosen)), langs=", ".join(lang_list)) if lang_list else text("label_matrix", models=len(rows), harnesses=len(harness_list), tasks=len(set(t["id"] for t in chosen)))), state="queued",
+                                          models=[c["id"] for c in rows], harnesses=[h.id for h in harness_list], tasks=list(dict.fromkeys(t["id"] for t in chosen)), langs=lang_list, k=k, settings=rs,
                                           progress=progress, total=total, done=0, source=source, caller=caller)
         self.jobs.queued(matrix)
         return matrix
 
     def plan(self, *, models: list[Any], harnesses: Optional[list[str]] = None, tasks: Optional[list[str]] = None, kinds: Optional[list[str]] = None, k: int = 1,
-             settings: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+             settings: Optional[dict[str, Any]] = None, langs: Optional[list[str]] = None) -> dict[str, Any]:
         rs = normalise_matrix_settings(settings, k)
         rows = self.runner.resolve_contestants(models)
         harness_list = self.resolve_harnesses(harnesses)
-        chosen = self.resolve_tasks(tasks, kinds)
+        lang_list = self.resolve_langs(langs)
+        chosen = self.resolve_tasks(tasks, kinds, lang_list)
         per_model = len(self.planned(harness_list, chosen, k))
-        return {"models": [c["name"] for c in rows], "harnesses": [h.id for h in harness_list], "tasks": len(chosen), "k": k, "trials_per_model": per_model,
+        return {"models": [c["name"] for c in rows], "harnesses": [h.id for h in harness_list], "langs": lang_list, "tasks": len(set(t["id"] for t in chosen)), "k": k, "trials_per_model": per_model,
                 "trials": per_model * len(rows), "limit": MAX_TRIALS, "settings": rs,
                 "same_for_every_cell": {"max_tokens": rs["max_tokens"], "max_turns": rs["max_turns"], "max_format_errors": rs["max_format_errors"], "temperature": rs["temperature"]}}
 
@@ -217,7 +247,8 @@ class MatrixRunner:
             failed = self.store.update_matrix(mid, state="failed", finished_ts=self.clock(), error=exc.message)
             self.jobs.finished(failed, "failed", str(exc.message))
             return failed
-        tasks = [TASKS_BY_ID[t] for t in m["tasks"] if t in TASKS_BY_ID]
+        langs = list(m.get("langs") or [])
+        tasks = [lang_tasks.localize(t, lang) for t in m["tasks"] if t in lang_tasks.SPECS_BY_ID for lang in langs] if langs else [TASKS_BY_ID[t] for t in m["tasks"] if t in TASKS_BY_ID]
         self.store.update_matrix(mid, state="running", started_ts=self.clock())
         self.jobs.started(m)
         self.active = mid
@@ -275,8 +306,9 @@ class MatrixRunner:
 
         def none_for(rest: list[tuple[Any, dict[str, Any], int]], reason: str, detail: str) -> None:
             for h, task, sample in rest:
-                store_trial(Trial(task_id=task["id"], harness=h.id, sample=sample, outcome="none", passed=None, reason=reason, detail=detail[:300],
-                                  turns=None, calls=None, format_failures=None, extra_calls=None, extra_repeat=None, extra_after_solved=None, tokens_in=None, tokens_out=None))
+                store_trial(Trial(task_id=task["id"], harness=h.id, sample=sample, outcome="none", passed=None, reason=reason, detail=detail[:300], lang=task.get("lang", ""),
+                                  turns=None, calls=None, format_failures=None, extra_calls=None, extra_repeat=None, extra_after_solved=None, tokens_in=None, tokens_out=None,
+                                  search_calls=None, empty_searches=None, arg_calls=None, arg_mismatch=None))
 
         done_index = {"i": 0}
         dropped = {"n": 0}                  # trials answered but never verified against the server: they become none, not silent gaps
@@ -409,22 +441,34 @@ class MatrixRunner:
         names = self.names(m["models"])
         models = [{"id": cid, "name": names[cid], **(m["progress"].get(cid) or {})} for cid in m["models"]]
         return {"id": m["id"], "label": m["label"], "state": m["state"], "k": m["k"], "total": m["total"], "done": m["done"], "settings": m["settings"], "models": models,
-                "harnesses": m["harnesses"], "tasks": len(m["tasks"]), "source": m["source"], "created_ts": m["created_ts"], "started_ts": m["started_ts"],
+                "harnesses": m["harnesses"], "langs": m.get("langs") or [], "tasks": len(m["tasks"]), "source": m["source"], "created_ts": m["created_ts"], "started_ts": m["started_ts"],
                 "finished_ts": m["finished_ts"], "error": m["error"], "active": m["id"] == self.active, "cancel": m["cancel"]}
 
     def result(self, mid: str) -> dict[str, Any]:
         m = self.store.matrix(mid)
         trials = self.store.trials(m["id"])
-        matrix = build_matrix(trials, m["models"], m["harnesses"], int(m["k"]))
+        langs = list(m.get("langs") or [])
+        columns = [{"id": column_id(h, lang), "harness": h, "lang": lang} for h in m["harnesses"] for lang in (langs or [""])]
+        column_ids = [c["id"] for c in columns]
+        matrix = build_matrix(trials, m["models"], column_ids, int(m["k"]))
         names = self.names(m["models"])
-        conclusion = conclude(matrix, names, m["harnesses"])
+        extra: dict[str, Any] = {}
+        if langs:
+            # the harness conclusion reads each harness over all the languages; the language axis has its own report
+            pooled = build_matrix([{**t, "lang": ""} for t in trials], m["models"], m["harnesses"], int(m["k"]))
+            conclusion = conclude(pooled, names, m["harnesses"])
+            report = language_report(trials, matrix, m["models"], m["harnesses"], langs, names)
+            conclusion = {**conclusion, "language": report["effects"], "summary": {code: f"{conclusion['summary'][code]} {report['summary'][code]}".strip() for code in ("en", "es")}}
+            extra = {"language": report, "pooled": {"cells": pooled["cells"], "by_model": pooled["by_model"], "by_harness": pooled["by_harness"]}}
+        else:
+            conclusion = conclude(matrix, names, m["harnesses"])
         digests = self.store.digests(m["id"])
         models = []
         for cid in m["models"]:
             c = self.runner.store.find_contestant(cid)
             models.append({"id": cid, "name": names[cid], "digest": digests.get(cid, ""), "stale": bool(c and digests.get(cid) and c["digest"] != digests[cid]), "removed": c is None})
-        return {"matrix": self.card(m), "models": models, "harnesses": [self.harness_info(h) for h in m["harnesses"]], **matrix, "conclusion": conclusion,
-                "markdown": markdown_table(models, m["harnesses"], matrix), "trials": len(trials)}
+        return {"matrix": self.card(m), "models": models, "harnesses": [self.harness_info(h) for h in m["harnesses"]], "columns": columns, **matrix, "conclusion": conclusion, **extra,
+                "markdown": markdown_table(models, column_ids, matrix), "trials": len(trials)}
 
     def summary(self, mid: str) -> dict[str, Any]:
         out = self.result(mid)
@@ -438,26 +482,37 @@ class MatrixRunner:
         cid = c["id"] if c and c["id"] in m["models"] else next((i for i, n in self.names(m["models"]).items() if n == model or i == model), "")
         if not cid:
             raise GaltonError("not_found", "hb_no_model_in_matrix", model=model, id=m["id"])
-        hid = harness if harness in m["harnesses"] else next((h for h in m["harnesses"] if h.lower() == harness.lower()), "")
+        base, lang = split_column(harness)
+        hid = base if base in m["harnesses"] else next((h for h in m["harnesses"] if h.lower() == base.lower()), "")
         if not hid:
             raise GaltonError("not_found", "hb_unknown_harness", ref=harness, options=", ".join(m["harnesses"]))
-        trials = self.store.trials(m["id"], contestant_id=cid, harness=hid, task_id=task, trace=bool(task))
+        langs = list(m.get("langs") or [])
+        if langs and lang not in langs:
+            if lang or len(langs) != 1:
+                raise GaltonError("not_found", "hb_unknown_lang", lang=lang or "-", options=", ".join(langs))
+            lang = langs[0]
+        lang = lang if langs else ""
+        trials = self.store.trials(m["id"], contestant_id=cid, harness=hid, task_id=task, trace=bool(task), lang=lang)
         if not trials:
             raise GaltonError("not_found", "hb_no_cell", id=m["id"], model=model, harness=harness)
-        light = self.store.trials(m["id"], contestant_id=cid, harness=hid)
-        from .scoring import cell_stats
+        light = self.store.trials(m["id"], contestant_id=cid, harness=hid, lang=lang)
         by_task: dict[str, list[dict[str, Any]]] = {}
         for t in light:
             by_task.setdefault(t["task_id"], []).append(t)
         rows = []
         for tid, group in by_task.items():
-            spec = TASKS_BY_ID.get(tid, {"kind": "", "prompt": ""})
-            rows.append({"task": tid, "kind": spec["kind"], "samples": len(group), "outcomes": [g["outcome"] for g in group], "passed": sum(1 for g in group if g["outcome"] == "pass"),
-                         "format_failures": sum(g["format_failures"] or 0 for g in group), "extra_calls": sum(g["extra_calls"] or 0 for g in group),
-                         "turns": [g["turns"] for g in group], "reasons": sorted({g["reason"] for g in group if g["reason"]}), "detail": next((g["detail"] for g in group if g["detail"]), "")})
-        out = {"matrix": m["id"], "model": self.names([cid])[cid], "model_id": cid, "harness": self.harness_info(hid), "stats": cell_stats(light, int(m["k"])), "tasks": rows}
+            spec = TASKS_BY_ID.get(tid) or (lang_tasks.localize(tid, lang) if tid in lang_tasks.SPECS_BY_ID and lang else {"kind": "", "prompt": ""})
+            row = {"task": tid, "kind": spec["kind"], "samples": len(group), "outcomes": [g["outcome"] for g in group], "passed": sum(1 for g in group if g["outcome"] == "pass"),
+                   "format_failures": sum(g["format_failures"] or 0 for g in group), "extra_calls": sum(g["extra_calls"] or 0 for g in group),
+                   "turns": [g["turns"] for g in group], "reasons": sorted({g["reason"] for g in group if g["reason"]}), "detail": next((g["detail"] for g in group if g["detail"]), "")}
+            if lang:
+                judged = [g["lang_consistency"] for g in group if g.get("lang_consistency") is not None]
+                row.update({"empty_searches": sum(g.get("empty_searches") or 0 for g in group), "arg_mismatch": sum(g.get("arg_mismatch") or 0 for g in group),
+                            "lang_consistency": round(sum(judged) / len(judged), 3) if judged else None, "calls": [g["calls"] for g in group]})
+            rows.append(row)
+        out = {"matrix": m["id"], "model": self.names([cid])[cid], "model_id": cid, "harness": self.harness_info(hid), "lang": lang, "stats": cell_stats(light, int(m["k"])), "tasks": rows}
         if task:
-            out["task"] = public(TASKS_BY_ID[task]) if task in TASKS_BY_ID else {"id": task}
+            out["task"] = public(TASKS_BY_ID[task]) if task in TASKS_BY_ID else (lang_tasks.public(task) if task in lang_tasks.SPECS_BY_ID else {"id": task})
             out["trials"] = trials
         return out
 
@@ -475,6 +530,10 @@ def markdown_table(models: list[dict[str, Any]], harness_ids: list[str], matrix:
             parts.append(f"extra {c['extra_calls_mean']:g}")
         if c["none_n"]:
             parts.append(f"none {c['none_n']}")
+        if c.get("lang") and c.get("lang_consistency") is not None:
+            parts.append(f"lang {round(c['lang_consistency'] * 100)} %")
+        if c.get("lang") and c.get("empty_search_rate"):
+            parts.append(f"empty {round(c['empty_search_rate'] * 100)} %")
         return ", ".join(parts)
 
     lines = ["| model | " + " | ".join(harness_ids) + " | mean |", "|---|" + "---|" * (len(harness_ids) + 1)]

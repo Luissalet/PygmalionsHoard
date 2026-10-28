@@ -12,8 +12,10 @@ import math
 from collections import Counter
 from typing import Any, Iterable, Optional
 
+from ..langbench.judge import INCONSISTENT_BELOW
 from ..rulebench.scoring import pass_at_k, pass_hat_k
 from ..stats import wilson
+from .store import column_id
 
 WEAK_BELOW = 20             # fewer valid trials than this per cell: the conclusion says the evidence is weak
 SENSITIVE_POINTS = 15.0     # a model whose best and worst harness differ by this many points depends on the harness
@@ -28,6 +30,22 @@ def _mean(values: Iterable[Optional[float]], digits: int = 3) -> Optional[float]
 
 def _round(x: Optional[float], digits: int = 4) -> Optional[float]:
     return None if x is None or (isinstance(x, float) and math.isnan(x)) else round(x, digits)
+
+
+def _language_metrics(valid: list[dict[str, Any]]) -> dict[str, Any]:
+    """The extra figures of a language-bench cell: consistency of the replies, empty searches and tool arguments in another language than the data."""
+    mine = [t for t in valid if t.get("lang")]
+    judged = [t["lang_consistency"] for t in mine if t.get("lang_consistency") is not None]
+    searches = sum(t.get("search_calls") or 0 for t in mine)
+    empties = sum(t.get("empty_searches") or 0 for t in mine)
+    args = sum(t.get("arg_calls") or 0 for t in mine)
+    wrong = sum(t.get("arg_mismatch") or 0 for t in mine)
+    return {"lang": mine[0]["lang"], "lang_consistency": _mean(judged, 4), "lang_judged": len(judged),
+            "inconsistent_rate": _round(sum(1 for x in judged if x < INCONSISTENT_BELOW) / len(judged)) if judged else None,
+            "search_calls_mean": _mean((t.get("search_calls") or 0 for t in mine), 2), "empty_searches": empties, "search_calls": searches,
+            "empty_search_rate": _round(empties / searches) if searches else None,
+            "empty_search_trial_rate": _round(sum(1 for t in mine if (t.get("empty_searches") or 0) > 0) / len(mine)),
+            "arg_calls": args, "arg_mismatch": wrong, "arg_mismatch_rate": _round(wrong / args) if args else None}
 
 
 def cell_stats(trials: list[dict[str, Any]], k: int = 1) -> dict[str, Any]:
@@ -64,13 +82,16 @@ def cell_stats(trials: list[dict[str, Any]], k: int = 1) -> dict[str, Any]:
             hat_k.append(pass_hat_k(size, good, kk))
         out["pass_at_k"] = _mean((x for x in at_k if not math.isnan(x)), 4)
         out["pass_hat_k"] = _mean((x for x in hat_k if not math.isnan(x)), 4)
+    if any(t.get("lang") for t in valid):
+        out.update(_language_metrics(valid))
     return out
 
 
 def build_matrix(trials: list[dict[str, Any]], model_ids: list[str], harnesses: list[str], k: int = 1) -> dict[str, Any]:
+    """``harnesses`` are the column ids: a harness id, or ``harness@lang`` for the trials of a language-bench matrix."""
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for t in trials:
-        grouped.setdefault((t["contestant_id"], t["harness"]), []).append(t)
+        grouped.setdefault((t["contestant_id"], column_id(t["harness"], t.get("lang") or "")), []).append(t)
     cells = {m: {h: cell_stats(grouped.get((m, h), []), k) for h in harnesses} for m in model_ids}
     by_model = {m: _mean((c["pass_at_1"] for c in cells[m].values()), 4) for m in model_ids}
     by_harness = {h: _mean((cells[m][h]["pass_at_1"] for m in model_ids), 4) for h in harnesses}
@@ -170,4 +191,94 @@ def _text(lang: str, c: dict[str, Any], names: dict[str, str]) -> str:
         parts.append(f"{c['none_total']} pruebas sin resultado (infraestructura) quedan fuera de los porcentajes." if es else f"{c['none_total']} trials without a result (infrastructure) are left out of the percentages.")
     if c["weak"]:
         parts.append(f"Evidencia débil: solo {c['min_valid_per_cell']} pruebas válidas en la celda con menos." if es else f"Weak evidence: only {c['min_valid_per_cell']} valid trials in the smallest cell.")
+    return " ".join(parts)
+
+
+# ------------------------------------------------------------------------------------------------- the language axis
+def _spread(rows: list[list[Optional[float]]]) -> Optional[float]:
+    spreads = [(max(v) - min(v)) * 100 for v in ([x for x in row if x is not None] for row in rows) if len(v) > 1]
+    return round(sum(spreads) / len(spreads), 1) if spreads else None
+
+
+def _paired_calls(trials: list[dict[str, Any]], model: str, harness: str, lang: str, base: str) -> Optional[float]:
+    """Tool calls in ``lang`` divided by tool calls in the base language, over the (task, sample) pairs that ran in both."""
+    def keyed(code: str) -> dict[tuple[str, int], int]:
+        return {(t["task_id"], t["sample"]): t["calls"] for t in trials if t["contestant_id"] == model and t["harness"] == harness and t.get("lang") == code
+                and t["outcome"] != "none" and t.get("calls") is not None}
+    a, b = keyed(lang), keyed(base)
+    common = a.keys() & b.keys()
+    den = sum(b[c] for c in common)
+    return round(sum(a[c] for c in common) / den, 3) if common and den else None
+
+
+def language_report(trials: list[dict[str, Any]], matrix: dict[str, Any], model_ids: list[str], harnesses: list[str], langs: list[str], names: dict[str, str]) -> dict[str, Any]:
+    """The language axis of a matrix: per model and harness, each language against the base one, and the size of the language effect against the harness and model effects."""
+    base = "en" if "en" in langs else langs[0]
+    cells = matrix["cells"]
+    pairs: dict[str, dict[str, dict[str, dict[str, Any]]]] = {}
+    for m in model_ids:
+        pairs[m] = {}
+        for h in harnesses:
+            row: dict[str, dict[str, Any]] = {}
+            b = cells[m][column_id(h, base)]
+            for lang in langs:
+                c = cells[m][column_id(h, lang)]
+                row[lang] = {"pass_at_1": c["pass_at_1"], "valid": c["valid"], "pass_hat_k": c.get("pass_hat_k"), "lang_consistency": c.get("lang_consistency"),
+                             "inconsistent_rate": c.get("inconsistent_rate"), "empty_search_rate": c.get("empty_search_rate"), "empty_search_trial_rate": c.get("empty_search_trial_rate"),
+                             "arg_mismatch_rate": c.get("arg_mismatch_rate"), "calls_mean": c.get("calls_mean"), "search_calls_mean": c.get("search_calls_mean"),
+                             "pass_delta_points": None if lang == base or c["pass_at_1"] is None or b["pass_at_1"] is None else round((c["pass_at_1"] - b["pass_at_1"]) * 100, 1),
+                             "calls_vs_base": None if lang == base else _paired_calls(trials, m, h, lang, base)}
+            pairs[m][h] = row
+    by_lang: dict[str, dict[str, Any]] = {}
+    for lang in langs:
+        cs = [cells[m][column_id(h, lang)] for m in model_ids for h in harnesses]
+        valid = [c for c in cs if c["trials"] and c["pass_at_1"] is not None]
+        total_search = sum(c.get("search_calls") or 0 for c in cs)
+        total_args = sum(c.get("arg_calls") or 0 for c in cs)
+        ratios = [pairs[m][h][lang]["calls_vs_base"] for m in model_ids for h in harnesses if lang != base and pairs[m][h][lang]["calls_vs_base"] is not None]
+        deltas = [pairs[m][h][lang]["pass_delta_points"] for m in model_ids for h in harnesses if pairs[m][h][lang]["pass_delta_points"] is not None]
+        by_lang[lang] = {"pass_at_1": _mean((c["pass_at_1"] for c in valid), 4), "lang_consistency": _mean((c.get("lang_consistency") for c in cs), 4),
+                         "empty_search_rate": _round(sum(c.get("empty_searches") or 0 for c in cs) / total_search) if total_search else None,
+                         "arg_mismatch_rate": _round(sum(c.get("arg_mismatch") or 0 for c in cs) / total_args) if total_args else None,
+                         "calls_vs_base": _mean(ratios, 3), "pass_delta_points": _mean(deltas, 1)}
+    effects = {"language_points": _spread([[cells[m][column_id(h, lang)]["pass_at_1"] for lang in langs] for m in model_ids for h in harnesses]),
+               "harness_points": _spread([[cells[m][column_id(h, lang)]["pass_at_1"] for h in harnesses] for m in model_ids for lang in langs]),
+               "model_points": _spread([[cells[m][column_id(h, lang)]["pass_at_1"] for m in model_ids] for h in harnesses for lang in langs])}
+    ranked = sorted(((v, k) for k, v in (("language", effects["language_points"]), ("harness", effects["harness_points"]), ("model", effects["model_points"])) if v is not None), reverse=True)
+    if len(ranked) < 2:
+        effects["verdict"] = "not_comparable"
+    elif ranked[0][0] - ranked[1][0] <= SIMILAR_POINTS:
+        effects["verdict"] = "similar"
+    else:
+        effects["verdict"] = f"{ranked[0][1]}_larger"
+    out = {"langs": list(langs), "base": base, "pairs": pairs, "by_lang": by_lang, "effects": effects}
+    out["summary"] = {"en": _language_text("en", out), "es": _language_text("es", out)}
+    return out
+
+
+def _language_text(lang: str, rep: dict[str, Any]) -> str:
+    es, base, e = lang == "es", rep["base"], rep["effects"]
+    parts: list[str] = []
+    lp, hp, mp = e["language_points"], e["harness_points"], e["model_points"]
+    if lp is not None:
+        parts.append(f"Cambiar de idioma (mismo modelo y arnés) mueve el pass@1 {_pts(lp)} puntos de media; cambiar de arnés, {'—' if hp is None else _pts(hp)}; cambiar de modelo, {'—' if mp is None else _pts(mp)}." if es
+                     else f"Changing the language (same model and harness) moves pass@1 by {_pts(lp)} points on average; changing the harness, {'—' if hp is None else _pts(hp)}; changing the model, {'—' if mp is None else _pts(mp)}.")
+    for code, d in rep["by_lang"].items():
+        if code == base:
+            continue
+        bits_es, bits_en = [], []
+        if d["calls_vs_base"] is not None:
+            bits_es.append(f"{d['calls_vs_base']:.2f} veces las llamadas de {base}")
+            bits_en.append(f"{d['calls_vs_base']:.2f} times the tool calls of {base}")
+        if d["empty_search_rate"] is not None:
+            bits_es.append(f"{round(d['empty_search_rate'] * 100)} % de búsquedas vacías")
+            bits_en.append(f"{round(d['empty_search_rate'] * 100)} % empty searches")
+        if d["arg_mismatch_rate"] is not None:
+            bits_es.append(f"{round(d['arg_mismatch_rate'] * 100)} % de argumentos en otro idioma que los datos")
+            bits_en.append(f"{round(d['arg_mismatch_rate'] * 100)} % of arguments in another language than the data")
+        if d["lang_consistency"] is not None:
+            bits_es.append(f"consistencia de idioma {round(d['lang_consistency'] * 100)} %")
+            bits_en.append(f"language consistency {round(d['lang_consistency'] * 100)} %")
+        if bits_en:
+            parts.append(f"En {code}: " + ", ".join(bits_es) + "." if es else f"In {code}: " + ", ".join(bits_en) + ".")
     return " ".join(parts)

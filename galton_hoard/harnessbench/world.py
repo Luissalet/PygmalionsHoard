@@ -182,6 +182,7 @@ def convert_value(value: float, from_unit: str, to_unit: str) -> str:
 class ToolResult:
     ok: bool
     text: str
+    empty: bool = False            # a search that found nothing (the language bench counts these)
 
 
 def _norm_path(path: str) -> str:
@@ -233,6 +234,8 @@ class World:
                         return None, f"argument '{key}' must be a number"
                 if not isinstance(value, (int, float)):
                     return None, f"argument '{key}' must be a number"
+            if "enum" in meta and value not in meta["enum"]:
+                return None, f"argument '{key}' must be one of: {', '.join(str(x) for x in meta['enum'])}"
             clean[key] = value
         return clean, ""
 

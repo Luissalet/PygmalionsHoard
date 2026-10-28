@@ -12,6 +12,10 @@ The outcome of a trial is one of:
   or it kept producing them until the limit, or the server refused the tools field.
 * ``none``: the verifier did not get to run because the server or the network failed (timeout, connection, server error). It is not a zero:
   it is left out of every rate and reported apart.
+
+A task of the language bench also names its language (``lang``), the tools whose result can come back empty (``search_tools``) and the arguments
+that should be in the language of the data (``lang_args``). For those the trial counts the searches that found nothing, the arguments written
+in the other language than the data, and the language consistency of the final answer (``langbench.judge``).
 """
 
 from __future__ import annotations
@@ -53,6 +57,12 @@ class Trial:
     latency_ms: float = 0.0
     final: str = ""
     trace: list[dict[str, Any]] = field(default_factory=list)
+    lang: str = ""                           # the language of a language-bench trial ("" for the base tasks)
+    search_calls: Optional[int] = 0          # calls to a search tool that ran
+    empty_searches: Optional[int] = 0        # searches that came back with nothing
+    arg_calls: Optional[int] = 0             # arguments that carried a language signal
+    arg_mismatch: Optional[int] = 0          # ... and were written in the other language than the data
+    lang_consistency: Optional[float] = None  # share of the language-marked words of the final answer in the expected language; None: not judged
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -72,13 +82,28 @@ def _short(text: str, cap: int) -> str:
     return text if len(text) <= cap else text[:cap] + f"… [{len(text) - cap} more characters]"
 
 
+def _arg_mismatches(task: dict[str, Any], name: str, args: dict[str, Any]) -> tuple[int, int]:
+    """``(arguments judged, arguments in the other language than the data)`` for one call of a language-bench task."""
+    from ..langbench.judge import arg_matches_data
+    judged = wrong = 0
+    for key in (task.get("lang_args") or {}).get(name, []):
+        value = args.get(key)
+        if isinstance(value, str) and value.strip():
+            verdict = arg_matches_data(value, task["lang"])
+            if verdict is not None:
+                judged += 1
+                wrong += 0 if verdict else 1
+    return judged, wrong
+
+
 def run_trial(task: dict[str, Any], harness: Harness, chat: Chat, *, api: str = "openai", max_turns: int = 8, max_format_errors: int = 3, sample: int = 0) -> Trial:
-    specs = [TOOL_SPECS[name] for name in task["tools"]]
+    spec_map = task.get("specs") or TOOL_SPECS
+    specs = [spec_map[name] for name in task["tools"]]
     payload = harness.tools_payload(specs)
     world = new_world(task)
     entries: list[dict[str, Any]] = [{"kind": "system", "msg": {"role": "system", "content": harness.system_prompt(specs)}},
                                      {"kind": "user", "msg": {"role": "user", "content": task["prompt"]}}]
-    t = Trial(task_id=task["id"], harness=harness.id, sample=sample)
+    t = Trial(task_id=task["id"], harness=harness.id, sample=sample, lang=task.get("lang", ""))
     observations: list[str] = []
     done_ok: set[tuple[str, str]] = set()
     solved = is_solved(task, world, observations)
@@ -143,7 +168,7 @@ def run_trial(task: dict[str, Any], harness: Harness, chat: Chat, *, api: str = 
         results: list[tuple[Any, str]] = []
         rejected = list(parsed.rejected)
         for call in parsed.calls:
-            spec = TOOL_SPECS.get(call.name)
+            spec = spec_map.get(call.name)
             if call.name not in task["tools"] or spec is None:
                 rejected.append(Rejected(f"unknown tool '{call.name}'. Available tools: {', '.join(task['tools'])}", call.name, call.id))
                 continue
@@ -155,6 +180,13 @@ def run_trial(task: dict[str, Any], harness: Harness, chat: Chat, *, api: str = 
             extra = "after_solved" if solved else ("repeat" if key in done_ok else "")
             outcome = world.run(call.name, clean)
             t.calls += 1
+            if call.name in (task.get("search_tools") or ()):
+                t.search_calls += 1
+                t.empty_searches += 1 if outcome.empty else 0
+            if task.get("lang_args"):
+                judged, wrong = _arg_mismatches(task, call.name, clean)
+                t.arg_calls += judged
+                t.arg_mismatch += wrong
             if outcome.ok:
                 done_ok.add(key)
                 observations.append(outcome.text)
@@ -179,6 +211,9 @@ def run_trial(task: dict[str, Any], harness: Harness, chat: Chat, *, api: str = 
             break
 
     t.final = _short(final or "", TEXT_CAP)
+    if task.get("lang") and final:
+        from ..langbench.judge import consistency
+        t.lang_consistency = consistency(final, task["lang"])["score"]
     if infra:
         t.outcome, t.passed, t.reason, t.detail = "none", None, "server_error", infra[:300]
         return t

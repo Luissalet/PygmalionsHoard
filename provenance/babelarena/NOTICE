@@ -1,0 +1,14 @@
+Language bench (galton_hoard/langbench)
+
+The idea and the vocabulary of the language axis come from BabelArena
+(QwenLM/BabelArena, Apache-2.0; paper arXiv 2609.23490): a tool task is
+measured in more than one language, the strings of the task are typed as
+Preserve, Translate-Free or Translate-Canonical, and a failure can be an
+argument written in another language than the data (an empty search against a
+localized catalogue).
+
+No file, task or data of BabelArena is included in this repository. The 27 tasks,
+the shop and family datasets, the BM25 search, the canonical entity map, the
+language judge and every metric were written for this project, in Spanish and
+English, and are covered by this repository's licence. The original is credited
+here because the design follows it.

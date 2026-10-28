@@ -562,3 +562,16 @@ def test_an_empty_reply_is_a_format_failure_with_a_retry_not_a_wrong_answer():
         return _chat(oracle)(messages, tools)
     recovered = run_trial(task, parse_harness_id("xml_text"), once_empty)
     assert recovered.outcome == "pass" and recovered.format_failures == 1
+
+
+@pytest.mark.parametrize("harness", ["json_text", "xml_text", "react_text"])
+def test_a_call_in_another_markup_is_a_format_failure_not_a_final_answer(harness):
+    """A model trained on its own tool-call markup writes a call the text harness cannot read: the harness says so (and lets it retry) instead of scoring it as an answer."""
+    from galton_hoard.harnessbench.harnesses import foreign_dialect, parse_harness_id
+    dsml = '<｜DSML｜ calls>\n<｜DSML｜ invoke name="search_products">\n<｜DSML｜ parameter name="query" string="true">shoes</｜DSML｜ parameter>\n</｜DSML｜ invoke>\n</｜DSML｜ calls>'
+    assert foreign_dialect(dsml) == "DSML"
+    turn = parse_harness_id(harness).parse(Completion(text=dsml))
+    assert turn.format_error and "DSML" in turn.format_error and turn.final is None
+    plain = parse_harness_id(harness).parse(Completion(text="The cheapest pair costs 59.90 and it is in stock."))
+    assert plain.format_error == "" and plain.final
+    assert foreign_dialect("Use the invoke button to start") == ""
