@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>Particle Production Plan — 1280x720</title>
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #000; }
+  #stage { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="stage" width="1280" height="720"></canvas>
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------------------
+  // Deterministic RNG (mulberry32)
+  // ---------------------------------------------------------------------------
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  var W = 1280, H = 720;
+  var canvas = document.getElementById("stage");
+  var ctx = canvas.getContext("2d");
+
+  window.DURATION = 28;
+
+  // ---------------------------------------------------------------------------
+  // Beat grid: 120 BPM -> 0.5s per beat, 1 beat = 30 frames @60fps
+  // ---------------------------------------------------------------------------
+  var BPM = 120;
+  var BEAT = 60 / BPM;          // 0.5 s
+  var BAR = BEAT * 4;           // 2 s
+  var TOTAL_BEATS = Math.round(window.DURATION / BEAT);
+
+  // ---------------------------------------------------------------------------
+  // Precomputed particle field (deterministic)
+  // ---------------------------------------------------------------------------
+  var RNG = mulberry32(20240517);
+  var N = 2600;
+  var parts = [];
+  for (var i = 0; i < N; i++) {
+    var u = RNG(), v = RNG(), r1 = RNG(), r2 = RNG(), r3 = RNG();
+    // layout on a loose grid with jitter -> even coverage
+    var gx = Math.floor(u * 64), gy = Math.floor(v * 36);
+    var x = (gx + 0.15 + 0.7 * r1) / 64 * W;
+    var y = (gy + 0.15 + 0.7 * r2) / 36 * H;
+    // fake depth: subject-ish region (center column) is nearer
+    var cx = (x - W * 0.5) / (W * 0.5);
+    var cy = (y - H * 0.52) / (H * 0.5);
+    var subj = Math.exp(-(cx * cx * 2.1 + cy * cy * 1.6));
+    var depth = 0.15 + 0.85 * (1 - subj) * 0.9 + 0.1 * r3; // 0 near .. 1 far
+    depth = Math.min(1, Math.max(0, depth));
+    // base colour from a "photo": warm figure on cool sky
+    var lum = 0.35 + 0.65 * subj;
+    var hue = subj > 0.55 ? 18 + 18 * r1 : 198 + 30 * r2;
+    var sat = subj > 0.55 ? 0.62 : 0.38;
+    var col = hsl2rgb(hue, sat, 0.28 + 0.5 * lum);
+    parts.push({
+      x: x, y: y, depth: depth, subj: subj,
+      size: 1.6 + 3.4 * r1,
+      r: col[0], g: col[1], b: col[2],
+      phase: r2 * Math.PI * 2,
+      spin: 0.6 + r3 * 1.8,
+      ang: r1 * Math.PI * 2
+    });
+  }
+
+  function hsl2rgb(h, s, l) {
+    h = ((h % 360) + 360) % 360 / 360;
+    function f(n) {
+      var k = (n + h * 12) % 12;
+      var a = s * Math.min(l, 1 - l);
+      return l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
+    }
+    return [f(0) * 255, f(8) * 255, f(4) * 255];
+  }
+
+  // ---------------------------------------------------------------------------
+  // Timeline: one entry per bar (2 s). Styles + palettes alternate for contrast.
+  // style ids: 0 photo, 1 dots, 2 blocks, 3 lines, 4 text, 5 voxel-depth, 6 big-blocks
+  // ---------------------------------------------------------------------------
+  var PALETTES = {
+    original: null,
+    mono:    { mode: "mono",    a: [255, 255, 255], b: [ 20,  20,  26] },
+    amber:   { mode: "duo",     a: [255, 176,  46], b: [ 28,  12,   4] },
+    cyan:    { mode: "duo",     a: [ 96, 232, 255], b: [  4,  14,  30] },
+    magenta: { mode: "duo",     a: [255,  92, 168], b: [ 24,   4,  22] },
+    lime:    { mode: "duo",     a: [176, 255,  96], b: [  8,  20,   6] },
+    ice:     { mode: "duo",     a: [210, 236, 255], b: [ 10,  18,  34] }
+  };
+
+  var TIMELINE = [
+    // bar 0: original picture (establish)
+    { style: 0, pal: "original", cam: 0.0,  label: "原画面" },
+    // bar 1: transition original -> dots
+    { style: 1, pal: "mono",     cam: 0.0,  label: "圆点 / 单色" },
+    // bar 2: fast, blocks, amber
+    { style: 2, pal: "amber",    cam: 0.0,  label: "方块 / 琥珀" },
+    // bar 3: lines, cyan
+    { style: 3, pal: "cyan",     cam: 0.0,  label: "线条 / 青" },
+    // bar 4: SLOW section — dots on subject only, ice
+    { style: 1, pal: "ice",      cam: 0.0,  label: "慢 / 仅主体" },
+    // bar 5: fast again, text, magenta
+    { style: 4, pal: "magenta",  cam: 0.0,  label: "文字 / 品红" },
+    // bar 6: depth push, voxel-ish dots, lime, camera orbit
+    { style: 5, pal: "lime",     cam: 0.35, label: "推进三维 / 环绕" },
+    // bar 7: big blocks, mono, camera orbit other way
+    { style: 6, pal: "mono",     cam: 0.7,  label: "大色块 / 单色" },
+    // bar 8: dots, amber, slight orbit
+    { style: 1, pal: "amber",    cam: 0.25, label: "圆点 / 琥珀" },
+    // bar 9: lines, cyan, orbit
+    { style: 3, pal: "cyan",     cam: 0.55, label: "线条 / 青" },
+    // bar 10: voxel, magenta, orbit
+    { style: 5, pal: "magenta",  cam: 0.85, label: "三维 / 品红" },
+    // bar 11: blocks, ice
+    { style: 2, pal: "ice",      cam: 0.3,  label: "方块 / 冰蓝" },
+    // bar 12: dots, lime
+    { style: 1, pal: "lime",     cam: 0.1,  label: "圆点 / 青柠" },
+    // bar 13: ending — growing blocks that resolve into flat colour
+    { style: 6, pal: "mono",     cam: 0.0,  label: "收束 / 色块" }
+  ];
+
+  // hits (action moments) — beat index, weight 1 light / 2 medium / 3 heavy
+  var HITS = [
+    { beat: 4,  w: 1 }, { beat: 6,  w: 2 }, { beat: 8,  w: 1 },
+    { beat: 10, w: 1 }, { beat: 12, w: 1 }, { beat: 14, w: 3 }, // heavy: freeze + orbit
+    { beat: 16, w: 1 }, { beat: 18, w: 2 }, { beat: 20, w: 1 },
+    { beat: 22, w: 1 }, { beat: 24, w: 2 }, { beat: 26, w: 1 },
+    { beat: 28, w: 3 }, { beat: 32, w: 1 }, { beat: 34, w: 2 },
+    { beat: 36, w: 1 }, { beat: 38, w: 1 }, { beat: 40, w: 2 },
+    { beat: 44, w: 1 }, { beat: 46, w: 2 }, { beat: 48, w: 1 },
+    { beat: 50, w: 1 }, { beat: 52, w: 1 }, { beat: 54, w: 3 }
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+  function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+  function smooth(x) { x = clamp01(x); return x * x * (3 - 2 * x); }
+  function easeOut(x) { x = clamp01(x); return 1 - (1 - x) * (1 - x); }
+
+  function barIndexAt(t) {
+    var b = Math.floor(t / BAR);
+    if (b < 0) b = 0;
+    if (b >= TIMELINE.length) b = TIMELINE.length - 1;
+    return b;
+  }
+
+  // hit envelope: returns {amp, type} for time t, using strongest recent hit
+  function hitState(t) {
+    var best = null;
+    for (var i = 0; i < HITS.length; i++) {
+      var ht = HITS[i].beat * BEAT;
+      var dt = t - ht;
+      if (dt < 0) continue;
+      var dur = HITS[i].w === 3 ? 0.9 : HITS[i].w === 2 ? 0.42 : 0.24;
+      if (dt > dur) continue;
+      var amp = Math.pow(1 - dt / dur, HITS[i].w === 3 ? 1.2 : 2.0);
+      if (!best || amp > best.amp) best = { amp: amp, w: HITS[i].w, dt: dt, dur: dur };
+    }
+    return best;
+  }
+
+  // freeze for heavy hits: time dilation window
+  function timeWarp(t) {
+    var out = t;
+    for (var i = 0; i < HITS.length; i++) {
+      if (HITS[i].w !== 3) continue;
+      var ht = HITS[i].beat * BEAT;
+      if (t > ht && t < ht + 0.9) {
+        var k = (t - ht) / 0.9;
+        out = ht + 0.9 * (0.18 * k + 0.82 * (k * k * (3 - 2 * k)));
+      }
+    }
+    return out;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Style rules
+  // ---------------------------------------------------------------------------
+  function paletteColour(pal, p, t) {
+    if (!pal || pal === "original") return [p.r, p.g, p.b];
+    var P = PALETTES[pal];
+    if (!P) return [p.r, p.g, p.b];
+    if (P.mode === "mono") {
+      var l = 0.25 + 0.75 * (1 - p.depth);
+      return [P.a[0] * l + P.b[0] * (1 - l), P.a[1] * l + P.b[1] * (1 - l), P.a[2] * l + P.b[2] * (1 - l)];
+    }
+    // duo: mix by luminance/depth
+    var m = clamp01(0.85 - p.depth * 0.9 + 0.15 * Math.sin(p.phase + t * 0.8));
+    return [
+      P.b[0] + (P.a[0] - P.b[0]) * m,
+      P.b[1] + (P.a[1] - P.b[1]) * m,
+      P.b[2] + (P.a[2] - P.b[2]) * m
+    ];
+  }
+
+  // camera: orbit around centre, driven by cam amount + heavy-hit extra
+  function cameraTransform(t, camAmount, heavyAmp) {
+    var ang = t * 0.35 * camAmount + heavyAmp * 1.4 * Math.sin(t * 2.2);
+    var z = 1 + 0.55 * camAmount + heavyAmp * 0.25;
+    return { ang: ang, z: z };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Draw
+  // ---------------------------------------------------------------------------
+  function draw(tRaw) {
+    var t = timeWarp(tRaw);
+    var bar = barIndexAt(t);
+    var barT = t - bar * BAR;
+    var spec = TIMELINE[bar];
+    var next = TIMELINE[Math.min(bar + 1, TIMELINE.length - 1)];
+
+    var hit = hitState(tRaw);
+    var hAmp = hit ? hit.amp : 0;
+    var hW = hit ? hit.w : 0;
+    var heavyAmp = hit && hit.w === 3 ? hit.amp : 0;
+
+    // transition blend at the start of each bar (except first)
+    var blend = bar === 0 ? 0 : smooth(barT / 0.35);
+    var styleA = bar === 0 ? 0 : TIMELINE[bar - 1].style;
+    var palA = bar === 0 ? "original" : TIMELINE[bar - 1].pal;
+    var styleB = spec.style;
+    var palB = spec.pal;
+
+    // background
+    var bg = [8, 9, 14];
+    if (palB === "amber") bg = [16, 9, 4];
+    else if (palB === "cyan") bg = [4, 10, 20];
+    else if (palB === "magenta") bg = [18, 4, 16];
+    else if (palB === "lime") bg = [6, 14, 5];
+    else if (palB === "ice") bg = [8, 13, 24];
+    ctx.fillStyle = "rgb(" + bg[0] + "," + bg[1] + "," + bg[2] + ")";
+    ctx.fillRect(0, 0, W, H);
+
+    // camera
+    var camA = spec.cam, camB = next.cam;
+    var camAmount = (camA * (1 - blend) + camB * blend);
+    var cam = cameraTransform(t, camAmount, heavyAmp);
+
+    var cosA = Math.cos(cam.ang), sinA = Math.sin(cam.ang);
+    var FOV = 900;
+
+    // ending: particles grow into flat colour blocks
+    var endGrow = 0;
+    if (bar === TIMELINE.length - 1) {
+      endGrow = smooth(barT / (BAR * 0.85));
+    }
+
+    // slow section factor (bar 4) — fewer, calmer particles
+    var slow = (bar === 4) ? 1 : 0;
+
+    ctx.save();
+    // camera push / shake
+    var shake = hW === 1 ? hAmp * 5 : hW === 2 ? hAmp * 12 : hAmp * 6;
+    var sx = Math.sin(tRaw * 61.0) * shake;
+    var sy = Math.cos(tRaw * 47.0) * shake;
+    ctx.translate(W / 2 + sx, H / 2 + sy);
+    ctx.scale(cam.z, cam.z);
+    ctx.translate(-W / 2, -H / 2);
+
+    // ---- draw particles ----
+    for (var i = 0; i < N; i++) {
+      var p = parts[i];
+
+      // ---- style A/B choice per particle for the transition ----
+      var useB = p.subj < blend ? true : (p.subj > 1 - blend ? false : (p.phase % 1) < blend);
+      var st = useB ? styleB : styleA;
+      var pal = useB ? palB : palA;
+
+      // slow section: keep only subject particles
+      if (slow && p.subj < 0.45) continue;
+
+      // subject-only styles
+      var subjectOnly = (st === 5);
+      if (subjectOnly && p.subj < 0.5) continue;
+
+      // ---- 3D projection ----
+      var px = p.x - W / 2;
+      var py = p.y - H / 2;
+      var pz = (1 - p.depth) * 420; // near = positive
+      var rx = px * cosA - pz * sinA;
+      var rz = px * sinA + pz * cosA;
+      var scale = FOV / (FOV + rz + 260);
+      var sxp = W / 2 + rx * scale;
+      var syp = H / 2 + py * scale;
+      if (sxp < -80 || sxp > W + 80 || syp < -80 || syp > H + 80) continue;
+
+      var col = paletteColour(pal, p, t);
+      var alpha = 1;
+
+      // ---- hit reactions ----
+      var burst = 0;
+      if (hit) {
+        if (hW === 1) {
+          burst = hAmp * 6 * p.subj;
+        } else if (hW === 2) {
+          burst = hAmp * 26 * Math.max(0, p.subj - 0.2);
+        } else {
+          burst = hAmp * 10 * p.subj;
+        }
+      }
+      var pushZ = 0;
+      if (hW >= 2 && hit) {
+        // a portion of particles flies toward camera
+        if (p.subj > 0.55) {
+          pushZ = hAmp * 260 * (p.subj - 0.55) / 0.45;
+        }
+      }
+      var rz2 = rz - pushZ;
+      var scale2 = FOV / (FOV + rz2 + 260);
+      var sxp2 = W / 2 + rx * scale2 + Math.cos(p.ang + t * 2) * burst;
+      var syp2 = H / 2 + py * scale2 + Math.sin(p.ang + t * 2) * burst;
+
+      var size = p.size * scale2 * (1 + endGrow * 9);
+      if (slow) size *= 0.85;
+
+      ctx.globalAlpha = alpha;
+      var r = Math.round(col[0]), g = Math.round(col[1]), b = Math.round(col[2]);
+
+      if (st === 0) {
+        // photo: tiny soft dots, dense
+        ctx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
+        ctx.beginPath();
+        ctx.arc(sxp2, syp2, Math.max(1.2, size * 0.9), 0, Math.PI * 2);
+        ctx.fill();
+      } else if (st === 1) {
+        // dots
+        ctx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
+        ctx.beginPath();
+        ctx.arc(sxp2, syp2, Math.max(1.5, size * 0.85), 0, Math.PI * 2);
+        ctx.fill();
+      } else if (st === 2) {
+        // blocks
+        var s2 = Math.max(2, size * 1.5);
+        ctx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
+        ctx.fillRect(sxp2 - s2 / 2, syp2 - s2 / 2, s2, s2);
+      } else if (st === 3) {
+        // lines
+        var len = Math.max(3, size * 4.5);
+        var a2 = p.ang + t * p.spin * 0.8;
+        ctx.strokeStyle = "rgb(" + r + "," + g + "," + b + ")";
+        ctx.lineWidth = Math.max(1, size * 0.6);
+        ctx.beginPath();
+        ctx.moveTo(sxp2 - Math.cos(a2) * len, syp2 - Math.sin(a2) * len);
+        ctx.lineTo(sxp2 + Math.cos(a2) * len, syp2 + Math.sin(a2) * len);
+        ctx.stroke();
+      } else if (st === 4) {
+        // text glyphs
+        var chars = "制作方案粒子特效节奏编排";
+        var ch = chars.charAt(Math.floor(p.phase * 10) % chars.length);
+        ctx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
+        ctx.font = Math.max(6, size * 3.2) + "px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(ch, sxp2, syp2);
+      } else if (st === 5) {
+        // voxel / depth — cubes with shading
+        var s5 = Math.max(2.5, size * 1.8);
+        var shade = 0.55 + 0.45 * (1 - p.depth);
+        ctx.fillStyle = "rgb(" + Math.round(r * shade) + "," + Math.round(g * shade) + "," + Math.round(b * shade) + ")";
+        ctx.fillRect(sxp2 - s5 / 2, syp2 - s5 / 2, s5, s5);
+        ctx.fillStyle = "rgba(255,255,255," + (0.12 * (1 - p.depth)).toFixed(3) + ")";
+        ctx.fillRect(sxp2 - s5 / 2, syp2 - s5 / 2, s5, s5 * 0.35);
+      } else {
+        // st === 6: big blocks, ending
+        var s6 = Math.max(3, size * (2.2 + endGrow * 6));
+        ctx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
+        ctx.fillRect(sxp2 - s6 / 2, syp2 - s6 / 2, s6, s6);
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // ---- ending: flat colour wash ----
+    if (bar === TIMELINE.length - 1 && endGrow > 0.55) {
+      var w2 = smooth((endGrow - 0.55) / 0.45);
+      ctx.globalAlpha = w2 * 0.9;
+      ctx.fillStyle = "rgb(240,240,244)";
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+
+    // ---- hit flash (very short, weak) ----
+    if (hit && hW >= 2) {
+      ctx.globalAlpha = hAmp * (hW === 3 ? 0.22 : 0.10);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+
+    // ---- HUD: beat grid + labels (thin, unobtrusive) ----
+    drawHUD(tRaw, t, bar, spec, hit);
+  }
+
+  function drawHUD(tRaw, t, bar, spec, hit) {
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+
+    // beat ticks
+    var beatNow = Math.floor(tRaw / BEAT);
+    for (var b = 0; b <= TOTAL_BEATS; b++) {
+      var x = (b / TOTAL_BEATS) * W;
+      var isBar = b % 4 === 0;
+      ctx.fillStyle = isBar ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.16)";
+      ctx.fillRect(x, H - 26, isBar ? 2 : 1, isBar ? 16 : 8);
+    }
+
+    // playhead
+    var ph = (tRaw / window.DURATION) * W;
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.fillRect(ph - 1, H - 30, 2, 22);
+
+    // hit markers
+    for (var i = 0; i < HITS.length; i++) {
+      var hx = (HITS[i].beat * BEAT / window.DURATION) * W;
+      var hh = HITS[i].w === 3 ? 14 : HITS[i].w === 2 ? 9 : 5;
+      ctx.fillStyle = HITS[i].w === 3 ? "rgba(255,120,90,0.95)" : HITS[i].w === 2 ? "rgba(255,200,90,0.8)" : "rgba(255,255,255,0.35)";
+      ctx.fillRect(hx - 1, H - 30 - hh, 2, hh);
+    }
+
+    // label
+    ctx.globalAlpha = 0.75;
+    ctx.fillStyle = "#e8e8ee";
+    ctx.font = "16px system-ui, -apple-system, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(spec.label, 24, 34);
+
+    ctx.font = "12px system-ui, -apple-system, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.45)";
+    ctx.fillText("BAR " + (bar + 1) + " / " + TIMELINE.length + "   ·   " + BPM + " BPM", 24, 54);
+
+    // beat counter on right
+    ctx.textAlign = "right";
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.fillText("BEAT " + (beatNow + 1), W - 24, 34);
+
+    ctx.restore();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Public API
+  // ---------------------------------------------------------------------------
+  window.seek = function (t) {
+    if (typeof t !== "number" || !isFinite(t)) t = 0;
+    if (t < 0) t = 0;
+    if (t > window.DURATION) t = window.DURATION;
+    draw(t);
+  };
+
+  // ---------------------------------------------------------------------------
+  // Optional autoplay
+  // ---------------------------------------------------------------------------
+  var start = null;
+  function loop(now) {
+    if (start === null) start = now;
+    var el = (now - start) / 1000;
+    var tt = el % window.DURATION;
+    window.seek(tt);
+    requestAnimationFrame(loop);
+  }
+
+  // draw first frame immediately so the canvas is never blank
+  window.seek(0);
+
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(loop);
+  }
+})();
+</script>
+</body>
+</html>

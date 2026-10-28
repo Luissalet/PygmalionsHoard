@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;background:#000;overflow:hidden}
+  #stage{width:100vw;height:100vh;display:block}
+</style>
+</head>
+<body>
+<canvas id="stage" width="1440" height="1080"></canvas>
+<script>
+(function(){
+"use strict";
+
+// ---------- constants ----------
+const W = 1440, H = 1080;
+window.DURATION = 20;
+
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+
+// ---------- seeded RNG ----------
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// ---------- palette ----------
+const PAPER = '#f4f0e6';
+const BLACK = '#111111';
+const RED   = '#e63329';
+const YELLOW= '#f5c518';
+const CYAN  = '#5fd0d8';
+const WHITE = '#ffffff';
+
+// ---------- word timings (defaults, measured-style) ----------
+// transcript: "what is this? everything. action, intention, curiosity."
+const WORDS = [
+  {w:"what",   t0:0.15, t1:0.55},
+  {w:"is",     t0:0.60, t1:0.85},
+  {w:"this",   t0:0.90, t1:1.40},
+  {w:"everything", t0:2.20, t1:3.10},
+  {w:"action", t0:9.40, t1:10.30},
+  {w:"intention", t0:12.10, t1:13.10},
+  {w:"curiosity", t0:14.60, t1:15.70}
+];
+const T_ACTION = 9.4, T_INTENTION = 12.1, T_CURIOSITY = 14.6;
+
+// ---------- util ----------
+function clamp(v,a,b){return v<a?a:v>b?b:v;}
+function lerp(a,b,t){return a+(b-a)*t;}
+function smooth(t){t=clamp(t,0,1);return t*t*(3-2*t);}
+function easeSoft(t){t=clamp(t,0,1);return t*t*(3-2*t);}
+function easeOut(t){t=clamp(t,0,1);return 1-Math.pow(1-t,3);}
+function easeIn(t){t=clamp(t,0,1);return t*t*t;}
+
+// ---------- pixel sprite baking ----------
+// 16x16 grid, each cell a colour (or null). Rendered as 3D block with darker extrusion down-right + bevel.
+const SPRITE_DEFS = {
+  vinyl: [
+    "................",
+    ".....kkkkkk.....",
+    "...kkcccccckk...",
+    "..kcccccccccck..",
+    ".kccccrrrrcccck.",
+    ".kcccrkkkkrcccck",
+    ".kcccrk..krcccck",
+    ".kcccrk..krcccck",
+    ".kcccrkkkkrcccck",
+    ".kccccrrrrcccck.",
+    "..kcccccccccck..",
+    "...kkcccccckk...",
+    ".....kkkkkk.....",
+    "................",
+    "................",
+    "................"
+  ],
+  book: [
+    "................",
+    "..kkkkkkkkkkkk..",
+    "..kwwwwwwwwwwk..",
+    "..kwrrrrrrrrwk..",
+    "..kwwwwwwwwwwk..",
+    "..kwrrrrrrrrwk..",
+    "..kwwwwwwwwwwk..",
+    "..kwrrrrrrrrwk..",
+    "..kwwwwwwwwwwk..",
+    "..kwrrrrrrrrwk..",
+    "..kwwwwwwwwwwk..",
+    "..kkkkkkkkkkkk..",
+    "................",
+    "................",
+    "................",
+    "................"
+  ],
+  camera: [
+    "................",
+    "................",
+    "....kkkkkkkk....",
+    "..kkkkkkkkkkkk..",
+    "..kdddddddddk...",
+    "..kdwwwwwwddk...",
+    "..kdwrrrrwddk...",
+    "..kdwrrrrwddk...",
+    "..kdwwwwwwddk...",
+    "..kdddddddddk...",
+    "..kkkkkkkkkkkk..",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................"
+  ],
+  cat: [
+    "................",
+    "..k..........k..",
+    "..kk........kk..",
+    "..kOkkkkkkkkOk..",
+    "..kOOOOOOOOOOk..",
+    "..kOkkOOOkkOOk..",
+    "..kOOOOkOOOOOk..",
+    "..kOOOkkOOOOOk..",
+    "..kOOOOOOOOOOk..",
+    "...kOOOOOOOOk...",
+    "....kkkkkkkk....",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................"
+  ],
+  coin: [
+    "................",
+    ".....kkkkkk.....",
+    "...kkyyyyyykk...",
+    "..kyyyyyyyyyyk..",
+    ".kyyyykkkkyyyyk.",
+    ".kyyykyyyykyyyk.",
+    ".kyykyykkkyykyyk",
+    ".kyykyyk..kyykyyk",
+    ".kyykyykkkyykyyk",
+    ".kyyykyyyykyyyk.",
+    ".kyyyykkkkyyyyk.",
+    "..kyyyyyyyyyyk..",
+    "...kkyyyyyykk...",
+    ".....kkkkkk.....",
+    "................",
+    "................"
+  ],
+  gamepad: [
+    "................",
+    "................",
+    "..kkkkkkkkkkkk..",
+    ".kddddddddddddk.",
+    ".kdkkddddddkkdk.",
+    ".kdkrkddddkdkdk.",
+    ".kdkrkddddkdkdk.",
+    ".kdkkddddddkkdk.",
+    ".kddddddddddddk.",
+    "..kkkkkkkkkkkk..",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................"
+  ],
+  cap: [
+    "................",
+    "................",
+    "................",
+    "....kkkkkkkk....",
+    "..kkrrrrrrrrkk..",
+    ".krrrrrrrrrrrrk.",
+    ".krrrrrrrrrrrrk.",
+    ".krrrrrrrrrrrrk.",
+    ".kkkkkkkkkkkkkk.",
+    "..k.............k",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................"
+  ],
+  heart: [
+    "................",
+    "..kkk....kkk....",
+    ".krrrk..krrrk...",
+    "krrrrrkkrrrrrk..",
+    "krrrrrrrrrrrrk..",
+    "krrrrrrrrrrrrk..",
+    ".krrrrrrrrrrk...",
+    "..krrrrrrrrk....",
+    "...krrrrrrk.....",
+    "....krrrrk......",
+    ".....krrk.......",
+    "......kk........",
+    "................",
+    "................",
+    "................",
+    "................"
+  ],
+  money: [
+    "................",
+    "..kkkkkkkkkkkk..",
+    "..kggggggggggk..",
+    "..kgwwwwwwwwgk..",
+    "..kgwkkkkkkwgk..",
+    "..kgwkggggkwgk..",
+    "..kgwkggggkwgk..",
+    "..kgwkkkkkkwgk..",
+    "..kgwwwwwwwwgk..",
+    "..kggggggggggk..",
+    "..kkkkkkkkkkkk..",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................"
+  ],
+  plant: [
+    "................",
+    "......kk........",
+    ".....kggk.......",
+    "....kggggk......",
+    "...kggggggk.....",
+    "..kggggggggk....",
+    ".kggggggggggk...",
+    "..kggggggggk....",
+    "...kggggggk.....",
+    "....kkkkkk......",
+    "....kbbbbk......",
+    "....kbbbbk......",
+    "....kkkkkk......",
+    "................",
+    "................",
+    "................"
+  ],
+  clapper: [
+    "................",
+    "..kkkkkkkkkkkk..",
+    "..kwkwkwkwkwk...",
+    "..kkkkkkkkkkkk..",
+    "..kddddddddddk..",
+    "..kddddddddddk..",
+    "..kddddddddddk..",
+    "..kddddddddddk..",
+    "..kddddddddddk..",
+    "..kkkkkkkkkkkk..",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................"
+  ],
+  skateboard: [
+    "................",
+    "................",
+    "................",
+    "................",
+    "..kkkkkkkkkkkk..",
+    ".kppppppppppppk.",
+    "kkkkkkkkkkkkkkkk",
+    "..k..........k..",
+    "..k..........k..",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................"
+  ]
+};
+
+const COLOR_MAP = {
+  'k': '#111111',
+  'c': '#2a2a2a',
+  'r': RED,
+  'w': '#ffffff',
+  'd': '#3a3a3a',
+  'O': '#d8a15a',
+  'y': YELLOW,
+  'g': '#5a8a3a',
+  'b': '#6a4a2a',
+  'p': '#e8b04a',
+  '.': null
+};
+
+const SPRITE_CACHE = {};
+
+function bakeSprite(name){
+  if(SPRITE_CACHE[name]) return SPRITE_CACHE[name];
+  const def = SPRITE_DEFS[name];
+  const cell = 8;
+  const grid = 16;
+  const pad = 4;
+  const cw = grid*cell + pad*2 + cell; // room for extrusion
+  const ch = grid*cell + pad*2 + cell;
+  const off = document.createElement('canvas');
+  off.width = cw; off.height = ch;
+  const octx = off.getContext('2d');
+  // parse
+  const cells = [];
+  for(let y=0;y<grid;y++){
+    for(let x=0;x<grid;x++){
+      const ch2 = def[y] ? def[y][x] : '.';
+      if(ch2 && ch2 !== '.' && COLOR_MAP[ch2]){
+        cells.push({x,y,c:COLOR_MAP[ch2]});
+      }
+    }
+  }
+  // extrusion (darker), offset down-right
+  for(const c of cells){
+    const px = pad + c.x*cell;
+    const py = pad + c.y*cell;
+    octx.fillStyle = 'rgba(0,0,0,0.55)';
+    octx.fillRect(px+cell*0.35, py+cell*0.35, cell, cell);
+  }
+  // face
+  for(const c of cells){
+    const px = pad + c.x*cell;
+    const py = pad + c.y*cell;
+    octx.fillStyle = c.c;
+    octx.fillRect(px, py, cell, cell);
+    // bevel: top-left light, bottom-right dark
+    octx.fillStyle = 'rgba(255,255,255,0.18)';
+    octx.fillRect(px, py, cell, 1);
+    octx.fillRect(px, py, 1, cell);
+    octx.fillStyle = 'rgba(0,0,0,0.22)';
+    octx.fillRect(px, py+cell-1, cell, 1);
+    octx.fillRect(px+cell-1, py, 1, cell);
+  }
+  SPRITE_CACHE[name] = {canvas: off, w: cw, h: ch, cells};
+  return SPRITE_CACHE[name];
+}
+
+// pre-bake all
+const ALL_SPRITES = Object.keys(SPRITE_DEFS);
+for(const n of ALL_SPRITES) bakeSprite(n);
+
+// ---------- silhouettes (head profile + raised hand) as heat maps ----------
+// We'll draw them procedurally into an offscreen mask, then heat-map.
+// Head profile: a rounded head shape with nose bump, facing right.
+// Hand: raised palm with fingers.
+
+const HEAT_W = 480, HEAT_H = 480;
+
+function makeHeadMask(){
+  const c = document.createElement('canvas');
+  c.width = HEAT_W; c.height = HEAT_H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff';
+  // neck
+  g.beginPath();
+  g.moveTo(180, 460);
+  g.lineTo(180, 340);
+  g.lineTo(300, 340);
+  g.lineTo(300, 460);
+  g.closePath(); g.fill();
+  // head
+  g.beginPath();
+  g.arc(240, 230, 130, 0, Math.PI*2);
+  g.fill();
+  // nose bump (right side)
+  g.beginPath();
+  g.moveTo(355, 230);
+  g.quadraticCurveTo(400, 250, 370, 285);
+  g.lineTo(350, 290);
+  g.closePath(); g.fill();
+  // hair
+  g.beginPath();
+  g.arc(220, 180, 100, Math.PI, Math.PI*2);
+  g.fill();
+  return c;
+}
+
+function makeHandMask(){
+  const c = document.createElement('canvas');
+  c.width = HEAT_W; c.height = HEAT_H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff';
+  // palm
+  g.beginPath();
+  g.ellipse(240, 320, 90, 110, 0, 0, Math.PI*2);
+  g.fill();
+  // fingers
+  const fx = [170, 215, 260, 305];
+  for(let i=0;i<4;i++){
+    g.beginPath();
+    g.ellipse(fx[i], 180, 22, 80, 0, 0, Math.PI*2);
+    g.fill();
+  }
+  // thumb
+  g.beginPath();
+  g.ellipse(140, 290, 30, 55, -0.4, 0, Math.PI*2);
+  g.fill();
+  // wrist
+  g.fillRect(180, 400, 130, 80);
+  return c;
+}
+
+// distance transform (approx) for base heat
+function buildHeatBase(maskCanvas){
+  const w = maskCanvas.width, h = maskCanvas.height;
+  const src = maskCanvas.getContext('2d').getImageData(0,0,w,h).data;
+  // binary mask from alpha
+  const bin = new Uint8Array(w*h);
+  for(let i=0;i<w*h;i++) bin[i] = src[i*4+3] > 128 ? 1 : 0;
+  // distance to nearest edge (approx: use 2-pass chamfer)
+  const dist = new Float32Array(w*h);
+  const INF = 1e9;
+  for(let i=0;i<w*h;i++) dist[i] = bin[i] ? INF : 0;
+  // forward
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const i = y*w+x;
+      if(dist[i]===0) continue;
+      let d = dist[i];
+      if(x>0) d = Math.min(d, dist[i-1]+1);
+      if(y>0) d = Math.min(d, dist[i-w]+1);
+      if(x>0&&y>0) d = Math.min(d, dist[i-w-1]+1.414);
+      if(x<w-1&&y>0) d = Math.min(d, dist[i-w+1]+1.414);
+      dist[i] = d;
+    }
+  }
+  // backward
+  for(let y=h-1;y>=0;y--){
+    for(let x=w-1;x>=0;x--){
+      const i = y*w+x;
+      if(dist[i]===0) continue;
+      let d = dist[i];
+      if(x<w-1) d = Math.min(d, dist[i+1]+1);
+      if(y<h-1) d = Math.min(d, dist[i+w]+1);
+      if(x<w-1&&y<h-1) d = Math.min(d, dist[i+w+1]+1.414);
+      if(x>0&&y<h-1) d = Math.min(d, dist[i+w-1]+1.414);
+      dist[i] = d;
+    }
+  }
+  // normalize: inside = distance/max, outside held at edge value
+  let maxD = 1;
+  for(let i=0;i<w*h;i++) if(bin[i] && dist[i]<INF) maxD = Math.max(maxD, dist[i]);
+  const base = new Float32Array(w*h);
+  for(let i=0;i<w*h;i++){
+    if(bin[i]) base[i] = dist[i]/maxD;
+    else base[i] = -1; // sentinel: outside
+  }
+  return {base, bin, w, h};
+}
+
+const headMask = makeHeadMask();
+const handMask = makeHandMask();
+const headHeat = buildHeatBase(headMask);
+const handHeat = buildHeatBase(handMask);
+
+// heat ramp lookup (256)
+function buildHeatLUT(){
+  const lut = new Uint8ClampedArray(256*4);
+  for(let i=0;i<256;i++){
+    const t = i/255;
+    let r,g,b;
+    if(t<0.33){ // black > red
+      const u = t/0.33;
+      r = lerp(0, 230, u); g = lerp(0, 30, u); b = lerp(0, 20, u);
+    } else if(t<0.66){ // red > orange
+      const u = (t-0.33)/0.33;
+      r = lerp(230, 255, u); g = lerp(30, 140, u); b = lerp(20, 30, u);
+    } else { // orange > cream
+      const u = (t-0.66)/0.34;
+      r = lerp(255, 255, u); g = lerp(140, 240, u); b = lerp(30, 200, u);
+    }
+    lut[i*4]=r; lut[i*4+1]=g; lut[i*4+2]=b; lut[i*4+3]=255;
+  }
+  return lut;
+}
+const HEAT_LUT = buildHeatLUT();
+
+// value noise
+function vnoise(x,y,seed){
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = x-xi, yf = y-yi;
+  function h(a,b){
+    let n = a*374761393 + b*668265263 + seed*1442695040888963407;
+    n = (n ^ (n >> 13)) * 1274126177;
+    return ((n ^ (n >> 16)) >>> 0) / 4294967296;
+  }
+  const v00 = h(xi,yi), v10 = h(xi+1,yi), v01 = h(xi,yi+1), v11 = h(xi+1,yi+1);
+  const u = xf*xf*(3-2*xf), v = yf*yf*(3-2*yf);
+  return lerp(lerp(v00,v10,u), lerp(v01,v11,u), v);
+}
+
+// render heat silhouette to an offscreen canvas
+function renderHeat(maskCanvas, heatData, time, hotX, hotY, intensity){
+  const w = heatData.w, h = heatData.h;
+  const off = document.createElement('canvas');
+  off.width = w; off.height = h;
+  const octx = off.getContext('2d');
+  const img = octx.createImageData(w,h);
+  const d = img.data;
+  const q = 4; // quarter resolution noise
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const i = y*w+x;
+      const base = heatData.base[i];
+      if(base < 0){ d[i*4+3]=0; continue; }
+      // hotspot
+      const dx = x - hotX, dy = y - hotY;
+      const hot = Math.exp(-(dx*dx+dy*dy)/(2*90*90)) * 0.5;
+      // noise (2 octaves)
+      const nx = x/q, ny = y/q;
+      const n1 = vnoise(nx*0.03, ny*0.03, 1) * 0.15;
+      const n2 = vnoise(nx*0.08, ny*0.08, 2) * 0.08;
+      const nz = (n1+n2-0.11) * 0.6;
+      let v = base * 0.9 + hot + nz + intensity;
+      v = clamp(v, 0, 1);
+      const idx = Math.floor(v*255)*4;
+      d[i*4] = HEAT_LUT[idx];
+      d[i*4+1] = HEAT_LUT[idx+1];
+      d[i*4+2] = HEAT_LUT[idx+2];
+      d[i*4+3] = 255;
+    }
+  }
+  octx.putImageData(img,0,0);
+  return off;
+}
+
+// ---------- scene state ----------
+// camera: handheld float + slow push
+function cameraTransform(t){
+  const push = 1 + 0.04 * (t/DURATION);
+  const fx = Math.sin(t*0.7)*8 + Math.sin(t*1.3+1)*3;
+  const fy = Math.cos(t*0.6)*6 + Math.sin(t*1.1+2)*2;
+  return {push, fx, fy};
+}
+
+// ---------- drawing helpers ----------
+function drawPaper(){
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0,0,W,H);
+}
+
+function drawGrain(t, amount){
+  // deterministic grain via seeded noise per pixel block
+  const rng = mulberry32(1234);
+  ctx.save();
+  ctx.globalAlpha = amount;
+  for(let i=0;i<800;i++){
+    const x = rng()*W, y = rng()*H;
+    const v = rng();
+    ctx.fillStyle = v<0.5 ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)';
+    ctx.fillRect(x, y, 2, 2);
+  }
+  ctx.restore();
+}
+
+function drawVignette(){
+  const g = ctx.createRadialGradient(W/2,H/2, H*0.3, W/2,H/2, H*0.75);
+  g.addColorStop(0,'rgba(0,0,0,0)');
+  g.addColorStop(1,'rgba(0,0,0,0.45)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,W,H);
+}
+
+function drawSprite(name, x, y, scale, rot, alpha){
+  const s = bakeSprite(name);
+  ctx.save();
+  ctx.globalAlpha = alpha !== undefined ? alpha : 1;
+  ctx.translate(x,y);
+  if(rot) ctx.rotate(rot);
+  ctx.scale(scale, scale);
+  // contact shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetX = 4;
+  ctx.shadowOffsetY = 6;
+  ctx.drawImage(s.canvas, -s.w/2, -s.h/2);
+  ctx.restore();
+}
+
+function drawText(text, x, y, size, color, align, weight){
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.font = (weight||'600') + ' ' + size + 'px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif';
+  ctx.textAlign = align || 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+// typewriter: returns visible substring given time
+function typed(text, t, t0, t1){
+  if(t < t0) return '';
+  if(t >= t1) return text;
+  const u = (t-t0)/(t1-t0);
+  const n = Math.floor(u * text.length);
+  return text.slice(0, n);
+}
+
+// ---------- scenes ----------
+// Scene 1: yellow card with first word, wipes off, question types below
+function scene1(t, out){
+  // 0 to 2.2
+  const cardW = 900, cardH = 460;
+  let cardVisible = 1;
+  let cardX = W/2;
+  if(t > 1.0){
+    const u = smooth((t-1.0)/0.7);
+    cardX = W/2 - u * (W/2 + cardW/2 + 40);
+    cardVisible = 1 - u;
+  }
+  if(cardVisible > 0){
+    ctx.save();
+    ctx.globalAlpha = cardVisible;
+    ctx.fillStyle = YELLOW;
+    ctx.fillRect(cardX - cardW/2, H/2 - cardH/2, cardW, cardH);
+    ctx.restore();
+    // first word
+    if(t > 0.15){
+      const word = typed("what", t, 0.15, 0.55);
+      drawText(word, cardX, H/2, 180, BLACK, 'center', '800');
+    }
+  }
+  // question types below
+  if(t > 1.4){
+    const q1 = "what is";
+    const q2 = "this?";
+    const t1 = typed(q1, t, 1.4, 1.8);
+    const t2 = typed(q2, t, 1.8, 2.05);
+    const cy = H/2 + 60;
+    const size = 100;
+    ctx.save();
+    ctx.font = '700 ' + size + 'px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif';
+    const w1 = ctx.measureText(q1).width;
+    const w2 = ctx.measureText(q2).width;
+    const total = Math.max(w1, w2);
+    ctx.restore();
+    drawText(t1, W/2, cy - 60, size, BLACK, 'center', '700');
+    drawText(t2, W/2, cy + 60, size, BLACK, 'center', '700');
+    // underline "this" in red when spoken
+    if(t > 1.4){
+      const u = clamp((t-1.4)/0.4,0,1);
+      ctx.save();
+      ctx.strokeStyle = RED;
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      const ux = W/2 - w2/2;
+      ctx.moveTo(ux, cy + 60 + size*0.4);
+      ctx.lineTo(ux + w2*u, cy + 60 + size*0.4);
+      ctx.stroke();
+      ctx.restore();
+    }
+    // block cursor
+    const cursorOn = Math.floor(t*4)%2===0;
+    if(cursorOn && t < 2.05){
+      const lastLine = t2 ? q2 : q1;
+      const lw = lastLine.length * size * 0.55;
+      const ly = t2 ? cy+60 : cy-60;
+      ctx.fillStyle = BLACK;
+      ctx.fillRect(W/2 + lw/2 + 10, ly - size*0.4, 12, size*0.8);
+    }
+  }
+}
+
+// Scene 2: objects streak in lanes, cyan flare, burn away
+function scene2(t, out){
+  // 2.2 to 4.2
+  const local = t - 2.2;
+  if(local < 0) return;
+  // lanes of objects streaking
+  const objs = ALL_SPRITES;
+  const laneY = [140, 260, 820, 940];
+  for(let i=0;i<objs.length;i++){
+    const lane = i % 4;
+    const phase = (local * 0.5 + i*0.13) % 1;
+    const x = -200 + phase * (W + 400);
+    const y = laneY[lane] + Math.sin(local*2 + i)*10;
+    const sc = 1.2;
+    drawSprite(objs[i], x, y, sc, Math.sin(local+i)*0.2, 0.9);
+  }
+  // cyan four-point flare sweeping in
+  if(local > 0.5 && local < 1.6){
+    const u = smooth((local-0.5)/1.1);
+    const fx = lerp(-200, W+200, u);
+    const fy = H/2;
+    ctx.save();
+    ctx.globalAlpha = 0.9 * (1 - Math.abs(u-0.5)*1.2);
+    ctx.fillStyle = CYAN;
+    ctx.beginPath();
+    ctx.moveTo(fx, fy-120);
+    ctx.lineTo(fx+30, fy-30);
+    ctx.lineTo(fx+120, fy);
+    ctx.lineTo(fx+30, fy+30);
+    ctx.lineTo(fx, fy+120);
+    ctx.lineTo(fx-30, fy+30);
+    ctx.lineTo(fx-120, fy);
+    ctx.lineTo(fx-30, fy-30);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  // burn away: black closes in from edges onto head, hot red edge
+  if(local > 1.4){
+    const u = smooth(clamp((local-1.4)/0.8,0,1));
+    const cx = W/2, cy = H/2;
+    const maxR = Math.hypot(W,H)/2;
+    const r = lerp(maxR, 60, u);
+    ctx.save();
+    ctx.fillStyle = BLACK;
+    ctx.beginPath();
+    ctx.rect(0,0,W,H);
+    ctx.arc(cx, cy, r, 0, Math.PI*2, true);
+    ctx.fill();
+    // hot red edge
+    ctx.strokeStyle = RED;
+    ctx.lineWidth = 14;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// Scene 3: head heats up on black, answer types, orbit, bloom
+function scene3(t, out){
+  // 4.2 to 9.4
+  const local = t - 4.2;
+  if(local < 0) return;
+  ctx.fillStyle = BLACK;
+  ctx.fillRect(0,0,W,H);
+  // head heat
+  const headScale = 1.6;
+  const hx = W/2, hy = H/2 + 40;
+  const intensity = clamp(local/2, 0, 0.4);
+  const heatCanvas = renderHeat(headMask, headHeat, t, 240, 220, intensity);
+  ctx.save();
+  ctx.globalAlpha = clamp(local/0.5, 0, 1);
+  // glow outside
+  ctx.shadowColor = 'rgba(255,60,30,0.8)';
+  ctx.shadowBlur = 40;
+  ctx.drawImage(heatCanvas, hx - HEAT_W*headScale/2, hy - HEAT_H*headScale/2, HEAT_W*headScale, HEAT_H*headScale);
+  ctx.restore();
+  // answer types low on left
+  if(local > 0.8){
+    const ans = "everything.";
+    const t0 = 0.8, t1 = 1.6;
+    const txt = typed(ans, local, t0, t1);
+    drawText(txt, 120, H - 160, 72, PAPER, 'left', '700');
+    // cursor
+    if(Math.floor(t*4)%2===0 && local < t1){
+      const tw = txt.length * 40;
+      ctx.fillStyle = RED;
+      ctx.fillRect(120 + tw + 8, H - 190, 10, 60);
+    }
+  }
+  // orbit around head
+  if(local > 1.2){
+    const u = smooth((local-1.2)/1.5);
+    const ang = u * Math.PI * 2;
+    ctx.save();
+    ctx.strokeStyle = WHITE;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(hx, hy, 320, 90, 0, 0, ang);
+    ctx.stroke();
+    ctx.restore();
+  }
+  // bloom on last word (approx at 8.2)
+  if(local > 4.0){
+    const u = smooth((local-4.0)/0.9);
+    const r = u * 1200;
+    ctx.save();
+    ctx.fillStyle = PAPER;
+    ctx.beginPath();
+    ctx.arc(hx, hy, r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+    // objects inside bloom
+    if(u > 0.3){
+      const objs = ALL_SPRITES;
+      for(let i=0;i<objs.length;i++){
+        const a = (i/objs.length)*Math.PI*2 + t*0.5;
+        const rr = 100 + (i%3)*60;
+        const ox = hx + Math.cos(a)*rr;
+        const oy = hy + Math.sin(a)*rr*0.6;
+        drawSprite(objs[i], ox, oy, 1.0, a, u);
+      }
+    }
+  }
+}
+
+// Scene 4: tilted ring of objects
+function drawRing(t, cx, cy, ringScale, ringRot, bobAmt, alpha){
+  const objs = ALL_SPRITES;
+  const n = objs.length;
+  const items = [];
+  for(let i=0;i<n;i++){
+    const a = (i/n)*Math.PI*2 + ringRot;
+    const depth = Math.sin(a); // -1 back, 1 front
+    const x = cx + Math.cos(a) * 420 * ringScale;
+    const y = cy + Math.sin(a) * 130 * ringScale;
+    const sc = (0.9 + depth*0.35) * ringScale;
+    const bob = Math.sin(t*2 + i)*bobAmt;
+    items.push({i, x, y: y + bob, sc, depth, obj: objs[i]});
+  }
+  items.sort((a,b)=>a.depth-b.depth);
+  for(const it of items){
+    drawSprite(it.obj, it.x, it.y, it.sc, 0, alpha);
+  }
+}
+
+function scene4(t, out){
+  // 9.0 to 9.4 (brief)
+  const local = t - 9.0;
+  if(local < 0) return;
+  drawPaper();
+  // ring turning
+  drawRing(t, W/2, H/2, 1.0, t*0.3, 8, 1);
+}
+
+// Scene 5: 3 hero words, each object flies out, page floods black, word types, flood drains
+function scene5(t, out){
+  // 9.4 to 15.7
+  if(t < 9.4) return;
+  drawPaper();
+
+  // ring still turning in background
+  drawRing(t, W/2, H/2, 1.0, t*0.3, 8, 0.5);
+
+  const heroes = [
+    {word:"action", t0:T_ACTION, t1:T_ACTION+0.9, obj:"camera", slot:0},
+    {word:"intention", t0:T_INTENTION, t1:T_INTENTION+0.9, obj:"book", slot:1},
+    {word:"curiosity", t0:T_CURIOSITY, t1:T_CURIOSITY+0.9, obj:"vinyl", slot:2}
+  ];
+
+  for(const h of heroes){
+    const local = t - h.t0;
+    if(local < 0) continue;
+    // fly out from ring to left and grow
+    const flyU = smooth(clamp(local/0.5, 0, 1));
+    const tx = lerp(W/2, 360, flyU);
+    const ty = lerp(H/2, H/2, flyU);
+    const sc = lerp(1.0, 3.0, flyU);
+    // flood black from object
+    const floodU = smooth(clamp((local-0.2)/0.6, 0, 1));
+    if(floodU > 0){
+      const r = floodU * 1600;
+      ctx.save();
+      ctx.fillStyle = BLACK;
+      ctx.beginPath();
+      ctx.arc(tx, ty, r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+    // object
+    drawSprite(h.obj, tx, ty, sc, 0, 1);
+    // word types beside
+    if(local > 0.4){
+      const wt = typed(h.word, local, 0.4, 0.9);
+      drawText(wt, 720, H/2, 110, PAPER, 'left', '800');
+    }
+    // special effects
+    if(h.obj === 'camera' && local > 0.5){
+      // red shutter star
+      const su = smooth(clamp((local-0.5)/0.4,0,1));
+      ctx.save();
+      ctx.globalAlpha = su;
+      ctx.strokeStyle = RED;
+      ctx.lineWidth = 8;
+      for(let k=0;k<8;k++){
+        const a = k/8*Math.PI*2;
+        ctx.beginPath();
+        ctx.moveTo(tx + Math.cos(a)*40, ty + Math.sin(a)*40);
+        ctx.lineTo(tx + Math.cos(a)*(80+su*60), ty + Math.sin(a)*(80+su*60));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if(h.obj === 'book' && local > 0.5){
+      // red ribbon sweep
+      const su = smooth(clamp((local-0.5)/0.5,0,1));
+      ctx.save();
+      ctx.strokeStyle = RED;
+      ctx.lineWidth = 20;
+      ctx.beginPath();
+      ctx.moveTo(tx-100, ty-100);
+      ctx.quadraticCurveTo(tx+su*200, ty-200, tx+su*300, ty+100);
+      ctx.stroke();
+      ctx.restore();
+    }
+    if(h.obj === 'vinyl' && local > 0.5){
+      // two white orbits + red notes
+      const su = smooth(clamp((local-0.5)/0.6,0,1));
+      ctx.save();
+      ctx.strokeStyle = WHITE;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.ellipse(tx, ty, 200*su, 60*su, 0, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(tx, ty, 260*su, 80*su, 0, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.fillStyle = RED;
+      for(let k=0;k<3;k++){
+        const a = k/3*Math.PI*2 + local*2;
+        ctx.beginPath();
+        ctx.arc(tx + Math.cos(a)*200*su, ty + Math.sin(a)*60*su, 10, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    // flood drains back into object (after ~1.2s)
+    if(local > 1.2){
+      const drainU = smooth(clamp((local-1.2)/0.6, 0, 1));
+      const r = (1-drainU) * 1600;
+      // redraw paper outside drain
+      ctx.save();
+      ctx.fillStyle = PAPER;
+      ctx.beginPath();
+      ctx.rect(0,0,W,H);
+      ctx.arc(tx, ty, r, 0, Math.PI*2, true);
+      ctx.fill();
+      ctx.restore();
+      // redraw object on top
+      drawSprite(h.obj, tx, ty, sc, 0, 1);
+      // word
+      drawText(h.word, 720, H/2, 110, BLACK, 'left', '800');
+    }
+  }
+}
+
+// Scene 6: ring bursts, objects turn to ink, ink blots swallow page
+function scene6(t, out){
+  // 15.7 to 17.5
+  const local = t - 15.7;
+  if(local < 0) return;
+  drawPaper();
+  // ring pulls in then bursts
+  const pullU = smooth(clamp(local/0.4, 0, 1));
+  const burstU = smooth(clamp((local-0.4)/0.5, 0, 1));
+  const ringScale = 1.0 - pullU*0.15 + burstU*0.6;
+  drawRing(t, W/2, H/2, ringScale, t*0.3, 8, 1 - burstU);
+  // ink blots
+  if(local > 0.4){
+    const rng = mulberry32(777);
+    for(let i=0;i<12;i++){
+      const bx = rng()*W, by = rng()*H;
+      const delay = rng()*0.6;
+      const bu = smooth(clamp((local-0.4-delay)/0.8, 0, 1));
+      const r = bu * (200 + rng()*300);
+      ctx.fillStyle = BLACK;
+      ctx.beginPath();
+      ctx.arc(bx, by, r, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+}
+
+// Scene 7: hand rises hot, line split, heart drops into palm, lifts to centre
+function scene7(t, out){
+  // 17.5 to 18.5
+  const local = t - 17.5;
+  if(local < 0) return;
+  ctx.fillStyle = BLACK;
+  ctx.fillRect(0,0,W,H);
+  // hand rises
+  const riseU = smooth(clamp(local/0.5, 0, 1));
+  const hy = lerp(H + 300, H/2 + 100, riseU);
+  const handScale = 1.4;
+  const heatCanvas = renderHeat(handMask, handHeat, t, 240, 300, 0.3);
+  ctx.save();
+  ctx.shadowColor = 'rgba(255,60,30,0.8)';
+  ctx.shadowBlur = 40;
+  ctx.drawImage(heatCanvas, W/2 - HEAT_W*handScale/2, hy - HEAT_H*handScale/2, HEAT_W*handScale, HEAT_H*handScale);
+  ctx.restore();
+  // line split either side
+  drawText("the answer is", 200, H/2 - 100, 60, PAPER, 'left', '600');
+  drawText("in your hands", W - 200, H/2 - 100, 60, PAPER, 'right', '600');
+  // heart drops into palm
+  if(local > 0.5){
+    const dropU = smooth(clamp((local-0.5)/0.5, 0, 1));
+    const heartY = lerp(-100, hy + 40, dropU);
+    drawSprite('heart', W/2, heartY, 2.0, 0, 1);
+  }
+  // lifts to centre at next scene's size
+  if(local > 1.0){
+    const liftU = smooth(clamp((local-1.0)/0.5, 0, 1));
+    const heartY = lerp(hy + 40, H/2, liftU);
+    drawSprite('heart', W/2, heartY, lerp(2.0, 4.0, liftU), 0, 1);
+  }
+}
+
+// Scene 8: last word, one letter per beat, bg flips, heart holds, morph
+function scene8(t, out){
+  // 18.5 to 19.5
+  const local = t - 18.5;
+  if(local < 0) return;
+  const word = "CURIOSITY";
+  const beat = 0.12;
+  const lettersShown = Math.floor(local / beat);
+  // bg flip
+  const flip = Math.floor(local / (beat*3)) % 3;
+  const bgs = [PAPER, BLACK, RED];
+  ctx.fillStyle = bgs[flip];
+  ctx.fillRect(0,0,W,H);
+  // heart holds centre
+  drawSprite('heart', W/2, H/2, 4.0, 0, 1);
+  // letters
+  const fg = flip === 0 ? BLACK : PAPER;
+  const shown = word.slice(0, Math.min(lettersShown, word.length));
+  drawText(shown, W/2, H/2 + 300, 90, fg, 'center', '800');
+}
+
+// Scene 9: brush strokes sweep, letters drift apart and settle, heart above
+function scene9(t, out){
+  // 19.5 to 20.0 (hold)
+  const local = t - 19.5;
+  if(local < 0) return;
+  drawPaper();
+  // brush strokes
+  ctx.save();
+  ctx.strokeStyle = BLACK;
+  ctx.lineWidth = 6;
+  for(let i=0;i<5;i++){
+    const y = 200 + i*180;
+    const u = smooth(clamp((local - i*0.05)/0.4, 0, 1));
+    ctx.beginPath();
+    ctx.moveTo(-100, y);
+    ctx.lineTo(-100 + u*(W+200), y + Math.sin(i)*20);
+    ctx.stroke();
+  }
+  ctx.restore();
+  // heart above
+  drawSprite('heart', W/2, H/2 - 200, 3.0, 0, 1);
+  // letters drift apart and settle
+  const word = "CURIOSITY";
+  const drift = smooth(clamp(local/0.5, 0, 1));
+  const settle = smooth(clamp((local-0.5)/0.5, 0, 1));
+  const spread = (1-drift)*0 + drift*(1-settle)*80;
+  ctx.save();
+  ctx.font = '800 90px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = BLACK;
+  const totalW = ctx.measureText(word).width;
+  let cx = W/2 - totalW/2;
+  for(let i=0;i<word.length;i++){
+    const ch = word[i];
+    const cw = ctx.measureText(ch).width;
+    const offset = (i - word.length/2) * spread * 0.3;
+    ctx.fillText(ch, cx + cw/2 + offset, H/2 + 250 + Math.sin(i*0.5)*spread*0.5);
+    cx += cw;
+  }
+  ctx.restore();
+}
+
+// ---------- main seek ----------
+window.seek = function(t){
+  t = clamp(t, 0, window.DURATION);
+  ctx.save();
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0,0,W,H);
+
+  // camera transform
+  const cam = cameraTransform(t);
+
+  ctx.save();
+  ctx.translate(W/2, H/2);
+  ctx.scale(cam.push, cam.push);
+  ctx.translate(-W/2 + cam.fx, -H/2 + cam.fy);
+
+  // determine which scene(s) to draw (overlap for handoffs)
+  // Scene boundaries
+  if(t < 2.2){
+    scene1(t);
+  } else if(t < 4.2){
+    scene1(t); // outgoing under transition
+    scene2(t);
+  } else if(t < 9.4){
+    scene3(t);
+  } else if(t < 9.4){
+    // unreachable
+  } else if(t < 15.7){
+    scene5(t);
+  } else if(t < 17.5){
+    scene6(t);
+  } else if(t < 18.5){
+    scene7(t);
+  } else if(t < 19.5){
+    scene8(t);
+  } else {
+    scene9(t);
+  }
+
+  ctx.restore();
+
+  // grain and vignette on everything
+  drawGrain(t, 0.06);
+  drawVignette();
+
+  ctx.restore();
+};
+
+// ---------- play loop ----------
+let startTime = null;
+function loop(ts){
+  if(startTime === null) startTime = ts;
+  const elapsed = ((ts - startTime)/1000) % window.DURATION;
+  window.seek(elapsed);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>

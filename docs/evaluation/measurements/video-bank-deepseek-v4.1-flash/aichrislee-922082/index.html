@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>V8 Engine — Interactive 3D</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#0a0c10;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#e8ecf2}
+  #stage{position:relative;width:100vw;height:100vh;overflow:hidden}
+  canvas{display:block}
+  #hud{position:absolute;left:18px;top:16px;pointer-events:none;text-shadow:0 1px 4px #000}
+  #hud h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.06em;color:#dfe8f5}
+  #hud p{margin:4px 0 0;font-size:12px;color:#8fa0b8;letter-spacing:.02em}
+  #controls{position:absolute;left:18px;bottom:18px;display:flex;gap:10px;align-items:center}
+  button{background:linear-gradient(#1c2430,#121821);border:1px solid #33445c;color:#dbe7f6;
+    padding:9px 16px;font-size:13px;letter-spacing:.04em;border-radius:6px;cursor:pointer;
+    box-shadow:0 2px 10px rgba(0,0,0,.5);transition:all .15s}
+  button:hover{background:linear-gradient(#26323f,#18202a);border-color:#4a6a92;color:#fff}
+  button.on{background:linear-gradient(#2a4a6a,#1a3048);border-color:#5b8fc9;color:#fff}
+  #tip{position:absolute;right:18px;bottom:18px;font-size:11px;color:#5f7088;text-align:right;line-height:1.6}
+  #tooltip{position:absolute;pointer-events:none;background:rgba(10,16,24,.92);border:1px solid #3a5573;
+    border-radius:6px;padding:8px 12px;font-size:12px;max-width:280px;line-height:1.45;
+    opacity:0;transition:opacity .12s;box-shadow:0 4px 18px rgba(0,0,0,.6);z-index:10}
+  #tooltip b{color:#7fb4ff;display:block;font-size:12.5px;margin-bottom:2px;letter-spacing:.03em}
+  #tooltip span{color:#b8c6d8}
+  #labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .lbl{position:absolute;transform:translate(-50%,-50%);font-size:10.5px;letter-spacing:.05em;
+    color:#cfe0f5;background:rgba(8,14,22,.78);border:1px solid #2e4560;border-radius:4px;
+    padding:3px 7px;white-space:nowrap;opacity:0;transition:opacity .25s;text-transform:uppercase}
+  .lbl.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c"></canvas>
+  <div id="labels"></div>
+  <div id="hud">
+    <h1>V8 ENGINE</h1>
+    <p>90° cross-plane · interactive 3D</p>
+  </div>
+  <div id="controls">
+    <button id="explodeBtn">EXPLODE</button>
+  </div>
+  <div id="tip">drag to orbit · scroll to zoom<br>hover a part for details</div>
+  <div id="tooltip"></div>
+</div>
+
+<script>
+/* ============================================================
+   Minimal 3D math + software renderer written by hand.
+   No external libraries. Deterministic seek(t).
+   ============================================================ */
+
+const W = 1280, H = 720;
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+canvas.width = W * DPR; canvas.height = H * DPR;
+canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+ctx.scale(DPR, DPR);
+
+window.DURATION = 12;
+
+/* ---------- vec3 ---------- */
+const V = {
+  add:(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],
+  sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],
+  mul:(a,s)=>[a[0]*s,a[1]*s,a[2]*s],
+  dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+  cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],
+  len:a=>Math.sqrt(a[0]*a[0]+a[1]*a[1]+a[2]*a[2]),
+  norm:a=>{const l=V.len(a)||1;return [a[0]/l,a[1]/l,a[2]/l];},
+  lerp:(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]
+};
+
+/* ---------- mat4 (column-major-ish, we use row-vector style) ---------- */
+function mat4Identity(){return [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];}
+function mat4Mul(a,b){
+  const o=new Array(16);
+  for(let r=0;r<4;r++)for(let c=0;c<4;c++){
+    o[r*4+c]=a[r*4]*b[c]+a[r*4+1]*b[4+c]+a[r*4+2]*b[8+c]+a[r*4+3]*b[12+c];
+  }
+  return o;
+}
+function mat4Translate(x,y,z){const m=mat4Identity();m[3]=x;m[7]=y;m[11]=z;return m;}
+function mat4RotX(a){const c=Math.cos(a),s=Math.sin(a);const m=mat4Identity();m[5]=c;m[6]=s;m[9]=-s;m[10]=c;return m;}
+function mat4RotY(a){const c=Math.cos(a),s=Math.sin(a);const m=mat4Identity();m[0]=c;m[2]=-s;m[8]=s;m[10]=c;return m;}
+function mat4RotZ(a){const c=Math.cos(a),s=Math.sin(a);const m=mat4Identity();m[0]=c;m[1]=s;m[4]=-s;m[5]=c;return m;}
+function mat4Scale(x,y,z){const m=mat4Identity();m[0]=x;m[5]=y;m[10]=z;return m;}
+function mat4Apply(m,p){
+  return [
+    m[0]*p[0]+m[1]*p[1]+m[2]*p[2]+m[3],
+    m[4]*p[0]+m[5]*p[1]+m[6]*p[2]+m[7],
+    m[8]*p[0]+m[9]*p[1]+m[10]*p[2]+m[11]
+  ];
+}
+function mat4ApplyDir(m,p){
+  return [
+    m[0]*p[0]+m[1]*p[1]+m[2]*p[2],
+    m[4]*p[0]+m[5]*p[1]+m[6]*p[2],
+    m[8]*p[0]+m[9]*p[1]+m[10]*p[2]
+  ];
+}
+
+/* ---------- seeded RNG ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+/* ============================================================
+   Geometry primitives — all produce {verts, faces, color}
+   We work in "part local" space; each part has its own transform.
+   ============================================================ */
+
+function makeBox(w,h,d,color){
+  const x=w/2,y=h/2,z=d/2;
+  const verts=[
+    [-x,-y,-z],[x,-y,-z],[x,y,-z],[-x,y,-z],
+    [-x,-y, z],[x,-y, z],[x,y, z],[-x,y, z]
+  ];
+  const faces=[
+    [0,1,2,3],[4,5,6,7], // back/front
+    [0,1,5,4],[2,3,7,6], // bottom/top
+    [0,3,7,4],[1,2,6,5]  // left/right
+  ];
+  return {verts,faces,color};
+}
+
+function makeCylinder(rTop,rBot,h,seg,color,axis){
+  // axis: 'y' (default), 'x', 'z'
+  const verts=[],faces=[];
+  const y0=-h/2,y1=h/2;
+  for(let i=0;i<seg;i++){
+    const a=i/seg*Math.PI*2;
+    const c=Math.cos(a),s=Math.sin(a);
+    verts.push([c*rBot,y0,s*rBot]);
+    verts.push([c*rTop,y1,s*rTop]);
+  }
+  for(let i=0;i<seg;i++){
+    const i0=i*2,i1=i*2+1,i2=((i+1)%seg)*2,i3=((i+1)%seg)*2+1;
+    faces.push([i0,i2,i3,i1]);
+  }
+  // caps
+  const botC=verts.length; verts.push([0,y0,0]);
+  const topC=verts.length; verts.push([0,y1,0]);
+  for(let i=0;i<seg;i++){
+    const i0=i*2,i2=((i+1)%seg)*2;
+    faces.push([botC,i2,i0]);
+    faces.push([topC,i*2+1,((i+1)%seg)*2+1]);
+  }
+  let g={verts,faces,color};
+  if(axis==='x') g=transformGeom(g,mat4RotZ(Math.PI/2));
+  else if(axis==='z') g=transformGeom(g,mat4RotX(Math.PI/2));
+  return g;
+}
+
+function makeSphere(r,seg,color){
+  const verts=[],faces=[];
+  for(let j=0;j<=seg;j++){
+    const phi=j/seg*Math.PI;
+    for(let i=0;i<seg;i++){
+      const th=i/seg*Math.PI*2;
+      verts.push([r*Math.sin(phi)*Math.cos(th), r*Math.cos(phi), r*Math.sin(phi)*Math.sin(th)]);
+    }
+  }
+  for(let j=0;j<seg;j++)for(let i=0;i<seg;i++){
+    const a=j*seg+i, b=j*seg+(i+1)%seg, c=(j+1)*seg+i, d=(j+1)*seg+(i+1)%seg;
+    faces.push([a,b,d,c]);
+  }
+  return {verts,faces,color};
+}
+
+function transformGeom(g,m){
+  return {verts:g.verts.map(v=>mat4Apply(m,v)), faces:g.faces, color:g.color};
+}
+function mergeGeom(list){
+  const verts=[],faces=[];let off=0;
+  for(const g of list){
+    for(const v of g.verts) verts.push(v);
+    for(const f of g.faces) faces.push(f.map(i=>i+off));
+    off+=g.verts.length;
+  }
+  return {verts,faces,color:list[0].color};
+}
+
+/* ============================================================
+   Part registry. Each part: name, geom, baseTransform (function of t),
+   explodeOffset (direction), description.
+   ============================================================ */
+
+const parts = [];
+
+/* --- palette --- */
+const C_BLOCK   = [0.32,0.36,0.42];
+const C_HEAD    = [0.42,0.46,0.52];
+const C_PISTON  = [0.62,0.64,0.68];
+const C_ROD     = [0.55,0.57,0.60];
+const C_CRANK   = [0.48,0.50,0.54];
+const C_CAM     = [0.58,0.60,0.64];
+const C_VALVE   = [0.72,0.74,0.78];
+const C_INTAKE  = [0.30,0.48,0.62];
+const C_EXHAUST = [0.55,0.30,0.18];
+const C_SPARK   = [0.85,0.85,0.90];
+const C_COVER   = [0.38,0.42,0.48];
+const C_PAN     = [0.28,0.30,0.34];
+
+/* --- engine block (V shape) --- */
+// We build the block as a central crankcase + two angled banks.
+// Bank angle: 45° each side of vertical (90° V).
+const BANK = Math.PI/4;
+
+function buildBlock(){
+  // central crankcase
+  const crankcase = makeBox(2.6,1.6,5.6,C_BLOCK);
+  // two banks: boxes rotated about Z
+  const bankL = transformGeom(makeBox(1.9,1.8,5.4,C_BLOCK), mat4Mul(mat4Translate(-1.15,1.35,0), mat4RotZ(-BANK)));
+  const bankR = transformGeom(makeBox(1.9,1.8,5.4,C_BLOCK), mat4Mul(mat4Translate( 1.15,1.35,0), mat4RotZ( BANK)));
+  return mergeGeom([crankcase,bankL,bankR]);
+}
+
+parts.push({
+  id:'block', name:'Engine Block',
+  desc:'Cast-iron V8 block housing the cylinders and crankshaft.',
+  geom: buildBlock(),
+  base: mat4Identity(),
+  explode: [0,0,0]
+});
+
+/* --- cylinder liners (visible bores) --- */
+function buildBores(){
+  const gs=[];
+  for(let i=0;i<4;i++){
+    const z=-2.1+i*1.4;
+    for(const side of [-1,1]){
+      const m=mat4Mul(mat4Translate(side*1.15,1.35,z), mat4RotZ(side*BANK));
+      const bore=transformGeom(makeCylinder(0.62,0.62,1.7,16,[0.15,0.16,0.18],'y'), m);
+      gs.push(bore);
+    }
+  }
+  return mergeGeom(gs);
+}
+parts.push({
+  id:'bores', name:'Cylinder Bores',
+  desc:'Precision-honed cylinders that guide each piston.',
+  geom: buildBores(), base: mat4Identity(), explode:[0,0,0]
+});
+
+/* --- pistons (4 per bank, animated) --- */
+// Firing order 1-8-4-3-6-5-7-2 (GM small block). Cross-plane crank.
+// We approximate: each piston's phase offset.
+const FIRING_PHASE = [0, Math.PI, Math.PI/2, 3*Math.PI/2, Math.PI/2, 3*Math.PI/2, 0, Math.PI];
+
+// For each cylinder: side (-1 left, +1 right), z position, index
+const cylinders = [];
+for(let i=0;i<4;i++){
+  const z=-2.1+i*1.4;
+  cylinders.push({side:-1, z, idx:i});       // left bank  (cyl 1,3,5,7)
+  cylinders.push({side: 1, z, idx:i+4});     // right bank (cyl 2,4,6,8)
+}
+
+function pistonGeom(){
+  const skirt = makeCylinder(0.55,0.55,0.75,16,C_PISTON,'y');
+  const crown = transformGeom(makeCylinder(0.58,0.58,0.12,16,[0.68,0.70,0.74],'y'), mat4Translate(0,0.43,0));
+  const pin   = transformGeom(makeCylinder(0.13,0.13,0.7,10,[0.40,0.42,0.46],'x'), mat4Translate(0,-0.1,0));
+  return mergeGeom([skirt,crown,pin]);
+}
+
+// Piston local frame: we place it at the bore axis, then translate along bore axis by stroke.
+// For left bank: bore axis direction = rotate Z by -BANK applied to +Y = (sin(BANK), cos(BANK),0)? 
+// Let's compute properly. Bank rotation about Z by angle a: +Y -> (-sin a, cos a, 0).
+// Left bank a = -BANK: +Y -> (sin(BANK), cos(BANK),0). Right bank a=+BANK: +Y -> (-sin(BANK),cos(BANK),0).
+const leftAxis  = [ Math.sin(BANK), Math.cos(BANK), 0];
+const rightAxis = [-Math.sin(BANK), Math.cos(BANK), 0];
+
+function pistonTransform(cyl, t){
+  const axis = cyl.side<0 ? leftAxis : rightAxis;
+  const bankRot = cyl.side<0 ? mat4RotZ(-BANK) : mat4RotZ(BANK);
+  const bankOrigin = [cyl.side*1.15, 1.35, cyl.z];
+  // crank rotation
+  const crankAngle = t * Math.PI * 2 * 1.5; // 1.5 rev per duration? we'll use continuous
+  const phase = FIRING_PHASE[cyl.idx];
+  // piston position along bore: s = A*cos(crankAngle+phase) ; A = stroke/2
+  const A = 0.55;
+  const s = A*Math.cos(crankAngle + phase);
+  // local translate along +Y before bank rotation
+  const local = mat4Mul(mat4Translate(0, s, 0), mat4Identity());
+  // full: translate to bank origin, rotate bank, translate local along bore axis
+  const m = mat4Mul(mat4Translate(bankOrigin[0],bankOrigin[1],bankOrigin[2]),
+             mat4Mul(bankRot, mat4Translate(0, s, 0)));
+  return m;
+}
+
+for(const cyl of cylinders){
+  const label = cyl.side<0 ? `Left Bank Cyl ${cyl.idx*2+1}` : `Right Bank Cyl ${cyl.idx*2+2}`;
+  parts.push({
+    id:'piston'+cyl.idx,
+    name:'Piston',
+    desc:'Reciprocates in its bore, compressing the air–fuel charge.',
+    geom: pistonGeom(),
+    base: mat4Identity(),
+    dynamic: pistonTransform.bind(null,cyl),
+    explode: cyl.side<0 ? [-1.6,0.4,0] : [1.6,0.4,0],
+    cylinder: cyl
+  });
+}
+
+/* --- connecting rods --- */
+function rodGeom(){
+  const shaft = makeBox(0.16,1.1,0.22,C_ROD);
+  const bigEnd = transformGeom(makeCylinder(0.22,0.22,0.3,12,[0.48,0.50,0.54],'x'), mat4Translate(0,-0.55,0));
+  const smallEnd = transformGeom(makeCylinder(0.14,0.14,0.24,10,[0.52,0.54,0.58],'x'), mat4Translate(0,0.55,0));
+  return mergeGeom([shaft,bigEnd,smallEnd]);
+}
+
+function rodTransform(cyl, t){
+  const axis = cyl.side<0 ? leftAxis : rightAxis;
+  const bankRot = cyl.side<0 ? mat4RotZ(-BANK) : mat4RotZ(BANK);
+  const bankOrigin = [cyl.side*1.15, 1.35, cyl.z];
+  const crankAngle = t * Math.PI * 2 * 1.5;
+  const phase = FIRING_PHASE[cyl.idx];
+  const A = 0.55;
+  const s = A*Math.cos(crankAngle + phase);
+  // piston pin world position
+  const pinLocal = [0, s - 0.1, 0]; // pin is slightly below crown
+  const pinWorld = V.add(bankOrigin, mat4ApplyDir(bankRot, pinLocal));
+  // crank pin position: crank center at (0,0,z), crank radius 0.55, angle crankAngle+phase
+  const crankR = 0.55;
+  const ca = crankAngle + phase;
+  const crankPin = [crankR*Math.sin(ca), crankR*Math.cos(ca), cyl.z];
+  // rod connects pinWorld to crankPin. We'll place rod at midpoint, oriented along that vector.
+  const mid = V.mul(V.add(pinWorld,crankPin),0.5);
+  const dir = V.norm(V.sub(pinWorld,crankPin));
+  // build rotation: align local +Y to dir. Use axis-angle.
+  const up=[0,1,0];
+  const dot=Math.max(-1,Math.min(1,V.dot(up,dir)));
+  const ang=Math.acos(dot);
+  let ax=V.cross(up,dir);
+  if(V.len(ax)<1e-6) ax=[1,0,0];
+  ax=V.norm(ax);
+  // rotation matrix from axis-angle
+  const c=Math.cos(ang), s2=Math.sin(ang), t2=1-c;
+  const [x,y,z]=ax;
+  const R=[
+    t2*x*x+c, t2*x*y - s2*z, t2*x*z + s2*y, 0,
+    t2*x*y + s2*z, t2*y*y+c, t2*y*z - s2*x, 0,
+    t2*x*z - s2*y, t2*y*z + s2*x, t2*z*z+c, 0,
+    0,0,0,1
+  ];
+  return mat4Mul(mat4Translate(mid[0],mid[1],mid[2]), R);
+}
+
+for(const cyl of cylinders){
+  parts.push({
+    id:'rod'+cyl.idx,
+    name:'Connecting Rod',
+    desc:'Links piston to crankshaft, converting linear motion to rotation.',
+    geom: rodGeom(),
+    base: mat4Identity(),
+    dynamic: rodTransform.bind(null,cyl),
+    explode: cyl.side<0 ? [-2.4,-0.2,0] : [2.4,-0.2,0],
+    cylinder: cyl
+  });
+}
+
+/* --- crankshaft --- */
+function buildCrankshaft(){
+  const gs=[];
+  // main journal axis along Z
+  const main = makeCylinder(0.22,0.22,5.6,16,C_CRANK,'z');
+  gs.push(main);
+  // crank pins + webs for each throw
+  // cross-plane: throws at 0, 90, 270, 180 (deg) — approximate
+  const throwAngles = [0, Math.PI/2, 3*Math.PI/2, Math.PI];
+  for(let i=0;i<4;i++){
+    const z=-2.1+i*1.4;
+    const a=throwAngles[i];
+    const r=0.55;
+    const px=r*Math.sin(a), py=r*Math.cos(a);
+    // web
+    const web = transformGeom(makeBox(1.3,0.3,0.35,C_CRANK), mat4Mul(mat4Translate(px/2,py/2,z), mat4RotZ(a)));
+    gs.push(web);
+    // pin
+    const pin = transformGeom(makeCylinder(0.18,0.18,0.9,12,[0.50,0.52,0.56],'z'), mat4Translate(px,py,z));
+    gs.push(pin);
+  }
+  return mergeGeom(gs);
+}
+
+function crankTransform(t){
+  const crankAngle = t * Math.PI * 2 * 1.5;
+  return mat4RotZ(crankAngle);
+}
+
+parts.push({
+  id:'crank', name:'Crankshaft',
+  desc:'Converts piston thrust into rotary torque via offset crank pins.',
+  geom: buildCrankshaft(),
+  base: mat4Identity(),
+  dynamic: crankTransform,
+  explode: [0,-2.2,0]
+});
+
+/* --- camshafts (2, one per bank) --- */
+function buildCamshaft(){
+  const gs=[];
+  const shaft = makeCylinder(0.12,0.12,5.4,12,C_CAM,'z');
+  gs.push(shaft);
+  for(let i=0;i<8;i++){
+    const z=-2.3+i*0.66;
+    const lobe = transformGeom(makeCylinder(0.22,0.22,0.18,10,[0.62,0.64,0.68],'z'), mat4Translate(0,0.08,z));
+    gs.push(lobe);
+  }
+  return mergeGeom(gs);
+}
+const camGeom = buildCamshaft();
+
+for(const side of [-1,1]){
+  const bankRot = side<0 ? mat4RotZ(-BANK) : mat4RotZ(BANK);
+  const origin = [side*1.15, 2.35, 0];
+  parts.push({
+    id:'cam'+(side<0?'L':'R'),
+    name:'Camshaft',
+    desc:'Rotating lobes that open the valves at the right moment.',
+    geom: camGeom,
+    base: mat4Mul(mat4Translate(origin[0],origin[1],origin[2]), bankRot),
+    dynamic: (t)=>{ const a=t*Math.PI*2*0.75; return mat4RotZ(a); },
+    explode: side<0 ? [-2.2,1.6,0] : [2.2,1.6,0]
+  });
+}
+
+/* --- valves (16, simplified to 8 visible pairs) --- */
+function valveGeom(){
+  const stem = makeCylinder(0.05,0.05,0.7,8,C_VALVE,'y');
+  const head = transformGeom(makeCylinder(0.16,0.16,0.08,10,[0.75,0.77,0.80],'y'), mat4Translate(0,-0.35,0));
+  return mergeGeom([stem,head]);
+}
+const valveG = valveGeom();
+
+for(const cyl of cylinders){
+  const bankRot = cyl.side<0 ? mat4RotZ(-BANK) : mat4RotZ(BANK);
+  const origin = [cyl.side*1.15, 2.05, cyl.z];
+  for(const dz of [-0.3,0.3]){
+    parts.push({
+      id:`valve${cyl.idx}_${dz>0?'e':'i'}`,
+      name: dz>0?'Exhaust Valve':'Intake Valve',
+      desc: dz>0?'Opens to release burnt gases into the header.':'Opens to draw in the air–fuel mixture.',
+      geom: valveG,
+      base: mat4Mul(mat4Translate(origin[0],origin[1],origin[2]+dz), bankRot),
+      dynamic: (t)=>{
+        const crankAngle = t*Math.PI*2*1.5;
+        const phase = FIRING_PHASE[cyl.idx];
+        const lift = Math.max(0, Math.sin(crankAngle*0.5 + phase + (dz>0?Math.PI:0)))*0.12;
+        return mat4Translate(0,-lift,0);
+      },
+      explode: cyl.side<0 ? [-1.4,2.4,0] : [1.4,2.4,0]
+    });
+  }
+}
+
+/* --- valve covers --- */
+for(const side of [-1,1]){
+  const bankRot = side<0 ? mat4RotZ(-BANK) : mat4RotZ(BANK);
+  const origin = [side*1.15, 2.55, 0];
+  parts.push({
+    id:'cover'+(side<0?'L':'R'),
+    name:'Valve Cover',
+    desc:'Seals the valvetrain and keeps oil inside the head.',
+    geom: transformGeom(makeBox(1.6,0.25,5.2,C_COVER), mat4Identity()),
+    base: mat4Mul(mat4Translate(origin[0],origin[1],origin[2]), bankRot),
+    explode: side<0 ? [-2.8,2.8,0] : [2.8,2.8,0]
+  });
+}
+
+/* --- intake manifold (top center) --- */
+function buildIntake(){
+  const gs=[];
+  const plenum = makeBox(1.4,0.7,4.8,C_INTAKE);
+  gs.push(plenum);
+  for(let i=0;i<4;i++){
+    const z=-1.9+i*1.25;
+    for(const side of [-1,1]){
+      const runner = transformGeom(makeCylinder(0.18,0.22,1.1,10,C_INTAKE,'y'),
+        mat4Mul(mat4Translate(side*0.9,0.2,z), mat4RotZ(side*0.7)));
+      gs.push(runner);
+    }
+  }
+  return mergeGeom(gs);
+}
+
+parts.push({
+  id:'intake', name:'Intake Manifold',
+  desc:'Distributes filtered air to all eight cylinders.',
+  geom: buildIntake(),
+  base: mat4Translate(0,3.3,0),
+  explode: [0,3.2,0]
+});
+
+/* --- exhaust headers (side, glowing) --- */
+function buildHeaders(){
+  const gs=[];
+  for(const side of [-1,1]){
+    const bankRot = side<0 ? mat4RotZ(-BANK) : mat4RotZ(BANK);
+    const origin = [side*1.15, 0.9, 0];
+    for(let i=0;i<4;i++){
+      const z=-2.1+i*1.4;
+      // primary tube curving out and down
+      const tube = transformGeom(makeCylinder(0.14,0.16,1.6,10,C_EXHAUST,'y'),
+        mat4Mul(mat4Translate(side*1.6, 0.2, z), mat4RotZ(side*0.9)));
+      gs.push(tube);
+    }
+    // collector
+    const coll = transformGeom(makeCylinder(0.22,0.22,3.2,12,[0.45,0.22,0.12],'z'),
+      mat4Translate(side*2.4,-0.5,0));
+    gs.push(coll);
+  }
+  return mergeGeom(gs);
+}
+
+parts.push({
+  id:'headers', name:'Exhaust Headers',
+  desc:'Scavenges hot exhaust gases; glows red under load.',
+  geom: buildHeaders(),
+  base: mat4Identity(),
+  explode: [0,-1.2,0],
+  glow: true
+});
+
+/* --- spark plugs --- */
+function sparkGeom(){
+  const body = makeCylinder(0.09,0.09,0.4,8,C_SPARK,'y');
+  const tip  = transformGeom(makeCylinder(0.04,0.04,0.15,6,[0.9,0.7,0.3],'y'), mat4Translate(0,-0.27,0));
+  return mergeGeom([body,tip]);
+}
+const sparkG = sparkGeom();
+for(const cyl of cylinders){
+  const bankRot = cyl.side<0 ? mat4RotZ(-BANK) : mat4RotZ(BANK);
+  const origin = [cyl.side*1.15, 2.2, cyl.z];
+  parts.push({
+    id:'spark'+cyl.idx,
+    name:'Spark Plug',
+    desc:'Ignites the compressed mixture with a high-voltage arc.',
+    geom: sparkG,
+    base: mat4Mul(mat4Translate(origin[0],origin[1],origin[2]), bankRot),
+    explode: cyl.side<0 ? [-0.6,3.4,0] : [0.6,3.4,0],
+    spark: cyl
+  });
+}
+
+/* --- oil pan --- */
+parts.push({
+  id:'pan', name:'Oil Pan',
+  desc:'Reservoir for engine oil and the oil pump pickup.',
+  geom: transformGeom(makeBox(2.4,0.7,4.6,C_PAN), mat4Identity()),
+  base: mat4Translate(0,-1.4,0),
+  explode: [0,-3.4,0]
+});
+
+/* --- flywheel --- */
+parts.push({
+  id:'flywheel', name:'Flywheel',
+  desc:'Stores rotational energy for smooth power delivery.',
+  geom: makeCylinder(0.9,0.9,0.3,24,[0.35,0.37,0.40],'z'),
+  base: mat4Translate(0,0,3.0),
+  dynamic: crankTransform,
+  explode: [0,0,3.4]
+});
+
+/* ============================================================
+   Camera & interaction
+   ============================================================ */
+const camera = {
+  yaw: 0.7, pitch: 0.42, dist: 12.5,
+  target: [0, 1.2, 0]
+};
+
+let dragging = false, lastX=0, lastY=0;
+canvas.addEventListener('mousedown', e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;});
+window.addEventListener('mouseup', ()=>dragging=false);
+window.addEventListener('mousemove', e=>{
+  if(dragging){
+    camera.yaw   -= (e.clientX-lastX)*0.008;
+    camera.pitch -= (e.clientY-lastY)*0.008;
+    camera.pitch = Math.max(-0.3, Math.min(1.3, camera.pitch));
+    lastX=e.clientX; lastY=e.clientY;
+  }
+  mouse.x = e.clientX; mouse.y = e.clientY;
+});
+canvas.addEventListener('wheel', e=>{
+  e.preventDefault();
+  camera.dist = Math.max(6, Math.min(28, camera.dist + e.deltaY*0.012));
+}, {passive:false});
+
+const mouse = {x:-1,y:-1};
+
+function cameraMatrix(){
+  const cy=Math.cos(camera.yaw), sy=Math.sin(camera.yaw);
+  const cp=Math.cos(camera.pitch), sp=Math.sin(camera.pitch);
+  const d=camera.dist;
+  const eye = [
+    camera.target[0] + d*cp*sy,
+    camera.target[1] + d*sp,
+    camera.target[2] + d*cp*cy
+  ];
+  // look-at
+  const f = V.norm(V.sub(camera.target, eye));
+  const up = [0,1,0];
+  let r = V.norm(V.cross(f, up));
+  let u = V.cross(r, f);
+  // view matrix (world -> camera): rows r,u,-f
+  const view = [
+    r[0], r[1], r[2], -V.dot(r,eye),
+    u[0], u[1], u[2], -V.dot(u,eye),
+    -f[0],-f[1],-f[2], V.dot(f,eye),
+    0,0,0,1
+  ];
+  return view;
+}
+
+function project(p, view){
+  const cx = view[0]*p[0]+view[1]*p[1]+view[2]*p[2]+view[3];
+  const cy = view[4]*p[0]+view[5]*p[1]+view[6]*p[2]+view[7];
+  const cz = view[8]*p[0]+view[9]*p[1]+view[10]*p[2]+view[11];
+  // perspective
+  const fov = 1.1;
+  const f = 1/Math.tan(fov/2);
+  const z = -cz;
+  if(z < 0.1) return null;
+  const sx = (cx * f / z) * (W/2) + W/2;
+  const sy = -(cy * f / z) * (H/2) + H/2;
+  return [sx, sy, z];
+}
+
+/* ============================================================
+   Explode state
+   ============================================================ */
+let explodeT = 0;       // 0..1
+let explodeTarget = 0;
+const explodeBtn = document.getElementById('explodeBtn');
+explodeBtn.addEventListener('click', ()=>{
+  explodeTarget = explodeTarget > 0.5 ? 0 : 1;
+  explodeBtn.classList.toggle('on', explodeTarget > 0.5);
+});
+
+/* ============================================================
+   Labels
+   ============================================================ */
+const labelsDiv = document.getElementById('labels');
+const labelEls = {};
+for(const p of parts){
+  if(p.id.startsWith('piston')||p.id.startsWith('rod')||p.id.startsWith('valve')||p.id.startsWith('spark')) continue;
+  const el = document.createElement('div');
+  el.className='lbl';
+  el.textContent = p.name;
+  labelsDiv.appendChild(el);
+  labelEls[p.id]=el;
+}
+
+/* ============================================================
+   Lighting & rendering
+   ============================================================ */
+const lightDir = V.norm([0.5, 1.0, 0.7]);
+const lightDir2 = V.norm([-0.6, 0.3, -0.5]);
+
+function shade(baseColor, normal, worldPos, glow){
+  const n = V.norm(normal);
+  const d1 = Math.max(0, V.dot(n, lightDir));
+  const d2 = Math.max(0, V.dot(n, lightDir2));
+  const amb = 0.28;
+  let r = baseColor[0]*(amb + 0.75*d1 + 0.25*d2);
+  let g = baseColor[1]*(amb + 0.75*d1 + 0.25*d2);
+  let b = baseColor[2]*(amb + 0.75*d1 + 0.25*d2);
+  // rim
+  const rim = Math.pow(1-Math.abs(V.dot(n,[0,0,1])), 3)*0.15;
+  r+=rim; g+=rim; b+=rim;
+  if(glow){
+    const pulse = 0.5+0.5*Math.sin(performance.now()*0.003);
+    // we must not use real time for determinism; handled separately
+  }
+  return [r,g,b];
+}
+
+/* Hover / highlight */
+let hoveredPart = null;
+const tooltip = document.getElementById('tooltip');
+
+function pointInPoly(px,py,poly){
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i][0],yi=poly[i][1],xj=poly[j][0],yj=poly[j][1];
+    if(((yi>py)!=(yj>py)) && (px < (xj-xi)*(py-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+
+/* ============================================================
+   Main render
+   ============================================================ */
+let currentT = 0;
+
+function getPartTransform(part, t){
+  let m = part.base;
+  if(part.dynamic){
+    m = mat4Mul(m, part.dynamic(t));
+  }
+  if(explodeT > 0.001 && part.explode){
+    const e = part.explode;
+    const off = mat4Translate(e[0]*explodeT, e[1]*explodeT, e[2]*explodeT);
+    m = mat4Mul(off, m);
+  }
+  return m;
+}
+
+function renderFrame(t){
+  currentT = t;
+  ctx.clearRect(0,0,W,H);
+
+  // background gradient
+  const bg = ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#0d1219');
+  bg.addColorStop(0.6,'#0a0e14');
+  bg.addColorStop(1,'#05070a');
+  ctx.fillStyle=bg;
+  ctx.fillRect(0,0,W,H);
+
+  // subtle floor glow
+  const floorGrad = ctx.createRadialGradient(W/2, H*0.85, 50, W/2, H*0.85, 500);
+  floorGrad.addColorStop(0,'rgba(40,70,110,0.18)');
+  floorGrad.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=floorGrad;
+  ctx.fillRect(0,0,W,H);
+
+  const view = cameraMatrix();
+
+  // Build render list: transform each part's verts into world, project, collect faces
+  const faceList = [];
+  const screenPolys = [];
+
+  for(const part of parts){
+    const m = getPartTransform(part, t);
+    const g = part.geom;
+    const worldVerts = g.verts.map(v => mat4Apply(m, v));
+    const projVerts = worldVerts.map(v => project(v, view));
+
+    for(const f of g.faces){
+      // skip faces with any vertex behind camera
+      let ok = true;
+      const poly = [];
+      for(const idx of f){
+        if(!projVerts[idx]){ ok=false; break; }
+        poly.push(projVerts[idx]);
+      }
+      if(!ok) continue;
+      // normal in world
+      const a = worldVerts[f[0]], b = worldVerts[f[1]], c = worldVerts[f[2]];
+      const n = V.norm(V.cross(V.sub(b,a), V.sub(c,a)));
+      // backface cull (camera looks down -Z in view space; approximate with view dir)
+      const center = V.mul(f.reduce((s,i)=>V.add(s,worldVerts[i]),[0,0,0]), 1/f.length);
+      const viewCenter = project(center, view);
+      if(!viewCenter) continue;
+      // depth = average z
+      const depth = poly.reduce((s,p)=>s+p[2],0)/poly.length;
+      // facing: compare normal to view direction from center to eye
+      // eye in world:
+      const cy=Math.cos(camera.yaw), sy=Math.sin(camera.yaw);
+      const cp=Math.cos(camera.pitch), sp=Math.sin(camera.pitch);
+      const d=camera.dist;
+      const eye = [
+        camera.target[0] + d*cp*sy,
+        camera.target[1] + d*sp,
+        camera.target[2] + d*cp*cy
+      ];
+      const toEye = V.norm(V.sub(eye, center));
+      const facing = V.dot(n, toEye);
+      if(facing < 0) continue;
+
+      let col = shade(g.color, n, center, part.glow);
+      if(part.glow){
+        // exhaust glow pulse based on t (deterministic)
+        const pulse = 0.5+0.5*Math.sin(t*4);
+        col[0] = Math.min(1, col[0] + 0.45*pulse);
+        col[1] = Math.min(1, col[1] + 0.15*pulse);
+        col[2] = Math.min(1, col[2] + 0.02*pulse);
+      }
+      if(part.id.startsWith('spark')){
+        const cyl = part.spark;
+        const crankAngle = t*Math.PI*2*1.5;
+        const phase = FIRING_PHASE[cyl.idx];
+        const fire = Math.max(0, Math.sin(crankAngle + phase));
+        if(fire > 0.85){
+          const flash = (fire-0.85)/0.15;
+          col = [Math.min(1,col[0]+flash*1.2), Math.min(1,col[1]+flash*1.2), Math.min(1,col[2]+flash*1.0)];
+        }
+      }
+      if(hoveredPart === part){
+        col = [Math.min(1,col[0]+0.35), Math.min(1,col[1]+0.35), Math.min(1,col[2]+0.4)];
+      }
+      const r = Math.floor(Math.max(0,Math.min(1,col[0]))*255);
+      const gg= Math.floor(Math.max(0,Math.min(1,col[1]))*255);
+      const bb= Math.floor(Math.max(0,Math.min(1,col[2]))*255);
+      faceList.push({poly, depth, color:`rgb(${r},${gg},${bb})`, part});
+    }
+  }
+
+  // sort back-to-front (larger depth = farther)
+  faceList.sort((a,b)=>b.depth - a.depth);
+
+  // draw
+  for(const f of faceList){
+    ctx.beginPath();
+    ctx.moveTo(f.poly[0][0], f.poly[0][1]);
+    for(let i=1;i<f.poly.length;i++) ctx.lineTo(f.poly[i][0], f.poly[i][1]);
+    ctx.closePath();
+    ctx.fillStyle = f.color;
+    ctx.fill();
+    // subtle edge
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  }
+
+  // spark flashes (bright overlay)
+  for(const part of parts){
+    if(!part.spark) continue;
+    const cyl = part.spark;
+    const crankAngle = t*Math.PI*2*1.5;
+    const phase = FIRING_PHASE[cyl.idx];
+    const fire = Math.max(0, Math.sin(crankAngle + phase));
+    if(fire > 0.88){
+      const flash = (fire-0.88)/0.12;
+      const m = getPartTransform(part, t);
+      const tipLocal = [0,-0.35,0];
+      const tipWorld = mat4Apply(m, tipLocal);
+      const sp = project(tipWorld, view);
+      if(sp){
+        const rad = 20 + 40*flash;
+        const grad = ctx.createRadialGradient(sp[0],sp[1],0,sp[0],sp[1],rad);
+        grad.addColorStop(0,`rgba(255,255,220,${0.9*flash})`);
+        grad.addColorStop(0.3,`rgba(255,220,120,${0.6*flash})`);
+        grad.addColorStop(1,'rgba(255,150,50,0)');
+        ctx.fillStyle=grad;
+        ctx.beginPath();
+        ctx.arc(sp[0],sp[1],rad,0,Math.PI*2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // update labels
+  for(const part of parts){
+    const el = labelEls[part.id];
+    if(!el) continue;
+    if(explodeT < 0.35){ el.classList.remove('show'); continue; }
+    const m = getPartTransform(part, t);
+    // find a representative point (centroid of verts)
+    let cx=0,cy=0,cz=0;
+    for(const v of part.geom.verts){ const w=mat4Apply(m,v); cx+=w[0];cy+=w[1];cz+=w[2]; }
+    const n=part.geom.verts.length;
+    const center=[cx/n,cy/n,cz/n];
+    const sp = project(center, view);
+    if(sp && sp[2]>0){
+      el.style.left = sp[0]+'px';
+      el.style.top  = sp[1]+'px';
+      el.classList.add('show');
+    } else {
+      el.classList.remove('show');
+    }
+  }
+
+  // hover detection (screen-space, approximate)
+  if(mouse.x>=0 && mouse.y>=0){
+    let best=null, bestDepth=Infinity;
+    for(const f of faceList){
+      if(pointInPoly(mouse.x, mouse.y, f.poly)){
+        if(f.depth < bestDepth){ bestDepth=f.depth; best=f.part; }
+      }
+    }
+    if(best !== hoveredPart){
+      hoveredPart = best;
+      if(best){
+        tooltip.innerHTML = `<b>${best.name}</b><span>${best.desc}</span>`;
+        tooltip.style.opacity = 1;
+      } else {
+        tooltip.style.opacity = 0;
+      }
+    }
+    if(hoveredPart){
+      tooltip.style.left = Math.min(W-300, mouse.x+16)+'px';
+      tooltip.style.top  = Math.min(H-90, mouse.y+16)+'px';
+    }
+  }
+}
+
+/* ============================================================
+   seek + play loop
+   ============================================================ */
+window.seek = function(t){
+  t = Math.max(0, Math.min(window.DURATION, t));
+  // smooth explode animation: we can't depend on real time, so derive from t? 
+  // But explode is interactive. We'll handle explodeT separately in the RAF loop,
+  // and seek() will use the current explodeT (which is deterministic per call only if
+  // explodeT is stable). To keep seek deterministic, we snap explodeT to target when seek is called.
+  // Actually the contract: seek(t) must be deterministic. We'll make explodeT a function
+  // of a separate variable that the interactive loop updates. For pure seek, we snap.
+  renderFrame(t);
+};
+
+// Override: the RAF loop drives explodeT smoothly, then calls renderFrame directly.
+let rafStart = null;
+let lastExplodeT = 0;
+
+function tick(now){
+  if(rafStart===null) rafStart = now;
+  const elapsed = ((now - rafStart)/1000) % window.DURATION;
+  // smooth explode
+  if(Math.abs(explodeT - explodeTarget) > 0.001){
+    explodeT += (explodeTarget - explodeT) * 0.08;
+    if(Math.abs(explodeT-explodeTarget)<0.002) explodeT = explodeTarget;
+  }
+  renderFrame(elapsed);
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+// Also expose a way to set explode for testing / seek determinism
+window.setExplode = function(v){ explodeT = v; explodeTarget = v; explodeBtn.classList.toggle('on', v>0.5); };
+
+// initial
+renderFrame(0);
+
+</script>
+</body>
+</html>

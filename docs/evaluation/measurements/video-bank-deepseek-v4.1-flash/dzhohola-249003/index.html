@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>One Shape — UI States</title>
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #f2efe9; }
+  #stage { position: relative; width: 100vw; height: 100vh; background: #f2efe9; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+<script>
+(function(){
+  // ---------- Setup ----------
+  const W = 1280, H = 720;
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  function resize(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = '100vw';
+    canvas.style.height = '100vh';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  window.DURATION = 14; // 7 bars @ 120 BPM = 3.5s/bar * 7 = 24.5s... we cap: 7 bars * 2s = 14s
+  // 120 BPM => beat = 0.5s. 7 bars * 4 beats = 28 beats = 14s.
+
+  const BEAT = 0.5;
+  const BAR = BEAT * 4;
+
+  // ---------- Spring (closed-form underdamped step response) ----------
+  // Sum of step responses. Each "target change" at time ti from prev->next.
+  function springStep(t, freq, damping, overshoot){
+    // returns s(t) in [0,1] with slight overshoot; use analytic damped oscillator
+    if (t <= 0) return 0;
+    const w = freq; // angular
+    const z = damping; // <1
+    const wd = w * Math.sqrt(1 - z*z);
+    const e = Math.exp(-z * w * t);
+    const c = Math.cos(wd * t);
+    const s = Math.sin(wd * t);
+    return 1 - e * (c + (z*w/wd) * s);
+  }
+
+  // Spring track: list of {t, from, to}. Value at time t = to + (from-to)*(1-s(t-ti)) summed...
+  // Simpler: sequential springs. value(t) = from + (to-from) * s(t-ti) for the active segment.
+  // To keep it pure and allow multiple target changes, we sum deltas.
+  function makeTrack(changes){
+    // changes: [{t, v}] sorted by t. Initial value = changes[0].v
+    return function(t){
+      let base = changes[0].v;
+      let val = base;
+      for (let i = 1; i < changes.length; i++){
+        const c = changes[i];
+        if (t < c.t) break;
+        const dt = t - c.t;
+        const prev = changes[i-1].v;
+        const target = c.v;
+        const s = springStep(dt, 18, 0.62);
+        // We can't easily sum overlapping springs with target changes; approximate by
+        // treating each change as an impulse of (target-prev) with its own spring.
+        // This works when changes are spaced enough (they are, on beats).
+        val = prev + (target - prev) * s;
+      }
+      return val;
+    };
+  }
+
+  // Easier: piecewise spring between changes
+  function springVal(t, changes, freq, damp){
+    freq = freq || 18; damp = damp || 0.62;
+    if (t <= changes[0].t) return changes[0].v;
+    let prev = changes[0];
+    for (let i = 1; i < changes.length; i++){
+      const c = changes[i];
+      if (t < c.t){
+        // between prev and next target, spring from prev.v toward c.v already completed?
+        // Actually we want continuous spring. Use prev as settled.
+        return prev.v;
+      }
+      prev = c;
+    }
+    // in the last segment
+    const last = changes[changes.length-1];
+    const before = changes[changes.length-2] || last;
+    const dt = t - last.t;
+    const s = springStep(dt, freq, damp);
+    return before.v + (last.v - before.v) * s;
+  }
+
+  // Better: continuous spring that handles arbitrary target changes.
+  // For our purposes, one spring per change-of-target, additively.
+  function springTrack(changes, freq, damp){
+    freq = freq || 16; damp = damp || 0.6;
+    // Precompute segments
+    return function(t){
+      if (t < changes[0].t) return changes[0].v;
+      let val = changes[0].v;
+      for (let i = 1; i < changes.length; i++){
+        const c = changes[i];
+        if (t < c.t) break;
+        const dt = t - c.t;
+        const s = springStep(dt, freq, damp);
+        const from = changes[i-1].v;
+        val = from + (c.v - from) * s;
+      }
+      return val;
+    };
+  }
+
+  // ---------- Timeline / states ----------
+  // 28 beats total (7 bars). Beat times:
+  // b0: 0.0  button (start=end)
+  // b1: 0.5  -> loader
+  // b2: 1.0  loader spinner
+  // b3: 1.5  -> check
+  // b4: 2.0  -> dynamic island
+  // b5: 2.5  island pulse
+  // b6: 3.0  -> music player
+  // b7: 3.5  play button hover
+  // b8: 4.0  play -> pause morph
+  // b9: 4.5  dragging progress
+  // b10: 5.0 progress mid drag
+  // b11: 5.5 release progress
+  // b12: 6.0 -> volume slider
+  // b13: 6.5 drag volume
+  // b14: 7.0 stretch past max
+  // b15: 7.5 -> toggle
+  // b16: 8.0 toggle flip on beat
+  // b17: 8.5 knob settles
+  // b18: 9.0 -> tabs
+  // b19: 9.5 tab indicator slides
+  // b20: 10.0 tabs -> chart
+  // b21: 10.5 chart draws
+  // b22: 11.0 tooltip hover
+  // b23: 11.5 -> command palette
+  // b24: 12.0 typing
+  // b25: 12.5 filter
+  // b26: 13.0 enter -> toast
+  // b27: 13.5 toast -> back to button
+  // end: 14.0 = 0.0
+
+  const T = (b) => b * BEAT;
+
+  // Camera zoom: each state has a scale/offset; springs between.
+  const camChanges = [
+    {t: 0.0, s: 1.0, x: 0, y: 0},
+    {t: T(1), s: 1.05, x: 0, y: 0},
+    {t: T(3), s: 1.0, x: 0, y: 0},
+    {t: T(4), s: 1.1, x: 0, y: -10},
+    {t: T(6), s: 1.0, x: 0, y: 0},
+    {t: T(12), s: 1.05, x: 0, y: 0},
+    {t: T(15), s: 1.0, x: 0, y: 0},
+    {t: T(18), s: 1.05, x: 0, y: 0},
+    {t: T(20), s: 1.0, x: 0, y: 0},
+    {t: T(23), s: 1.05, x: 0, y: 0},
+    {t: T(26), s: 1.0, x: 0, y: 0},
+    {t: T(27), s: 1.0, x: 0, y: 0},
+    {t: 14.0, s: 1.0, x: 0, y: 0}
+  ];
+  const camScale = springTrack(camChanges.map(c => ({t: c.t, v: c.s})), 12, 0.7);
+  const camX = springTrack(camChanges.map(c => ({t: c.t, v: c.x})), 12, 0.7);
+  const camY = springTrack(camChanges.map(c => ({t: c.t, v: c.y})), 12, 0.7);
+
+  // Shape: width, height, radius, background color (all black by default)
+  // The shape is a single rounded rect that morphs.
+  const shapeChanges = [
+    // {t, w, h, r}
+    {t: 0.0, w: 240, h: 72, r: 36},   // button
+    {t: T(1), w: 72, h: 72, r: 36},   // loader (circle)
+    {t: T(3), w: 72, h: 72, r: 36},   // check (circle)
+    {t: T(4), w: 320, h: 72, r: 36},  // dynamic island
+    {t: T(6), w: 400, h: 160, r: 28}, // music player
+    {t: T(12), w: 400, h: 120, r: 28},// volume slider
+    {t: T(15), w: 200, h: 72, r: 36}, // toggle container
+    {t: T(18), w: 480, h: 72, r: 36}, // tabs
+    {t: T(20), w: 560, h: 320, r: 24},// chart
+    {t: T(23), w: 560, h: 380, r: 20},// command palette
+    {t: T(26), w: 360, h: 80, r: 24}, // toast
+    {t: T(27), w: 240, h: 72, r: 36}, // back to button
+    {t: 14.0, w: 240, h: 72, r: 36}
+  ];
+  const shapeW = springTrack(shapeChanges.map(c => ({t:c.t, v:c.w})), 16, 0.62);
+  const shapeH = springTrack(shapeChanges.map(c => ({t:c.t, v:c.h})), 16, 0.62);
+  const shapeR = springTrack(shapeChanges.map(c => ({t:c.t, v:c.r})), 16, 0.62);
+
+  // Cursor position — drives every change with real clicks and drags.
+  // Loop: starts at (640+140, 360+60) hovering near button, ends there.
+  const cursorChanges = [
+    {t: 0.0, x: 640+150, y: 360+50},
+    {t: T(0.5), x: 640+60, y: 360+20},   // move to button
+    {t: T(1), x: 640+60, y: 360+20},     // click
+    {t: T(2), x: 640+60, y: 360+20},
+    {t: T(3), x: 640+60, y: 360+20},
+    {t: T(4), x: 640+60, y: 360-10},     // island
+    {t: T(6), x: 640+120, y: 360+40},    // player
+    {t: T(7), x: 640+80, y: 360+40},     // play button
+    {t: T(8), x: 640+80, y: 360+40},     // click play->pause
+    {t: T(9), x: 640-120, y: 360+50},    // grab progress
+    {t: T(10), x: 640+60, y: 360+50},    // drag progress
+    {t: T(11), x: 640+60, y: 360+50},    // release
+    {t: T(12), x: 640+100, y: 360+20},   // volume
+    {t: T(13), x: 640+150, y: 360+20},   // drag volume
+    {t: T(14), x: 640+180, y: 360+20},   // stretch past max
+    {t: T(15), x: 640+40, y: 360+20},    // toggle
+    {t: T(16), x: 640+40, y: 360+20},    // click toggle
+    {t: T(18), x: 640+80, y: 360+20},    // tabs
+    {t: T(19), x: 640+160, y: 360+20},   // tab 2
+    {t: T(20), x: 640+80, y: 360+60},    // chart
+    {t: T(22), x: 640+120, y: 360+80},   // tooltip hover
+    {t: T(23), x: 640+60, y: 360+40},    // command palette
+    {t: T(24), x: 640+60, y: 360+40},    // type
+    {t: T(25), x: 640+60, y: 360+40},
+    {t: T(26), x: 640+60, y: 360+40},    // enter
+    {t: T(27), x: 640+150, y: 360+50},   // back
+    {t: 14.0, x: 640+150, y: 360+50}
+  ];
+  const cursorX = springTrack(cursorChanges.map(c => ({t:c.t, v:c.x})), 14, 0.75);
+  const cursorY = springTrack(cursorChanges.map(c => ({t:c.t, v:c.y})), 14, 0.75);
+
+  // Click pulse: brief scale-down on the shape when clicked
+  const clickTimes = [T(1), T(3), T(8), T(11), T(16), T(19), T(26)];
+  function clickPulse(t){
+    let p = 0;
+    for (const ct of clickTimes){
+      const dt = t - ct;
+      if (dt >= 0 && dt < 0.35){
+        const k = dt / 0.35;
+        p = Math.max(p, Math.sin(k * Math.PI) * (1 - k) * 0.06);
+      }
+    }
+    return 1 - p;
+  }
+
+  // ---------- Content helpers ----------
+  function ease(t){ return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2; }
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+  function lerp(a,b,t){ return a + (b-a)*t; }
+
+  // Content alpha: which state is "active" based on time
+  // Each content has enter/exit windows
+  function windowAlpha(t, start, end, fade){
+    fade = fade || 0.15;
+    if (t < start - fade || t > end + fade) return 0;
+    if (t < start) return ease((t - (start-fade)) / fade);
+    if (t > end) return 1 - ease((t - end) / fade);
+    return 1;
+  }
+
+  // ---------- Drawing ----------
+  function drawBackground(){
+    ctx.fillStyle = '#f2efe9';
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function roundedRect(x, y, w, h, r){
+    r = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.lineTo(x+w-r, y);
+    ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+    ctx.lineTo(x+w, y+h-r);
+    ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+    ctx.lineTo(x+r, y+h);
+    ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+    ctx.lineTo(x, y+r);
+    ctx.quadraticCurveTo(x, y, x+r, y);
+    ctx.closePath();
+  }
+
+  function drawShape(t){
+    const w = shapeW(t);
+    const h = shapeH(t);
+    const r = shapeR(t);
+    const cx = 640;
+    const cy = 360;
+    const pulse = clickPulse(t);
+    const sw = w * pulse;
+    const sh = h * pulse;
+    const x = cx - sw/2;
+    const y = cy - sh/2;
+
+    // Shadow
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.18)';
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetY = 12;
+    ctx.fillStyle = '#111';
+    roundedRect(x, y, sw, sh, r);
+    ctx.fill();
+    ctx.restore();
+
+    // Content clip
+    ctx.save();
+    roundedRect(x, y, sw, sh, r);
+    ctx.clip();
+
+    // --- Button state (b0) ---
+    let a = windowAlpha(t, 0, T(1), 0.12);
+    if (a > 0.01){
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#fff';
+      ctx.font = '500 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Get started', cx, cy);
+      ctx.globalAlpha = 1;
+    }
+
+    // --- Loader (b1-b2) ---
+    a = windowAlpha(t, T(1), T(3), 0.12);
+    if (a > 0.01){
+      ctx.globalAlpha = a;
+      const spin = (t - T(1)) * Math.PI * 3;
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      const rad = 14;
+      const start = spin;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad, start, start + Math.PI * 1.3);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // --- Check (b3) ---
+    a = windowAlpha(t, T(3), T(4), 0.12);
+    if (a > 0.01){
+      ctx.globalAlpha = a;
+      const draw = clamp((t - T(3)) / 0.25, 0, 1);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      const p1 = {x: cx-10, y: cy};
+      const p2 = {x: cx-2, y: cy+8};
+      const p3 = {x: cx+12, y: cy-8};
+      if (draw < 0.5){
+        const k = draw/0.5;
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(lerp(p1.x,p2.x,k), lerp(p1.y,p2.y,k));
+      } else {
+        const k = (draw-0.5)/0.5;
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(lerp(p2.x,p3.x,k), lerp(p2.y,p3.y,k));
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // --- Dynamic island (b4-b5) ---
+    a = windowAlpha(t, T(4), T(6), 0.12);
+    if (a > 0.01){
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#fff';
+      // Small dot + text
+      ctx.beginPath();
+      ctx.arc(x + 28, cy, 6, 0, Math.PI*2);
+      ctx.fill();
+      ctx.font = '500 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Now playing', x + 48, cy);
+      // Waveform
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      const bars = 5;
+      for (let i = 0; i < bars; i++){
+        const bx = x + sw - 120 + i * 10;
+        const amp = 4 + Math.sin(t*8 + i*0.9) * 4;
+        ctx.beginPath();
+        ctx.moveTo(bx, cy - amp);
+        ctx.lineTo(bx, cy + amp);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // --- Music player (b6-b11) ---
+    a = windowAlpha(t, T(6), T(12), 0.12);
+    if (a > 0.01){
+      ctx.globalAlpha = a;
+      // Album art
+      const artX = x + 24;
+      const artY = y + 24;
+      const artS = 80;
+      ctx.fillStyle = '#fff';
+      roundedRect(artX, artY, artS, artS, 12);
+      ctx.fill();
+      // Album art inner: simple pattern
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.arc(artX + artS/2, artY + artS/2, 18, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(artX + artS/2, artY + artS/2, 6, 0, Math.PI*2);
+      ctx.fill();
+
+      // Title
+      ctx.fillStyle = '#fff';
+      ctx.font = '600 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText('Midnight', artX + artS + 20, artY + 32);
+      ctx.font = '400 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillText('Lumen', artX + artS + 20, artY + 54);
+
+      // Play/pause button
+      const btnX = x + sw - 60;
+      const btnY = y + 40;
+      // Morph: 0 = play (triangle), 1 = pause (two bars)
+      const morph = clamp((t - T(8)) / 0.2, 0, 1);
+      const me = ease(morph);
+      ctx.fillStyle = '#fff';
+      if (me < 0.5){
+        // play triangle
+        const k = 1 - me*2;
+        ctx.beginPath();
+        ctx.moveTo(btnX - 8*k, btnY - 10*k);
+        ctx.lineTo(btnX - 8*k, btnY + 10*k);
+        ctx.lineTo(btnX + 10*k, btnY);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        const k = (me-0.5)*2;
+        const bw = 4 * k;
+        const bh = 20 * k;
+        ctx.fillRect(btnX - 8, btnY - bh/2, bw, bh);
+        ctx.fillRect(btnX + 4, btnY - bh/2, bw, bh);
+      }
+
+      // Progress bar
+      const barX = x + 24;
+      const barY = y + sh - 30;
+      const barW = sw - 48;
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      roundedRect(barX, barY, barW, 4, 2);
+      ctx.fill();
+
+      // Progress: drag between b9-b11
+      let prog = 0.3;
+      if (t >= T(9) && t < T(11)){
+        // drag: cursor x maps to progress
+        const cxNow = cursorX(t);
+        prog = clamp((cxNow - (barX)) / barW, 0, 1);
+      } else if (t >= T(11)){
+        prog = 0.62;
+      }
+      ctx.fillStyle = '#fff';
+      roundedRect(barX, barY, barW * prog, 4, 2);
+      ctx.fill();
+      // Knob
+      ctx.beginPath();
+      ctx.arc(barX + barW * prog, barY + 2, 6, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.globalAlpha = 1;
+    }
+
+    // --- Volume slider (b12-b14) ---
+    a = windowAlpha(t, T(12), T(15), 0.12);
+    if (a > 0.01){
+      ctx.globalAlpha = a;
+      const barX = x + 24;
+      const barY = cy;
+      const barW = sw - 48;
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      roundedRect(barX, barY - 2, barW, 4, 2);
+      ctx.fill();
+
+      let vol = 0.4;
+      if (t >= T(13)){
+        const cxNow = cursorX(t);
+        vol = clamp((cxNow - barX) / barW, 0, 1.15); // stretch past max
+      }
+      // Fill
+      ctx.fillStyle = '#fff';
+      roundedRect(barX, barY - 2, Math.min(barW, barW*vol), 4, 2);
+      ctx.fill();
+      // Knob (stretches past max)
+      const kx = barX + barW * Math.min(vol, 1);
+      const stretch = Math.max(0, vol - 1) * 40;
+      ctx.beginPath();
+      ctx.arc(kx + stretch, barY, 8, 0, Math.PI*2);
+      ctx.fill();
+      // Speaker icon
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.moveTo(x + 12, cy - 6);
+      ctx.lineTo(x + 16, cy - 6);
+      ctx.lineTo(x + 22, cy - 12);
+      ctx.lineTo(x + 22, cy + 12);
+      ctx.lineTo(x + 16, cy + 6);
+      ctx.lineTo(x + 12, cy + 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // --- Toggle (b15-b17) ---
+    a = windowAlpha(t, T(15), T(18), 0.12);
+    if (a > 0.01){
+      ctx.globalAlpha = a;
+      const on = t >= T(16);
+      // Two-edge spring: leading edge stretches ahead
+      const lead = springStep(clamp((t - T(16))/0.3, 0, 1), 20, 0.55);
+      const trail = springStep(clamp((t - T(16))/0.3, 0, 1), 14, 0.7);
+      const knobX = on ? lerp(x + 30, x + sw - 30, lead) : lerp(x + sw - 30, x + 30, lead);
+      // Knob
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(knobX, cy, 22, 0, Math.PI*2);
+      ctx.fill();
+      // Label
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.font = '500 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(on ? 'ON' : 'OFF', cx, cy);
+      ctx.globalAlpha = 1;
+    }
+
+    // --- Tabs (b18-b19) ---
+    a = windowAlpha(t, T(18), T(20), 0.12);
+    if (a > 0.01){
+      ctx.globalAlpha = a;
+      const tabs = ['All', 'Music', 'Podcasts'];
+      const tabW = sw / 3;
+      const active = t >= T(19) ? 1 : 0;
+      // Indicator
+      const lead = springStep(clamp((t - T(19))/0.3, 0, 1), 22, 0.55);
+      const trail = springStep(clamp((t - T(19))/0.3, 0, 1), 16, 0.7);
+      const indX = x + tabW * (0 + lead * 1);
+      const indW = tabW * (1 + (lead - trail) * 0.3);
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      roundedRect(indX + 4, y + 8, indW - 8, sh - 16, 20);
+      ctx.fill();
+      // Labels
+      ctx.fillStyle = '#fff';
+      ctx.font = '500 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (let i = 0; i < tabs.length; i++){
+        ctx.globalAlpha = a * (i === active ? 1 : 0.5);
+        ctx.fillText(tabs[i], x + tabW * i + tabW/2, cy);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // --- Chart (b20-b22) ---
+    a = windowAlpha(t, T(20), T(23), 0.12);
+    if (a > 0.01){
+      ctx.globalAlpha = a;
+      const chartX = x + 40;
+      const chartY = y + 60;
+      const chartW = sw - 80;
+      const chartH = sh - 120;
+      const drawProg = clamp((t - T(20)) / 0.8, 0, 1);
+      // Bars
+      const bars = 7;
+      const bw = chartW / bars * 0.6;
+      const gap = chartW / bars;
+      const vals = [0.4, 0.7, 0.5, 0.9, 0.6, 0.8, 0.55];
+      for (let i = 0; i < bars; i++){
+        const v = vals[i] * drawProg;
+        const bh = chartH * v;
+        ctx.fillStyle = i === 3 ? '#fff' : 'rgba(255,255,255,0.5)';
+        roundedRect(chartX + i*gap + (gap-bw)/2, chartY + chartH - bh, bw, bh, 4);
+        ctx.fill();
+      }
+      // Tooltip on hover (b22)
+      if (t >= T(22)){
+        const tipA = clamp((t - T(22)) / 0.15, 0, 1);
+        ctx.globalAlpha = a * tipA;
+        const tx = chartX + 3*gap + gap/2;
+        const ty = chartY + chartH - chartH*0.9 - 20;
+        ctx.fillStyle = '#fff';
+        roundedRect(tx - 40, ty - 30, 80, 30, 8);
+        ctx.fill();
+        ctx.fillStyle = '#111';
+        ctx.font = '600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('90%', tx, ty - 15);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // --- Command palette (b23-b25) ---
+    a = windowAlpha(t, T(23), T(26), 0.12);
+    if (a > 0.01){
+      ctx.globalAlpha = a;
+      // Search icon
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x + 32, y + 32, 8, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x + 38, y + 38);
+      ctx.lineTo(x + 44, y + 44);
+      ctx.stroke();
+      // Text
+      ctx.fillStyle = '#fff';
+      ctx.font = '500 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      const typed = t >= T(24) ? 'Play' : '';
+      ctx.fillText(typed, x + 60, y + 32);
+      // Blinking cursor
+      if (t >= T(24) && Math.floor(t*4) % 2 === 0){
+        const tw = ctx.measureText(typed).width;
+        ctx.fillRect(x + 60 + tw + 2, y + 22, 2, 20);
+      }
+      // Results
+      const results = ['Play Midnight', 'Play Lumen', 'Play all'];
+      const filter = t >= T(25) ? 1 : 0;
+      ctx.font = '400 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+      for (let i = 0; i < results.length; i++){
+        const show = !filter || results[i].toLowerCase().includes('midnight') || results[i].toLowerCase().includes('all');
+        if (!show) continue;
+        const ry = y + 70 + i * 36;
+        if (i === 0 && t >= T(25)){
+          ctx.fillStyle = 'rgba(255,255,255,0.12)';
+          roundedRect(x + 12, ry - 14, sw - 24, 28, 6);
+          ctx.fill();
+        }
+        ctx.fillStyle = i === 0 ? '#fff' : 'rgba(255,255,255,0.6)';
+        ctx.fillText(results[i], x + 24, ry);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // --- Toast (b26-b27) ---
+    a = windowAlpha(t, T(26), T(27), 0.12);
+    if (a > 0.01){
+      ctx.globalAlpha = a;
+      // Check icon
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x + 24, cy);
+      ctx.lineTo(x + 30, cy + 6);
+      ctx.lineTo(x + 40, cy - 6);
+      ctx.stroke();
+      // Text
+      ctx.fillStyle = '#fff';
+      ctx.font = '500 17px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Added to library', x + 56, cy);
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+  }
+
+  function drawCursor(t){
+    const x = cursorX(t);
+    const y = cursorY(t);
+    // Click: scale down briefly
+    let pressed = false;
+    for (const ct of clickTimes){
+      if (t >= ct && t < ct + 0.12) pressed = true;
+    }
+    // Drag indicator: cursor "grabs" during drags
+    const dragging = (t >= T(9) && t < T(11)) || (t >= T(13) && t < T(15));
+
+    ctx.save();
+    ctx.translate(x, y);
+    const s = pressed ? 0.85 : (dragging ? 0.9 : 1);
+    ctx.scale(s, s);
+    // Cursor arrow
+    ctx.fillStyle = '#111';
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, 18);
+    ctx.lineTo(5, 14);
+    ctx.lineTo(9, 22);
+    ctx.lineTo(12, 20);
+    ctx.lineTo(8, 13);
+    ctx.lineTo(14, 12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawBeatIndicator(t){
+    // Subtle beat grid dots at bottom
+    const totalBeats = 28;
+    const beatIdx = Math.floor(t / BEAT);
+    const beatPhase = (t % BEAT) / BEAT;
+    for (let i = 0; i < totalBeats; i++){
+      const bx = 40 + i * ((W - 80) / (totalBeats - 1));
+      const by = H - 24;
+      const active = i === beatIdx;
+      const pulse = active ? (1 - beatPhase) : 0;
+      ctx.fillStyle = active ? `rgba(17,17,17,${0.4 + pulse*0.6})` : 'rgba(17,17,17,0.12)';
+      ctx.beginPath();
+      ctx.arc(bx, by, active ? 3 + pulse*2 : 2, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // ---------- Render ----------
+  function render(t){
+    drawBackground();
+
+    const sx = camScale(t);
+    const cx = camX(t);
+    const cy = camY(t);
+
+    ctx.save();
+    ctx.translate(W/2 + cx, H/2 + cy);
+    ctx.scale(sx, sx);
+    ctx.translate(-W/2, -H/2);
+
+    drawShape(t);
+    drawCursor(t);
+
+    ctx.restore();
+
+    drawBeatIndicator(t);
+  }
+
+  // ---------- Public API ----------
+  window.seek = function(t){
+    t = clamp(t, 0, window.DURATION);
+    render(t);
+  };
+
+  // ---------- Play loop ----------
+  let start = null;
+  function loop(now){
+    if (start === null) start = now;
+    const t = ((now - start) / 1000) % window.DURATION;
+    window.seek(t);
+    requestAnimationFrame(loop);
+  }
+  // Initial frame
+  window.seek(0);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

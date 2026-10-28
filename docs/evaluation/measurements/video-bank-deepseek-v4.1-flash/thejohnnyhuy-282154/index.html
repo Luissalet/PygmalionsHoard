@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LUMEN — Launch Film</title>
+<style>
+  html,body{margin:0;padding:0;overflow:hidden;background:#000;height:100%;}
+  #stage{position:relative;width:1280px;height:720px;overflow:hidden;background:#05060a;
+         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;}
+  canvas{position:absolute;left:0;top:0;width:1280px;height:720px;display:block;}
+  #wordmark{position:absolute;left:0;top:0;width:1280px;height:720px;display:flex;
+            align-items:center;justify-content:center;pointer-events:none;}
+  #wordmark span{font-size:150px;font-weight:700;letter-spacing:.06em;color:#fff;
+                 opacity:0;transform:translateZ(0);}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="bg" width="1280" height="720"></canvas>
+  <canvas id="glass" width="1280" height="720"></canvas>
+  <canvas id="iris" width="1280" height="720"></canvas>
+  <canvas id="goo" width="1280" height="720"></canvas>
+  <div id="wordmark"><span id="wm">LUMEN</span></div>
+</div>
+<script>
+(function(){
+"use strict";
+
+/* ---------------- deterministic helpers ---------------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function clamp(x,a,b){return x<a?a:(x>b?b:x);}
+function smooth(x){x=clamp(x,0,1);return x*x*(3-2*x);}
+function easeOut(x){x=clamp(x,0,1);return 1-Math.pow(1-x,3);}
+function easeIn(x){x=clamp(x,0,1);return x*x*x;}
+function lerp(a,b,t){return a+(b-a)*t;}
+
+/* ---------------- timing: 54 beats @ 120 BPM = 27s ---------------- */
+var BPM=120, BEATS=54, DURATION=BEATS*60/BPM; // 27s
+window.DURATION=DURATION;
+var BEAT=60/BPM; // 0.5s
+
+/* ---------------- canvases ---------------- */
+var bg=document.getElementById('bg'), bgx=bg.getContext('2d');
+var gl=document.getElementById('glass'), glx=gl.getContext('2d');
+var ir=document.getElementById('iris'), irx=ir.getContext('2d');
+var go=document.getElementById('goo'), gox=go.getContext('2d');
+var wmEl=document.getElementById('wm');
+
+/* offscreen buffers */
+var off=document.createElement('canvas'); off.width=1280; off.height=720;
+var offx=off.getContext('2d');
+var tmp=document.createElement('canvas'); tmp.width=1280; tmp.height=720;
+var tmpx=tmp.getContext('2d');
+
+/* ---------------- "photos" — procedurally generated abstract plates ---------------- */
+var PHOTOS=10;
+var photoCache=[];
+function makePhoto(i){
+  var c=document.createElement('canvas'); c.width=1280; c.height=720;
+  var x=c.getContext('2d');
+  var rnd=mulberry32(1000+i*97);
+  var hue=(i*47+200)%360;
+  // base gradient
+  var g=x.createLinearGradient(0,0,1280,720);
+  g.addColorStop(0,'hsl('+hue+',60%,12%)');
+  g.addColorStop(0.5,'hsl('+((hue+40)%360)+',55%,22%)');
+  g.addColorStop(1,'hsl('+((hue+90)%360)+',70%,10%)');
+  x.fillStyle=g; x.fillRect(0,0,1280,720);
+  // soft blobs
+  for(var b=0;b<14;b++){
+    var cx=rnd()*1280, cy=rnd()*720, r=80+rnd()*360;
+    var rg=x.createRadialGradient(cx,cy,0,cx,cy,r);
+    var h2=(hue+rnd()*120)%360;
+    rg.addColorStop(0,'hsla('+h2+',80%,60%,'+(0.25+rnd()*0.35)+')');
+    rg.addColorStop(1,'hsla('+h2+',80%,40%,0)');
+    x.fillStyle=rg; x.beginPath(); x.arc(cx,cy,r,0,Math.PI*2); x.fill();
+  }
+  // fine grain lines
+  x.globalAlpha=0.08;
+  for(var l=0;l<80;l++){
+    x.strokeStyle='#fff';
+    x.lineWidth=rnd()*1.5;
+    x.beginPath();
+    var y0=rnd()*720;
+    x.moveTo(0,y0);
+    x.bezierCurveTo(400,rnd()*720,900,rnd()*720,1280,rnd()*720);
+    x.stroke();
+  }
+  x.globalAlpha=1;
+  return c;
+}
+for(var i=0;i<PHOTOS;i++) photoCache.push(makePhoto(i));
+
+/* ---------------- state / scene description as function of t ---------------- */
+/* Scene timeline (in beats): 
+   0-6    : dark, iris blades closed, goo blob forming
+   6-18   : iris opens, first photo reveals through liquid glass
+   18-36  : photo crossfades + glass refraction sweeps (the "drop")
+   36-42  : breakdown — quiet, single photo, slow glass drift
+   42-54  : build, iris blades spin, goo bloom, wordmark resolves
+*/
+function beatAt(t){return t/BEAT;}
+
+function currentPhotoIndex(b){
+  // 10 photos across the film, crossfading
+  var span=BEATS-4;
+  var p=clamp((b-4)/span,0,1);
+  return p*(PHOTOS-1);
+}
+function crossfade(b){
+  var p=currentPhotoIndex(b);
+  var i0=Math.floor(p), i1=Math.min(PHOTOS-1,i0+1);
+  var f=smooth(p-i0);
+  return {i0:i0,i1:i1,f:f};
+}
+
+/* ---------------- iris geometry ---------------- */
+function drawIris(ctx,b,t){
+  // iris blades: N blades arranged radially, opening angle depends on beat envelope
+  var N=12;
+  // opening: closed until beat 6, opens 6->12, stays, closes slightly during breakdown 36-40, opens full at end
+  var open;
+  if(b<6) open=0;
+  else if(b<12) open=smooth((b-6)/6);
+  else if(b<36) open=1;
+  else if(b<40) open=1-0.55*smooth((b-36)/4);
+  else if(b<48) open=1-0.55+0.55*smooth((b-40)/8);
+  else open=1;
+  // final flourish: blades spin
+  var spin=(b>42)? (b-42)*0.06 : 0;
+  var cx=640, cy=360;
+  var maxR=780;
+  var innerR=lerp(20,520,open);
+  ctx.save();
+  ctx.clearRect(0,0,1280,720);
+  // pulsing glow ring
+  var pulse=0.5+0.5*Math.sin(b*Math.PI);
+  ctx.globalCompositeOperation='lighter';
+  var rg=ctx.createRadialGradient(cx,cy,innerR*0.6,cx,cy,maxR);
+  rg.addColorStop(0,'rgba(120,200,255,'+(0.10+0.10*pulse)+')');
+  rg.addColorStop(1,'rgba(20,60,120,0)');
+  ctx.fillStyle=rg; ctx.fillRect(0,0,1280,720);
+  // blades
+  for(var k=0;k<N;k++){
+    var a0=(k/N)*Math.PI*2 + spin;
+    var a1=((k+1)/N)*Math.PI*2 + spin;
+    var gap=0.02;
+    ctx.beginPath();
+    ctx.moveTo(cx+Math.cos(a0+gap)*innerR, cy+Math.sin(a0+gap)*innerR);
+    ctx.lineTo(cx+Math.cos(a0+gap)*maxR, cy+Math.sin(a0+gap)*maxR);
+    ctx.lineTo(cx+Math.cos(a1-gap)*maxR, cy+Math.sin(a1-gap)*maxR);
+    ctx.lineTo(cx+Math.cos(a1-gap)*innerR, cy+Math.sin(a1-gap)*innerR);
+    ctx.closePath();
+    var shade=0.06+0.05*Math.sin(k*1.7+b*0.8);
+    ctx.fillStyle='rgba(180,220,255,'+shade+')';
+    ctx.fill();
+    ctx.strokeStyle='rgba(200,230,255,'+(0.18+0.08*pulse)+')';
+    ctx.lineWidth=1.2;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* ---------------- liquid glass layer ---------------- */
+function drawGlass(ctx,b,t){
+  ctx.clearRect(0,0,1280,720);
+  // draw the current photo (or crossfade) into offscreen, then distort via slices
+  var cf=crossfade(b);
+  tmpx.clearRect(0,0,1280,720);
+  tmpx.globalAlpha=1-cf.f; tmpx.drawImage(photoCache[cf.i0],0,0);
+  tmpx.globalAlpha=cf.f;   tmpx.drawImage(photoCache[cf.i1],0,0);
+  tmpx.globalAlpha=1;
+
+  // global zoom drift
+  var zoom=1.02+0.03*Math.sin(b*0.15);
+  // liquid glass: vertical slices with sinusoidal horizontal offset
+  var slices=140;
+  var sliceH=720/slices;
+  var amp=8+10*Math.abs(Math.sin(b*0.4));
+  var freq=0.05;
+  for(var s=0;s<slices;s++){
+    var sy=s*sliceH;
+    var dx=Math.sin(sy*freq + b*0.9)*amp;
+    var dy=Math.cos(sy*freq*0.5 + b*0.6)*amp*0.4;
+    ctx.drawImage(tmp, 0, sy, 1280, sliceH+1,
+                  dx - (zoom-1)*640, sy+dy - (zoom-1)*360, 1280*zoom, sliceH*zoom+1);
+  }
+  // glass sheen
+  var sheenX=(b*40)%1600-200;
+  var sg=ctx.createLinearGradient(sheenX,0,sheenX+300,720);
+  sg.addColorStop(0,'rgba(255,255,255,0)');
+  sg.addColorStop(0.5,'rgba(255,255,255,0.10)');
+  sg.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.globalCompositeOperation='lighter';
+  ctx.fillStyle=sg; ctx.fillRect(0,0,1280,720);
+  ctx.globalCompositeOperation='source-over';
+
+  // vignette
+  var vg=ctx.createRadialGradient(640,360,200,640,360,820);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,'rgba(0,0,0,0.65)');
+  ctx.fillStyle=vg; ctx.fillRect(0,0,1280,720);
+}
+
+/* ---------------- goo / metaball layer ---------------- */
+function drawGoo(ctx,b,t){
+  ctx.clearRect(0,0,1280,720);
+  // goo blobs: N blobs whose radii pulse on the beat, merged via blur+threshold trick
+  var N=7;
+  var rnd=mulberry32(42);
+  var blobs=[];
+  for(var k=0;k<N;k++){
+    var seed=k*1.7;
+    var orbit=120+60*Math.sin(b*0.3+seed);
+    var ang=b*0.5+seed*1.3;
+    var bx=640+Math.cos(ang)*orbit*1.6;
+    var by=360+Math.sin(ang*1.3)*orbit*0.9;
+    var pulse=0.5+0.5*Math.sin(b*Math.PI*2/2 + seed);
+    // goo bloom near end
+    var bloom=(b>42)? smooth((b-42)/6):0;
+    var r=40+pulse*30+bloom*90;
+    blobs.push({x:bx,y:by,r:r});
+  }
+  // draw to tmp with blur, then threshold into ctx
+  tmpx.clearRect(0,0,1280,720);
+  tmpx.filter='blur(18px)';
+  tmpx.fillStyle='#fff';
+  for(var i=0;i<blobs.length;i++){
+    tmpx.beginPath();
+    tmpx.arc(blobs[i].x,blobs[i].y,blobs[i].r,0,Math.PI*2);
+    tmpx.fill();
+  }
+  tmpx.filter='none';
+  // threshold: draw blurred, then use composite to keep alpha>0.5
+  ctx.save();
+  ctx.globalCompositeOperation='source-over';
+  ctx.drawImage(tmp,0,0);
+  // tint
+  ctx.globalCompositeOperation='source-atop';
+  var tg=ctx.createLinearGradient(0,0,1280,720);
+  tg.addColorStop(0,'rgba(180,230,255,0.55)');
+  tg.addColorStop(0.5,'rgba(255,255,255,0.85)');
+  tg.addColorStop(1,'rgba(120,180,255,0.45)');
+  ctx.fillStyle=tg; ctx.fillRect(0,0,1280,720);
+  ctx.restore();
+  // threshold to crisp goo edge
+  ctx.save();
+  ctx.globalCompositeOperation='destination-in';
+  ctx.drawImage(tmp,0,0);
+  ctx.restore();
+  ctx.globalAlpha=1;
+}
+
+/* ---------------- background ---------------- */
+function drawBG(ctx,b,t){
+  ctx.clearRect(0,0,1280,720);
+  var g=ctx.createRadialGradient(640,360,100,640,360,900);
+  g.addColorStop(0,'#0a1424');
+  g.addColorStop(1,'#02030a');
+  ctx.fillStyle=g; ctx.fillRect(0,0,1280,720);
+  // subtle grid
+  ctx.strokeStyle='rgba(80,140,220,0.06)';
+  ctx.lineWidth=1;
+  for(var x=0;x<1280;x+=64){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,720);ctx.stroke();}
+  for(var y=0;y<720;y+=64){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(1280,y);ctx.stroke();}
+}
+
+/* ---------------- wordmark ---------------- */
+function updateWordmark(b){
+  var o=0, sc=1, ls=0.06;
+  if(b<44){o=0;}
+  else if(b<48){o=smooth((b-44)/4); sc=lerp(1.3,1,o); ls=lerp(0.4,0.06,o);}
+  else {o=1; sc=1; ls=0.06;}
+  wmEl.style.opacity=o;
+  wmEl.style.transform='scale('+sc+')';
+  wmEl.style.letterSpacing=ls+'em';
+  wmEl.style.textShadow='0 0 '+(30+20*Math.sin(b*Math.PI))+'px rgba(150,210,255,'+(0.6*o)+')';
+}
+
+/* ---------------- master seek ---------------- */
+window.seek=function(t){
+  t=clamp(t,0,DURATION);
+  var b=beatAt(t);
+  drawBG(bgx,b,t);
+  drawGlass(glx,b,t);
+  drawIris(irx,b,t);
+  drawGoo(gox,b,t);
+  updateWordmark(b);
+};
+
+/* ---------------- playback ---------------- */
+var start=null;
+function loop(ts){
+  if(start===null) start=ts;
+  var t=((ts-start)/1000)%DURATION;
+  window.seek(t);
+  requestAnimationFrame(loop);
+}
+window.seek(0);
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>

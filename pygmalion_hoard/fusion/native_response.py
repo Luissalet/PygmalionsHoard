@@ -62,7 +62,10 @@ class NativeResponse(Response):
                 start = dict(message)
                 hdr = {k.decode().lower(): v.decode() for k, v in message.get("headers", [])}
                 ctype = hdr.get("content-type", "")
-                buffered = "text/html" in ctype or self.path in ("manifest.webmanifest", "sw.js") or (module.spec["id"] == "disk" and "javascript" in ctype)
+                raw = "x-hoard-raw" in hdr          # a page that is content, not a screen of the module (the animation a model wrote): the shell must not touch it
+                if raw:
+                    start["headers"] = [(k, v) for k, v in start.get("headers", []) if k.lower() != b"x-hoard-raw"]
+                buffered = ("text/html" in ctype and not raw) or self.path in ("manifest.webmanifest", "sw.js") or (module.spec["id"] == "disk" and "javascript" in ctype)
                 if "text/event-stream" in ctype:
                     module.requests[task] = True
                 if hdr.get("location", "").startswith("/"):

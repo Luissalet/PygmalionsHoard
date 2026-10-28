@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Launch — a SaaS product film</title>
+<style>
+  html,body{margin:0;padding:0;background:#05070d;overflow:hidden;height:100%;}
+  #stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform:translate(-50%,-50%);overflow:hidden;background:#05070d;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;}
+  canvas{display:block;}
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c" width="1280" height="720"></canvas></div>
+<script>
+(function(){
+  "use strict";
+  const W=1280,H=720;
+  const cv=document.getElementById('c');
+  const ctx=cv.getContext('2d');
+
+  window.DURATION=24;
+
+  /* ---------- deterministic helpers ---------- */
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+  const lerp=(a,b,t)=>a+(b-a)*t;
+  const easeOut=t=>1-Math.pow(1-t,3);
+  const easeInOut=t=>t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+  const easeOutQuint=t=>1-Math.pow(1-t,5);
+  const easeOutBack=t=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2);};
+  // segment progress: 0 before a, 1 after b
+  const seg=(t,a,b)=>clamp((t-a)/(b-a),0,1);
+
+  /* ---------- palette ---------- */
+  const BG="#05070d";
+  const INK="#f3f6ff";
+  const DIM="#8b96b3";
+  const ACCENT="#4f7cff";
+  const ACCENT2="#8b5cff";
+  const MINT="#2ee6a8";
+  const AMBER="#ffb347";
+
+  /* ---------- drawing primitives ---------- */
+  function bgGradient(t){
+    ctx.fillStyle=BG;ctx.fillRect(0,0,W,H);
+    // slow drifting aurora blobs
+    const g1=ctx.createRadialGradient(300+Math.sin(t*0.3)*60,220+Math.cos(t*0.25)*40,0,300,220,620);
+    g1.addColorStop(0,"rgba(79,124,255,0.20)");
+    g1.addColorStop(1,"rgba(79,124,255,0)");
+    ctx.fillStyle=g1;ctx.fillRect(0,0,W,H);
+    const g2=ctx.createRadialGradient(1020+Math.cos(t*0.22)*70,520+Math.sin(t*0.28)*50,0,1020,520,600);
+    g2.addColorStop(0,"rgba(139,92,255,0.18)");
+    g2.addColorStop(1,"rgba(139,92,255,0)");
+    ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);
+    const g3=ctx.createRadialGradient(640,700,0,640,700,500);
+    g3.addColorStop(0,"rgba(46,230,168,0.07)");
+    g3.addColorStop(1,"rgba(46,230,168,0)");
+    ctx.fillStyle=g3;ctx.fillRect(0,0,W,H);
+  }
+
+  function grain(seed){
+    // static subtle grain, deterministic
+    const rnd=mulberry32(seed);
+    ctx.save();
+    ctx.globalAlpha=0.035;
+    for(let i=0;i<260;i++){
+      const x=rnd()*W,y=rnd()*H;
+      ctx.fillStyle=rnd()>0.5?"#ffffff":"#000000";
+      ctx.fillRect(x,y,1.5,1.5);
+    }
+    ctx.restore();
+  }
+
+  function vignette(){
+    const g=ctx.createRadialGradient(W/2,H/2,H*0.35,W/2,H/2,H*0.95);
+    g.addColorStop(0,"rgba(0,0,0,0)");
+    g.addColorStop(1,"rgba(0,0,0,0.55)");
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  }
+
+  function roundRect(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function text(str,x,y,size,color,weight,align,alpha){
+    ctx.save();
+    ctx.globalAlpha=alpha===undefined?1:alpha;
+    ctx.fillStyle=color;
+    ctx.font=(weight||"600")+" "+size+"px -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
+    ctx.textAlign=align||"left";
+    ctx.textBaseline="alphabetic";
+    ctx.fillText(str,x,y);
+    ctx.restore();
+  }
+
+  function trackedText(str,x,y,size,color,weight,spacing,align,alpha){
+    ctx.save();
+    ctx.globalAlpha=alpha===undefined?1:alpha;
+    ctx.fillStyle=color;
+    ctx.font=(weight||"600")+" "+size+"px -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
+    ctx.textBaseline="alphabetic";
+    // measure
+    let total=0;
+    for(let i=0;i<str.length;i++){total+=ctx.measureText(str[i]).width+spacing;}
+    total-=spacing;
+    let cx=x;
+    if(align==="center")cx=x-total/2;
+    else if(align==="right")cx=x-total;
+    ctx.textAlign="left";
+    for(let i=0;i<str.length;i++){
+      ctx.fillText(str[i],cx,y);
+      cx+=ctx.measureText(str[i]).width+spacing;
+    }
+    ctx.restore();
+  }
+
+  /* ---------- logo mark: "Nexus" — a stylized N of three strokes ---------- */
+  function drawLogoMark(cx,cy,scale,alpha,rot){
+    ctx.save();
+    ctx.globalAlpha=alpha;
+    ctx.translate(cx,cy);
+    ctx.rotate(rot||0);
+    ctx.scale(scale,scale);
+    // rounded square
+    const g=ctx.createLinearGradient(-40,-40,40,40);
+    g.addColorStop(0,ACCENT);
+    g.addColorStop(1,ACCENT2);
+    ctx.fillStyle=g;
+    roundRect(-40,-40,80,80,20);ctx.fill();
+    // N strokes
+    ctx.strokeStyle="#ffffff";
+    ctx.lineWidth=9;ctx.lineCap="round";ctx.lineJoin="round";
+    ctx.beginPath();
+    ctx.moveTo(-18,-20);ctx.lineTo(-18,20);
+    ctx.moveTo(-18,-20);ctx.lineTo(18,20);
+    ctx.moveTo(18,-20);ctx.lineTo(18,20);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ---------- fake UI window ---------- */
+  function drawAppWindow(x,y,w,h,alpha,enter,title){
+    ctx.save();
+    ctx.globalAlpha=alpha;
+    // shadow
+    ctx.shadowColor="rgba(0,0,0,0.6)";
+    ctx.shadowBlur=40;
+    ctx.shadowOffsetY=20;
+    // body
+    const g=ctx.createLinearGradient(0,y,0,y+h);
+    g.addColorStop(0,"#131a2b");
+    g.addColorStop(1,"#0c1120");
+    ctx.fillStyle=g;
+    roundRect(x,y,w,h,16);ctx.fill();
+    ctx.shadowColor="transparent";
+    // border
+    ctx.strokeStyle="rgba(255,255,255,0.08)";
+    ctx.lineWidth=1;
+    roundRect(x+0.5,y+0.5,w-1,h-1,16);ctx.stroke();
+    // title bar
+    ctx.fillStyle="rgba(255,255,255,0.03)";
+    roundRect(x,y,w,44,16);ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.02)";
+    ctx.fillRect(x,y+28,w,16);
+    // traffic lights
+    const cols=["#ff5f57","#febc2e","#28c840"];
+    for(let i=0;i<3;i++){
+      ctx.fillStyle=cols[i];
+      ctx.beginPath();ctx.arc(x+22+i*18,y+22,6,0,Math.PI*2);ctx.fill();
+    }
+    if(title){
+      text(title,x+w/2,y+27,13,DIM,"500","center",0.9);
+    }
+    ctx.restore();
+  }
+
+  /* ---------- sidebar ---------- */
+  function drawSidebar(x,y,w,h,alpha,progress){
+    ctx.save();
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle="rgba(255,255,255,0.02)";
+    ctx.fillRect(x,y,w,h);
+    ctx.strokeStyle="rgba(255,255,255,0.06)";
+    ctx.beginPath();ctx.moveTo(x+w,y);ctx.lineTo(x+w,y+h);ctx.stroke();
+    // logo
+    drawLogoMark(x+30,y+34,0.32,1,0);
+    text("Nexus",x+56,y+40,15,INK,"700","left",1);
+    // nav items
+    const items=["Overview","Projects","Insights","Automations","Team","Billing"];
+    for(let i=0;i<items.length;i++){
+      const iy=y+90+i*38;
+      const active=i===0;
+      if(active){
+        ctx.fillStyle="rgba(79,124,255,0.15)";
+        roundRect(x+12,iy-18,w-24,32,8);ctx.fill();
+        ctx.fillStyle=ACCENT;
+        roundRect(x+12,iy-18,3,32,2);ctx.fill();
+      }
+      // icon dot
+      ctx.fillStyle=active?ACCENT:"rgba(255,255,255,0.25)";
+      ctx.beginPath();ctx.arc(x+32,iy-2,4,0,Math.PI*2);ctx.fill();
+      text(items[i],x+48,iy+3,13,active?INK:DIM,active?"600":"500","left",1);
+    }
+    ctx.restore();
+  }
+
+  /* ---------- main dashboard content ---------- */
+  function drawDashboard(x,y,w,h,alpha,reveal){
+    ctx.save();
+    ctx.globalAlpha=alpha;
+    // header
+    text("Overview",x+28,y+34,22,INK,"700","left",1);
+    text("Welcome back, Alex",x+28,y+58,13,DIM,"500","left",1);
+    // top right avatar
+    ctx.fillStyle="rgba(79,124,255,0.25)";
+    ctx.beginPath();ctx.arc(x+w-36,y+34,16,0,Math.PI*2);ctx.fill();
+    text("A",x+w-36,y+39,14,INK,"700","center",1);
+    // stat cards
+    const cards=[
+      {label:"Monthly Recurring Revenue",value:"$248,910",delta:"+18.4%",color:MINT},
+      {label:"Active Users",value:"12,483",delta:"+6.2%",color:ACCENT},
+      {label:"Churn Rate",value:"1.8%",delta:"-0.4%",color:AMBER},
+    ];
+    const cardW=(w-56-2*16)/3;
+    for(let i=0;i<cards.length;i++){
+      const cx=x+28+i*(cardW+16);
+      const cy=y+80;
+      const p=easeOut(clamp((reveal-i*0.12)/0.6,0,1));
+      ctx.save();
+      ctx.globalAlpha=alpha*p;
+      ctx.translate(0,(1-p)*14);
+      ctx.fillStyle="rgba(255,255,255,0.035)";
+      roundRect(cx,cy,cardW,96,12);ctx.fill();
+      ctx.strokeStyle="rgba(255,255,255,0.06)";
+      ctx.lineWidth=1;
+      roundRect(cx+0.5,cy+0.5,cardW-1,95,12);ctx.stroke();
+      text(cards[i].label,cx+16,cy+26,11,DIM,"500","left",1);
+      text(cards[i].value,cx+16,cy+58,24,INK,"700","left",1);
+      text(cards[i].delta,cx+16,cy+80,12,cards[i].color,"600","left",1);
+      // sparkline
+      const sx=cx+cardW-70,sy=cy+40;
+      ctx.strokeStyle=cards[i].color;
+      ctx.lineWidth=2;ctx.lineCap="round";ctx.lineJoin="round";
+      ctx.beginPath();
+      const rnd=mulberry32(100+i);
+      for(let k=0;k<12;k++){
+        const px=sx+k*5;
+        const py=sy+(rnd()-0.5)*20;
+        if(k===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+    // big chart
+    const chartY=y+196;
+    const chartH=h-196-28;
+    ctx.save();
+    ctx.globalAlpha=alpha*easeOut(clamp((reveal-0.3)/0.7,0,1));
+    ctx.fillStyle="rgba(255,255,255,0.03)";
+    roundRect(x+28,chartY,w-56,chartH,12);ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,0.06)";
+    roundRect(x+28.5,chartY+0.5,w-57,chartH-1,12);ctx.stroke();
+    text("Revenue growth",x+48,chartY+28,14,INK,"600","left",1);
+    // grid lines
+    ctx.strokeStyle="rgba(255,255,255,0.05)";
+    ctx.lineWidth=1;
+    for(let i=1;i<4;i++){
+      const gy=chartY+40+(chartH-70)*i/4;
+      ctx.beginPath();ctx.moveTo(x+48,gy);ctx.lineTo(x+w-48,gy);ctx.stroke();
+    }
+    // area chart
+    const cw=w-96,ch=chartH-70;
+    const bx=x+48,by=chartY+40;
+    const pts=[];
+    const rnd2=mulberry32(7);
+    const n=16;
+    for(let i=0;i<n;i++){
+      const px=bx+cw*i/(n-1);
+      const base=0.55+0.35*Math.sin(i/n*Math.PI*1.2)-0.15;
+      const noise=(rnd2()-0.5)*0.12;
+      const py=by+ch*(1-clamp(base+noise,0.1,0.95));
+      pts.push([px,py]);
+    }
+    // draw only up to reveal fraction
+    const frac=clamp((reveal-0.4)/0.6,0,1);
+    const count=Math.max(2,Math.floor(frac*(n-1))+1);
+    // fill
+    const grad=ctx.createLinearGradient(0,by,0,by+ch);
+    grad.addColorStop(0,"rgba(79,124,255,0.35)");
+    grad.addColorStop(1,"rgba(79,124,255,0)");
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0],by+ch);
+    for(let i=0;i<count;i++){
+      ctx.lineTo(pts[i][0],pts[i][1]);
+    }
+    ctx.lineTo(pts[count-1][0],by+ch);
+    ctx.closePath();
+    ctx.fillStyle=grad;ctx.fill();
+    // line
+    ctx.beginPath();
+    for(let i=0;i<count;i++){
+      if(i===0)ctx.moveTo(pts[i][0],pts[i][1]);else ctx.lineTo(pts[i][0],pts[i][1]);
+    }
+    ctx.strokeStyle=ACCENT;ctx.lineWidth=2.5;ctx.lineJoin="round";ctx.lineCap="round";
+    ctx.stroke();
+    // dot at tip
+    if(count>0){
+      const tip=pts[count-1];
+      ctx.fillStyle=ACCENT;
+      ctx.beginPath();ctx.arc(tip[0],tip[1],5,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="rgba(79,124,255,0.3)";
+      ctx.beginPath();ctx.arc(tip[0],tip[1],10,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+    ctx.restore();
+  }
+
+  /* ---------- scene: hero ---------- */
+  function sceneHero(t,local){
+    // logo mark animates in
+    const p=easeOutBack(seg(local,0.1,0.9));
+    const logoScale=lerp(0.3,1,clamp(p,0,1.2));
+    drawLogoMark(W/2,300,logoScale*1.6,clamp(seg(local,0.1,0.6),0,1),0);
+    // wordmark
+    const wp=easeOut(seg(local,0.5,1.2));
+    ctx.save();
+    ctx.globalAlpha=wp;
+    ctx.translate(0,(1-wp)*20);
+    text("Nexus",W/2,430,72,INK,"800","center",1);
+    ctx.restore();
+    // tagline
+    const tp=easeOut(seg(local,0.9,1.6));
+    ctx.save();
+    ctx.globalAlpha=tp;
+    ctx.translate(0,(1-tp)*16);
+    text("The operating system for modern teams.",W/2,478,22,DIM,"500","center",1);
+    ctx.restore();
+    // small launch pill
+    const lp=easeOut(seg(local,1.3,1.9));
+    ctx.save();
+    ctx.globalAlpha=lp;
+    ctx.translate(0,(1-lp)*12);
+    const pillW=150,pillH=34;
+    ctx.fillStyle="rgba(79,124,255,0.14)";
+    roundRect(W/2-pillW/2,510,pillW,pillH,17);ctx.fill();
+    ctx.strokeStyle="rgba(79,124,255,0.4)";
+    roundRect(W/2-pillW/2+0.5,510.5,pillW-1,pillH-1,17);ctx.stroke();
+    ctx.fillStyle=MINT;
+    ctx.beginPath();ctx.arc(W/2-pillW/2+20,527,4,0,Math.PI*2);ctx.fill();
+    text("Now in public beta",W/2+8,532,13,INK,"600","center",1);
+    ctx.restore();
+  }
+
+  /* ---------- scene: dashboard ---------- */
+  function sceneDashboard(t,local){
+    const winW=1000,winH=560;
+    const x=(W-winW)/2,y=(H-winH)/2+10;
+    const enter=easeOutQuint(seg(local,0,0.9));
+    const scale=lerp(0.92,1,enter);
+    const alpha=clamp(seg(local,0,0.5),0,1);
+    ctx.save();
+    ctx.globalAlpha=alpha;
+    ctx.translate(W/2,y+winH/2);
+    ctx.scale(scale,scale);
+    ctx.translate(-W/2,-(y+winH/2));
+    drawAppWindow(x,y,winW,winH,1,enter,"app.nexus.io");
+    // clip content inside
+    ctx.save();
+    roundRect(x,y+44,winW,winH-44,0);
+    ctx.clip();
+    drawSidebar(x,y+44,220,winH-44,1,enter);
+    drawDashboard(x+220,y+44,winW-220,winH-44,1,seg(local,0.4,2.2));
+    ctx.restore();
+    ctx.restore();
+    // caption
+    const cp=easeOut(seg(local,1.0,1.6));
+    ctx.save();
+    ctx.globalAlpha=cp*0.9;
+    text("One dashboard. Every metric that matters.",W/2,H-34,16,DIM,"500","center",1);
+    ctx.restore();
+  }
+
+  /* ---------- scene: feature cards ---------- */
+  function sceneFeatures(t,local){
+    const titleP=easeOut(seg(local,0,0.6));
+    ctx.save();
+    ctx.globalAlpha=titleP;
+    ctx.translate(0,(1-titleP)*16);
+    text("Built for the way you actually work",W/2,140,38,INK,"700","center",1);
+    ctx.restore();
+
+    const feats=[
+      {icon:"⚡",title:"Real-time sync",desc:"Every change lands instantly across your team.",color:ACCENT},
+      {icon:"🔒",title:"Enterprise security",desc:"SOC 2 Type II, SSO, and granular roles.",color:MINT},
+      {icon:"📊",title:"Live insights",desc:"Dashboards that update as the work happens.",color:ACCENT2},
+      {icon:"🤖",title:"AI automations",desc:"Let Nexus handle the busywork for you.",color:AMBER},
+    ];
+    const cw=250,ch=210;
+    const gap=28;
+    const totalW=feats.length*cw+(feats.length-1)*gap;
+    const startX=(W-totalW)/2;
+    const startY=230;
+    for(let i=0;i<feats.length;i++){
+      const p=easeOutBack(seg(local,0.2+i*0.12,0.9+i*0.12));
+      const cx=startX+i*(cw+gap);
+      const cy=startY;
+      ctx.save();
+      ctx.globalAlpha=clamp(p,0,1);
+      ctx.translate(cx+cw/2,cy+ch/2+(1-p)*30);
+      ctx.scale(lerp(0.9,1,clamp(p,0,1)),lerp(0.9,1,clamp(p,0,1)));
+      ctx.translate(-(cx+cw/2),-(cy+ch/2));
+      // card
+      ctx.fillStyle="rgba(255,255,255,0.035)";
+      roundRect(cx,cy,cw,ch,16);ctx.fill();
+      ctx.strokeStyle="rgba(255,255,255,0.08)";
+      ctx.lineWidth=1;
+      roundRect(cx+0.5,cy+0.5,cw-1,ch-1,16);ctx.stroke();
+      // icon circle
+      const ig=ctx.createLinearGradient(cx+24,cy+24,cx+72,cy+72);
+      ig.addColorStop(0,feats[i].color+"55");
+      ig.addColorStop(1,feats[i].color+"22");
+      ctx.fillStyle=ig;
+      ctx.beginPath();ctx.arc(cx+48,cy+48,24,0,Math.PI*2);ctx.fill();
+      ctx.font="24px -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
+      ctx.textAlign="center";ctx.textBaseline="middle";
+      ctx.fillStyle=INK;
+      ctx.fillText(feats[i].icon,cx+48,cy+49);
+      // title
+      text(feats[i].title,cx+24,cy+108,18,INK,"700","left",1);
+      // desc wrap
+      const words=feats[i].desc.split(" ");
+      let line="",ly=cy+138;
+      for(const w of words){
+        const test=line?line+" "+w:w;
+        ctx.font="500 13px -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
+        if(ctx.measureText(test).width>cw-48){
+          text(line,cx+24,ly,13,DIM,"500","left",1);
+          line=w;ly+=19;
+        }else line=test;
+      }
+      if(line)text(line,cx+24,ly,13,DIM,"500","left",1);
+      ctx.restore();
+    }
+  }
+
+  /* ---------- scene: numbers ---------- */
+  function sceneNumbers(t,local){
+    const stats=[
+      {n:"12,483",l:"teams onboarded",c:ACCENT},
+      {n:"99.99%",l:"uptime SLA",c:MINT},
+      {n:"4.9/5",l:"average rating",c:AMBER},
+    ];
+    const totalW=900;
+    const startX=(W-totalW)/2;
+    for(let i=0;i<stats.length;i++){
+      const p=easeOutQuint(seg(local,0.1+i*0.18,0.9+i*0.18));
+      const cx=startX+i*(totalW/3)+totalW/6;
+      ctx.save();
+      ctx.globalAlpha=clamp(p,0,1);
+      ctx.translate(0,(1-p)*24);
+      text(stats[i].n,cx,340,64,INK,"800","center",1);
+      text(stats[i].l,cx,378,16,DIM,"500","center",1);
+      // underline
+      ctx.fillStyle=stats[i].c;
+      const uw=80*p;
+      roundRect(cx-uw/2,400,uw,3,2);ctx.fill();
+      ctx.restore();
+    }
+    // headline
+    const hp=easeOut(seg(local,0,0.6));
+    ctx.save();
+    ctx.globalAlpha=hp;
+    text("Trusted by teams that ship",W/2,230,32,INK,"700","center",1);
+    ctx.restore();
+  }
+
+  /* ---------- scene: quote / social proof ---------- */
+  function sceneQuote(t,local){
+    const p=easeOut(seg(local,0.1,0.9));
+    ctx.save();
+    ctx.globalAlpha=p;
+    ctx.translate(0,(1-p)*20);
+    // big quote mark
+    text("“",W/2,220,140,ACCENT,"800","center",0.25);
+    // quote text
+    const lines=[
+      "Nexus replaced four tools and gave",
+      "our team back ten hours a week.",
+    ];
+    for(let i=0;i<lines.length;i++){
+      text(lines[i],W/2,300+i*44,30,INK,"600","center",1);
+    }
+    // author
+    ctx.fillStyle="rgba(79,124,255,0.25)";
+    ctx.beginPath();ctx.arc(W/2-90,420,20,0,Math.PI*2);ctx.fill();
+    text("J",W/2-90,426,16,INK,"700","center",1);
+    text("Jordan Rivera",W/2-58,420,15,INK,"700","left",1);
+    text("Head of Operations, Northwind",W/2-58,440,13,DIM,"500","left",1);
+    ctx.restore();
+  }
+
+  /* ---------- scene: CTA / outro ---------- */
+  function sceneCTA(t,local){
+    const p=easeOut(seg(local,0.1,0.9));
+    drawLogoMark(W/2,260,1.4*lerp(0.9,1,clamp(p,0,1)),clamp(p,0,1),0);
+    const tp=easeOut(seg(local,0.4,1.1));
+    ctx.save();
+    ctx.globalAlpha=tp;
+    ctx.translate(0,(1-tp)*16);
+    text("Start building with Nexus",W/2,380,44,INK,"800","center",1);
+    ctx.restore();
+    const sp=easeOut(seg(local,0.7,1.3));
+    ctx.save();
+    ctx.globalAlpha=sp;
+    text("Free for 14 days. No credit card required.",W/2,420,17,DIM,"500","center",1);
+    ctx.restore();
+    // button
+    const bp=easeOutBack(seg(local,1.0,1.6));
+    ctx.save();
+    ctx.globalAlpha=clamp(bp,0,1);
+    ctx.translate(W/2,470+(1-bp)*16);
+    const bw=240,bh=56;
+    const g=ctx.createLinearGradient(-bw/2,0,bw/2,0);
+    g.addColorStop(0,ACCENT);
+    g.addColorStop(1,ACCENT2);
+    ctx.fillStyle=g;
+    roundRect(-bw/2,-bh/2,bw,bh,28);ctx.fill();
+    text("Get started free",0,6,17,"#ffffff","700","center",1);
+    ctx.restore();
+    // url
+    const up=easeOut(seg(local,1.4,1.9));
+    ctx.save();
+    ctx.globalAlpha=up*0.8;
+    text("nexus.io",W/2,560,15,DIM,"600","center",1);
+    ctx.restore();
+  }
+
+  /* ---------- scene timeline ---------- */
+  const scenes=[
+    {name:"hero",start:0,end:4.0,draw:sceneHero},
+    {name:"dashboard",start:4.0,end:10.0,draw:sceneDashboard},
+    {name:"features",start:10.0,end:15.0,draw:sceneFeatures},
+    {name:"numbers",start:15.0,end:18.0,draw:sceneNumbers},
+    {name:"quote",start:18.0,end:20.5,draw:sceneQuote},
+    {name:"cta",start:20.5,end:24.0,draw:sceneCTA},
+  ];
+
+  /* ---------- crossfade helper ---------- */
+  function drawScene(scene,t,alpha){
+    ctx.save();
+    ctx.globalAlpha=alpha;
+    scene.draw(t,t-scene.start);
+    ctx.restore();
+  }
+
+  /* ---------- main render ---------- */
+  function render(t){
+    t=clamp(t,0,window.DURATION);
+    ctx.clearRect(0,0,W,H);
+    bgGradient(t);
+
+    // find current scenes with crossfade windows
+    const FADE=0.6;
+    for(let i=0;i<scenes.length;i++){
+      const s=scenes[i];
+      // determine alpha with fades at edges
+      let a=1;
+      if(s.start>0){
+        const fin=clamp((t-(s.start-FADE/2))/FADE,0,1);
+        a=Math.min(a,fin);
+      }
+      if(s.end<window.DURATION){
+        const fout=clamp(((s.end+FADE/2)-t)/FADE,0,1);
+        a=Math.min(a,fout);
+      }
+      if(a<=0.001)continue;
+      // only draw if within extended range
+      if(t<s.start-FADE/2||t>s.end+FADE/2)continue;
+      drawScene(s,t,a);
+    }
+
+    // global overlay: subtle top/bottom gradient for cinematic feel
+    const tg=ctx.createLinearGradient(0,0,0,H);
+    tg.addColorStop(0,"rgba(5,7,13,0.35)");
+    tg.addColorStop(0.15,"rgba(5,7,13,0)");
+    tg.addColorStop(0.85,"rgba(5,7,13,0)");
+    tg.addColorStop(1,"rgba(5,7,13,0.45)");
+    ctx.fillStyle=tg;ctx.fillRect(0,0,W,H);
+
+    vignette();
+    grain(42+Math.floor(t*24));
+  }
+
+  /* ---------- public API ---------- */
+  window.seek=function(t){
+    render(t);
+  };
+
+  /* ---------- autoplay ---------- */
+  let startTime=null;
+  function loop(now){
+    if(startTime===null)startTime=now;
+    const elapsed=((now-startTime)/1000)%window.DURATION;
+    window.seek(elapsed);
+    requestAnimationFrame(loop);
+  }
+  // draw first frame immediately
+  window.seek(0);
+  requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>

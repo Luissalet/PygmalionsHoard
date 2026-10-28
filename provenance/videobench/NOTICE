@@ -1,0 +1,16 @@
+Video bank (galton_hoard/videobench)
+
+* galton_hoard/videobench/data/prompts.json holds 139 briefs taken from
+  awesome-opus5-5-videos (MIT, copyright yihui-dev; the list of 2026-10-12),
+  filtered to the ones whose prompt is not partial and has more than 400
+  characters. Each brief keeps its author, the link to the author and the link to
+  the original post. The videos and the prompts belong to their authors; the MIT
+  licence of the list covers the list. The licence text is in
+  LICENSE.awesome-opus5-5-videos.
+* The jury rubric (the seven dimensions and the 1-10 scale, of which the bank
+  scores six because the pages are silent) follows the review prompt of mg-styles-15
+  (MIT, copyright Vincentwei1021). The licence text is in LICENSE.mg-styles-15.
+
+The contract that makes an animation measurable (a self-contained page with
+window.seek(t)), the renderer, the automatic checks and the contact sheet were
+written for this project.

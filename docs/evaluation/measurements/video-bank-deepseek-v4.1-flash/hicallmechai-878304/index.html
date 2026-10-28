@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Morph</title>
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #f2efea; }
+  #stage { position: absolute; inset: 0; width: 1280px; height: 720px; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c" width="1280" height="720"></canvas></div>
+<script>
+(function(){
+"use strict";
+
+const W = 1280, H = 720;
+const BPM = 120;
+const BEAT = 60 / BPM;         // 0.5 s
+const BAR = BEAT * 4;          // 2.0 s
+const BARS = 7;
+const DURATION = BAR * BARS;   // 14 s
+window.DURATION = DURATION;
+
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+
+// ---------- deterministic helpers ----------
+function clamp(x,a,b){ return x<a?a:(x>b?b:x); }
+function lerp(a,b,t){ return a + (b-a)*t; }
+function smooth(t){ t = clamp(t,0,1); return t*t*(3-2*t); }
+function easeOut(t){ t = clamp(t,0,1); return 1 - Math.pow(1-t,3); }
+function easeIn(t){ t = clamp(t,0,1); return t*t*t; }
+
+// Seeded RNG
+function mulberry32(a){
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Closed-form spring step response (damped, underdamped).
+// Returns 0 at t=0, approaches 1 as t→∞, with a tiny overshoot.
+// params: stiffness k, damping ratio zeta (0<z<1).
+function springStep(t, k, zeta){
+  if (t <= 0) return 0;
+  const w0 = Math.sqrt(k);
+  const wd = w0 * Math.sqrt(1 - zeta*zeta);
+  const e = Math.exp(-zeta * w0 * t);
+  return 1 - e * (Math.cos(wd*t) + (zeta*w0/wd) * Math.sin(wd*t));
+}
+
+// Sum-of-springs: given a list of {t0, from, to} changes, evaluate at time t.
+// Each change contributes (to - from) * springStep(t - t0). Plus the initial value.
+function springSum(changes, t, k, zeta){
+  if (changes.length === 0) return 0;
+  let v = changes[0].from;
+  for (const ch of changes){
+    v += (ch.to - ch.from) * springStep(t - ch.t0, k, zeta);
+  }
+  return v;
+}
+
+// Build a change list from keyframes: [{t, v}, ...]
+function keys(list){
+  const out = [];
+  for (let i = 0; i < list.length; i++){
+    const from = (i === 0) ? list[0].v : list[i-1].v;
+    out.push({ t0: list[i].t, from: from, to: list[i].v });
+  }
+  return out;
+}
+
+// ---------- timeline ----------
+// 7 bars, 28 beats. Each beat = 0.5s.
+// Beat map (each beat has an action):
+//  B0  : button idle, cursor enters
+//  B1  : press
+//  B2  : release → morph to loader
+//  B3  : loader spins
+//  B4  : loader → check
+//  B5  : check → dynamic island
+//  B6  : island expands
+//  B7  : island → music player
+//  B8  : play/pause morph
+//  B9  : scrub progress
+//  B10 : progress → volume slider
+//  B11 : drag past max (stretch)
+//  B12 : release → slider → toggle
+//  B13 : toggle flips on beat
+//  B14 : knob → tab indicator
+//  B15 : tabs slide
+//  B16 : tabs → chart
+//  B17 : chart draws
+//  B18 : chart draws more
+//  B19 : tooltip hover
+//  B20 : chart → command palette
+//  B21 : type to filter
+//  B22 : filter more
+//  B23 : enter
+//  B24 : toast
+//  B25 : toast holds
+//  B26 : toast → button (morph back)
+//  B27 : button idle (loop)
+
+const beatT = (b) => b * BEAT;
+
+// ---------- state definitions ----------
+// Each state: {x, y, w, h, r, fill, stroke, text, textColor}
+// Camera zooms so the state fills the frame.
+const STATES = [
+  // 0: button
+  { name:'button',  x: 0, y: 0, w: 220, h: 64,  r: 32, fill:'#111111', stroke:null, text:'Get started', textColor:'#ffffff', camZoom: 1.0 },
+  // 1: loader
+  { name:'loader',  x: 0, y: 0, w: 64,  h: 64,  r: 32, fill:'#111111', stroke:null, text:null, textColor:'#ffffff', camZoom: 1.6 },
+  // 2: check
+  { name:'check',   x: 0, y: 0, w: 64,  h: 64,  r: 32, fill:'#111111', stroke:null, text:'✓', textColor:'#ffffff', camZoom: 1.6 },
+  // 3: dynamic island
+  { name:'island',  x: 0, y: 0, w: 260, h: 48,  r: 24, fill:'#111111', stroke:null, text:'Now playing', textColor:'#ffffff', camZoom: 1.0 },
+  // 4: music player
+  { name:'player',  x: 0, y: 0, w: 420, h: 180, r: 28, fill:'#111111', stroke:null, text:null, textColor:'#ffffff', camZoom: 0.75 },
+  // 5: volume slider
+  { name:'slider',  x: 0, y: 0, w: 420, h: 64,  r: 32, fill:'#111111', stroke:null, text:null, textColor:'#ffffff', camZoom: 1.0 },
+  // 6: toggle
+  { name:'toggle',  x: 0, y: 0, w: 120, h: 64,  r: 32, fill:'#111111', stroke:null, text:null, textColor:'#ffffff', camZoom: 1.4 },
+  // 7: tabs
+  { name:'tabs',    x: 0, y: 0, w: 480, h: 64,  r: 32, fill:'#111111', stroke:null, text:null, textColor:'#ffffff', camZoom: 0.85 },
+  // 8: chart
+  { name:'chart',   x: 0, y: 0, w: 520, h: 320, r: 24, fill:'#ffffff', stroke:'#111111', text:null, textColor:'#111111', camZoom: 0.7 },
+  // 9: command palette
+  { name:'palette', x: 0, y: 0, w: 560, h: 360, r: 20, fill:'#ffffff', stroke:'#111111', text:null, textColor:'#111111', camZoom: 0.65 },
+  // 10: toast
+  { name:'toast',   x: 0, y: 0, w: 320, h: 56,  r: 28, fill:'#111111', stroke:null, text:'Saved to library', textColor:'#ffffff', camZoom: 1.0 },
+];
+
+// Which state is active at beat b (transition happens on the beat)
+function stateAtBeat(b){
+  if (b < 2) return 0;
+  if (b < 4) return 1;
+  if (b < 5) return 2;
+  if (b < 7) return 3;
+  if (b < 10) return 4;
+  if (b < 12) return 5;
+  if (b < 13) return 6;
+  if (b < 15) return 7;
+  if (b < 20) return 8;
+  if (b < 24) return 9;
+  if (b < 26) return 10;
+  return 0;
+}
+
+// Build morph keyframes for each property: size, radius, color, camera zoom.
+// We use springSum over the change list.
+function buildMorphKeys(getter){
+  const list = [];
+  for (let b = 0; b <= 28; b++){
+    const s = STATES[stateAtBeat(b)];
+    list.push({ t: beatT(b), v: getter(s) });
+  }
+  return keys(list);
+}
+
+const keyW = buildMorphKeys(s => s.w);
+const keyH = buildMorphKeys(s => s.h);
+const keyR = buildMorphKeys(s => s.r);
+const keyZoom = buildMorphKeys(s => s.camZoom);
+// Fill color: interpolate between black and white based on state
+function fillVal(s){
+  if (s.fill === '#111111') return 1; // black
+  return 0; // white
+}
+const keyFill = buildMorphKeys(fillVal);
+// Stroke presence
+function strokeVal(s){ return s.stroke ? 1 : 0; }
+const keyStroke = buildMorphKeys(strokeVal);
+
+// ---------- cursor path ----------
+// Cursor moves to interact with each state. Deterministic.
+// Returns {x, y, pressed}
+function cursorAt(t){
+  // Key positions in stage space (before camera transform, we'll place in world coords)
+  // The world is centered at (0,0); camera maps world to screen.
+  // Cursor is in screen space (fixed), but we want it to look like it's interacting
+  // with the shape. So we compute cursor in world-space relative to shape, then
+  // transform to screen. Actually simpler: keep cursor in screen space and position
+  // it near the shape's screen position.
+  // We'll compute shape screen position from camera.
+  const b = t / BEAT;
+  // Define cursor keyframes in screen space
+  // We'll just use a smooth path that visits the right spots.
+  // Screen center is (W/2, H/2).
+  const cx = W/2, cy = H/2;
+  // Path: list of {t (seconds), x, y, pressed}
+  const path = [
+    { t: 0.0,  x: cx + 260, y: cy + 120, p: 0 },   // start off to the side
+    { t: 0.3,  x: cx + 30,  y: cy + 10,  p: 0 },   // approach button
+    { t: 0.5,  x: cx + 20,  y: cy + 5,   p: 0 },   // hover
+    { t: 0.6,  x: cx + 20,  y: cy + 5,   p: 1 },   // press
+    { t: 0.9,  x: cx + 20,  y: cy + 5,   p: 1 },   // hold
+    { t: 1.0,  x: cx + 20,  y: cy + 5,   p: 0 },   // release
+    { t: 1.5,  x: cx + 80,  y: cy + 60,  p: 0 },   // move away
+    { t: 2.0,  x: cx + 80,  y: cy + 60,  p: 0 },
+    { t: 2.5,  x: cx + 80,  y: cy + 60,  p: 0 },
+    { t: 3.0,  x: cx + 80,  y: cy + 60,  p: 0 },
+    { t: 3.5,  x: cx + 60,  y: cy + 40,  p: 0 },
+    { t: 4.0,  x: cx + 60,  y: cy + 40,  p: 0 },
+    { t: 4.5,  x: cx + 40,  y: cy + 20,  p: 0 },
+    { t: 5.0,  x: cx + 40,  y: cy + 20,  p: 0 },
+    { t: 5.5,  x: cx + 30,  y: cy + 15,  p: 0 },
+    { t: 6.0,  x: cx + 30,  y: cy + 15,  p: 0 },
+    { t: 6.5,  x: cx + 20,  y: cy + 10,  p: 0 },
+    { t: 7.0,  x: cx + 20,  y: cy + 10,  p: 0 },
+    { t: 7.5,  x: cx + 10,  y: cy + 5,   p: 0 },
+    { t: 8.0,  x: cx + 10,  y: cy + 5,   p: 0 },
+    { t: 8.5,  x: cx + 5,   y: cy + 3,   p: 0 },
+    { t: 9.0,  x: cx + 5,   y: cy + 3,   p: 0 },
+    { t: 9.5,  x: cx + 5,   y: cy + 3,   p: 0 },
+    { t: 10.0, x: cx + 5,   y: cy + 3,   p: 0 },
+    { t: 10.5, x: cx + 5,   y: cy + 3,   p: 0 },
+    { t: 11.0, x: cx + 5,   y: cy + 3,   p: 0 },
+    { t: 11.5, x: cx + 5,   y: cy + 3,   p: 0 },
+    { t: 12.0, x: cx + 5,   y: cy + 3,   p: 0 },
+    { t: 12.5, x: cx + 5,   y: cy + 3,   p: 0 },
+    { t: 13.0, x: cx + 5,   y: cy + 3,   p: 0 },
+    { t: 13.5, x: cx + 5,   y: cy + 3,   p: 0 },
+    { t: 14.0, x: cx + 260, y: cy + 120, p: 0 },   // return to start
+  ];
+  // Find segment
+  let i = 0;
+  while (i < path.length - 1 && path[i+1].t < t) i++;
+  if (i >= path.length - 1) return { x: path[path.length-1].x, y: path[path.length-1].y, p: path[path.length-1].p };
+  const a = path[i], b2 = path[i+1];
+  const u = clamp((t - a.t) / (b2.t - a.t), 0, 1);
+  const s = smooth(u);
+  return {
+    x: lerp(a.x, b2.x, s),
+    y: lerp(a.y, b2.y, s),
+    p: a.p // pressed state changes stepwise
+  };
+}
+
+// ---------- drawing ----------
+function drawFrame(t){
+  // background
+  ctx.fillStyle = '#f2efea';
+  ctx.fillRect(0, 0, W, H);
+
+  // Compute morph values
+  const w = springSum(keyW, t, 220, 0.72);
+  const h = springSum(keyH, t, 220, 0.72);
+  const r = springSum(keyR, t, 220, 0.72);
+  const zoom = springSum(keyZoom, t, 160, 0.75);
+  const fillBlack = springSum(keyFill, t, 220, 0.72);
+  const strokeAmt = springSum(keyStroke, t, 220, 0.72);
+
+  // Shape center in world space is (0,0), camera at (W/2, H/2)
+  const cx = W/2, cy = H/2;
+
+  // Draw shape
+  const fillColor = `rgb(${Math.round(lerp(255, 17, fillBlack))},${Math.round(lerp(255, 17, fillBlack))},${Math.round(lerp(255, 17, fillBlack))})`;
+  const strokeColor = `rgba(17,17,17,${clamp(strokeAmt,0,1)})`;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(zoom, zoom);
+
+  // Shadow (subtle)
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.08)';
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 8;
+  roundRect(ctx, -w/2, -h/2, w, h, Math.min(r, Math.min(w,h)/2));
+  ctx.fillStyle = fillColor;
+  ctx.fill();
+  ctx.restore();
+
+  if (strokeAmt > 0.01){
+    roundRect(ctx, -w/2, -h/2, w, h, Math.min(r, Math.min(w,h)/2));
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Content per state
+  const stateIdx = stateAtBeat(t / BEAT);
+  drawContent(ctx, t, stateIdx, w, h);
+
+  ctx.restore();
+
+  // Cursor
+  const cur = cursorAt(t);
+  drawCursor(cur.x, cur.y, cur.p);
+}
+
+function roundRect(ctx, x, y, w, h, r){
+  r = Math.max(0, Math.min(r, Math.min(w, h)/2));
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+function drawContent(ctx, t, idx, w, h){
+  const b = t / BEAT;
+  const local = t - beatT(Math.floor(b));
+  const beatFrac = local / BEAT;
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  if (idx === 0){
+    // Button text
+    const alpha = 1;
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.font = '600 20px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+    ctx.fillText('Get started', 0, 0);
+  }
+  else if (idx === 1){
+    // Loader: rotating arc
+    const spin = (t * 2.5) % 1;
+    const angle = spin * Math.PI * 2;
+    ctx.save();
+    ctx.rotate(angle);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    const rad = Math.min(w, h) * 0.22;
+    ctx.beginPath();
+    ctx.arc(0, 0, rad, 0, Math.PI * 1.2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, rad, Math.PI * 1.2, Math.PI * 1.4);
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.stroke();
+    ctx.restore();
+  }
+  else if (idx === 2){
+    // Check
+    const s = easeOut(clamp(local / 0.15, 0, 1));
+    ctx.save();
+    ctx.scale(s, s);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const sz = Math.min(w, h) * 0.22;
+    ctx.beginPath();
+    ctx.moveTo(-sz, 0);
+    ctx.lineTo(-sz*0.2, sz*0.7);
+    ctx.lineTo(sz, -sz*0.6);
+    ctx.stroke();
+    ctx.restore();
+  }
+  else if (idx === 3){
+    // Dynamic island text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '500 15px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+    ctx.fillText('Now playing', 0, 0);
+    // small dot indicator
+    ctx.beginPath();
+    ctx.arc(-w/2 + 20, 0, 3, 0, Math.PI*2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+  }
+  else if (idx === 4){
+    // Music player
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 16px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Midnight Drive', -w/2 + 28, -h/2 + 36);
+    ctx.font = '400 13px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fillText('Neon Coast', -w/2 + 28, -h/2 + 58);
+
+    // Play/pause morph
+    const pp = (b >= 8 && b < 9) ? 1 : 0;
+    const morph = pp ? smooth(clamp((local - 0.1) / 0.2, 0, 1)) : 0;
+    drawPlayPause(ctx, 0, h/2 - 50, 22, morph);
+
+    // Progress bar
+    const prog = (b >= 9) ? clamp((local) / BEAT, 0, 1) * 0.6 + 0.2 : 0.35;
+    const barW = w - 80;
+    const barX = -barW/2;
+    const barY = h/2 - 20;
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    roundRect(ctx, barX, barY - 2, barW, 4, 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, barX, barY - 2, barW * prog, 4, 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(barX + barW * prog, barY, 6, 0, Math.PI*2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    ctx.textAlign = 'center';
+  }
+  else if (idx === 5){
+    // Volume slider
+    const vol = (b >= 11) ? clamp(0.5 + (local) / BEAT * 0.6, 0, 1.1) : 0.6;
+    const barW = w - 100;
+    const barX = -barW/2;
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    roundRect(ctx, barX, -2, barW, 4, 2);
+    ctx.fill();
+    const fillW = barW * Math.min(vol, 1);
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, barX, -2, fillW, 4, 2);
+    ctx.fill();
+    // Stretch past max
+    let knobX = barX + fillW;
+    let knobR = 8;
+    if (vol > 1){
+      const over = (vol - 1) * 3;
+      knobX += over * 20;
+      knobR = 8 + over * 4;
+    }
+    ctx.beginPath();
+    ctx.arc(knobX, 0, knobR, 0, Math.PI*2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    // Volume icon
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = '400 14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('VOL', -w/2 + 20, 0);
+  }
+  else if (idx === 6){
+    // Toggle
+    const on = (b >= 13) ? 1 : 0;
+    const knobX = on ? w/2 - 32 : -w/2 + 32;
+    const knobR = 22;
+    ctx.beginPath();
+    ctx.arc(knobX, 0, knobR, 0, Math.PI*2);
+    ctx.fillStyle = on ? '#ffffff' : '#ffffff';
+    ctx.fill();
+    // track
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    roundRect(ctx, -w/2 + 8, -h/2 + 8, w - 16, h - 16, (h-16)/2);
+    ctx.stroke();
+  }
+  else if (idx === 7){
+    // Tabs
+    const tabs = ['All', 'Music', 'Podcasts'];
+    const tabW = w / tabs.length;
+    const active = (b >= 15) ? 1 : 0;
+    // indicator
+    const indW = tabW * 0.8;
+    const indX = -w/2 + tabW * active + tabW * 0.1;
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    roundRect(ctx, indX, -h/2 + 8, indW, h - 16, (h-16)/2);
+    ctx.fill();
+    ctx.font = '500 15px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    for (let i = 0; i < tabs.length; i++){
+      ctx.fillStyle = i === active ? '#ffffff' : 'rgba(255,255,255,0.5)';
+      ctx.fillText(tabs[i], -w/2 + tabW * i + tabW/2, 0);
+    }
+  }
+  else if (idx === 8){
+    // Chart
+    const drawProg = clamp((b - 16) / 3, 0, 1);
+    const chartW = w - 80;
+    const chartH = h - 100;
+    const chartX = -chartW/2;
+    const chartY = -chartH/2 + 20;
+    // axes
+    ctx.strokeStyle = 'rgba(17,17,17,0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(chartX, chartY + chartH);
+    ctx.lineTo(chartX + chartW, chartY + chartH);
+    ctx.stroke();
+    // bars
+    const vals = [0.4, 0.7, 0.5, 0.9, 0.6, 0.8, 0.45];
+    const bw = chartW / vals.length * 0.6;
+    const gap = chartW / vals.length;
+    for (let i = 0; i < vals.length; i++){
+      const barProg = clamp(drawProg * vals.length - i, 0, 1);
+      const bh = chartH * vals[i] * barProg;
+      const bx = chartX + i * gap + (gap - bw)/2;
+      const by = chartY + chartH - bh;
+      ctx.fillStyle = '#111111';
+      roundRect(ctx, bx, by, bw, bh, 3);
+      ctx.fill();
+    }
+    // tooltip
+    const showTip = b >= 19;
+    if (showTip){
+      const tipAlpha = smooth(clamp((local) / 0.2, 0, 1));
+      const tipX = chartX + 3 * gap + gap/2;
+      const tipY = chartY + chartH - chartH * 0.9 - 20;
+      ctx.fillStyle = `rgba(17,17,17,${tipAlpha})`;
+      roundRect(ctx, tipX - 40, tipY - 24, 80, 32, 6);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255,255,255,${tipAlpha})`;
+      ctx.font = '500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('90%', tipX, tipY - 8);
+    }
+    // title
+    ctx.fillStyle = '#111111';
+    ctx.font = '600 14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Weekly plays', chartX, chartY - 10);
+  }
+  else if (idx === 9){
+    // Command palette
+    const query = b >= 21 ? (b >= 22 ? 'pla' : 'pl') : '';
+    // search bar
+    ctx.fillStyle = 'rgba(17,17,17,0.06)';
+    roundRect(ctx, -w/2 + 16, -h/2 + 16, w - 32, 44, 10);
+    ctx.fill();
+    ctx.fillStyle = '#111111';
+    ctx.font = '400 15px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(query || 'Type a command…', -w/2 + 32, -h/2 + 38);
+    if (!query){
+      ctx.fillStyle = 'rgba(17,17,17,0.4)';
+    }
+    // cursor blink
+    if (query){
+      const blink = Math.floor(t * 4) % 2 === 0;
+      if (blink){
+        const tw = ctx.measureText(query).width;
+        ctx.fillStyle = '#111111';
+        ctx.fillRect(-w/2 + 32 + tw + 2, -h/2 + 26, 1.5, 20);
+      }
+    }
+    // results
+    const items = ['Play music', 'Pause', 'Next track', 'Previous', 'Shuffle'];
+    const filtered = query ? items.filter(it => it.toLowerCase().includes(query)) : items;
+    ctx.font = '400 14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+    for (let i = 0; i < Math.min(filtered.length, 5); i++){
+      const y = -h/2 + 80 + i * 36;
+      if (i === 0){
+        ctx.fillStyle = 'rgba(17,17,17,0.06)';
+        roundRect(ctx, -w/2 + 16, y - 14, w - 32, 30, 6);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#111111';
+      ctx.textAlign = 'left';
+      ctx.fillText(filtered[i], -w/2 + 32, y);
+    }
+    // ⌘K hint
+    ctx.fillStyle = 'rgba(17,17,17,0.3)';
+    ctx.font = '500 11px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('⌘K', w/2 - 20, -h/2 + 38);
+  }
+  else if (idx === 10){
+    // Toast
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '500 15px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Saved to library', 0, 0);
+    // check icon
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-w/2 + 24, 0);
+    ctx.lineTo(-w/2 + 30, 6);
+    ctx.lineTo(-w/2 + 42, -6);
+    ctx.stroke();
+  }
+}
+
+function drawPlayPause(ctx, x, y, size, morph){
+  // morph 0 = play (triangle), 1 = pause (two bars)
+  const s = size;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = '#ffffff';
+  if (morph < 0.5){
+    // triangle
+    const a = 1 - morph * 2;
+    ctx.globalAlpha = a;
+    ctx.beginPath();
+    ctx.moveTo(-s*0.3, -s*0.5);
+    ctx.lineTo(s*0.5, 0);
+    ctx.lineTo(-s*0.3, s*0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  if (morph >= 0.5){
+    const a = (morph - 0.5) * 2;
+    ctx.globalAlpha = a;
+    const bw = s * 0.2;
+    const bh = s * 0.9;
+    roundRect(ctx, -s*0.35, -bh/2, bw, bh, 2);
+    ctx.fill();
+    roundRect(ctx, s*0.15, -bh/2, bw, bh, 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
+function drawCursor(x, y, pressed){
+  ctx.save();
+  ctx.translate(x, y);
+  const scale = pressed ? 0.85 : 1;
+  ctx.scale(scale, scale);
+  // cursor arrow
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, 18);
+  ctx.lineTo(5, 13);
+  ctx.lineTo(9, 20);
+  ctx.lineTo(12, 18);
+  ctx.lineTo(8, 11);
+  ctx.lineTo(14, 11);
+  ctx.closePath();
+  ctx.fillStyle = pressed ? '#111111' : '#ffffff';
+  ctx.strokeStyle = '#111111';
+  ctx.lineWidth = 1.5;
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ---------- seek ----------
+window.seek = function(t){
+  t = clamp(t, 0, DURATION);
+  drawFrame(t);
+};
+
+// ---------- play loop ----------
+let start = null;
+function loop(ts){
+  if (start === null) start = ts;
+  const elapsed = ((ts - start) / 1000) % DURATION;
+  window.seek(elapsed);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// Initial frame
+window.seek(0);
+
+})();
+</script>
+</body>
+</html>

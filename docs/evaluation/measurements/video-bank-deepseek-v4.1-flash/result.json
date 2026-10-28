@@ -1,0 +1,2335 @@
+{
+ "result": {
+  "run": {
+   "id": "vb_01m622aw0885rdq8c5v4eywpcg",
+   "label": {
+    "key": "label_videobench",
+    "params": {
+     "model": "deepseek-v4.1-flash",
+     "n": 10
+    },
+    "text": "video bank: deepseek-v4.1-flash, 10 brief(s)"
+   },
+   "state": "done",
+   "model": {
+    "id": "c_01m6226nbc9jx9s1vr95329vek",
+    "name": "deepseek-v4.1-flash"
+   },
+   "jury": {
+    "id": "c_01m6226nbc9jx9s1vr95329vek",
+    "name": "deepseek-v4.1-flash"
+   },
+   "same_model_judges": true,
+   "n": 10,
+   "settings": {
+    "temperature": 0.7,
+    "top_p": null,
+    "max_tokens": 16000,
+    "effort": null,
+    "repeats": 1,
+    "seed": null,
+    "context": null,
+    "timeout_s": 900.0,
+    "wait_s": null,
+    "device": "auto",
+    "load_local": true,
+    "frames": 12,
+    "duration_cap": 30,
+    "default_duration": 10,
+    "render_timeout_s": 240,
+    "jury_max_tokens": 4000,
+    "jury_images": "auto"
+   },
+   "progress": {
+    "phase": "done",
+    "written": 10,
+    "rendered": 10,
+    "judged": 10,
+    "warnings": [],
+    "writer_runs_on": "llama-server http://192.168.0.185:8888",
+    "jury_mode": "images",
+    "jury_runs_on": "llama-server http://192.168.0.185:8888"
+   },
+   "total": 30,
+   "done": 30,
+   "source": "ui",
+   "created_ts": 1793218408.4565845,
+   "started_ts": 1793218408.5436106,
+   "finished_ts": 1793219785.8979855,
+   "error": "",
+   "active": false,
+   "cancel": false
+  },
+  "summary": {
+   "prompts": 10,
+   "answered": 10,
+   "rendered": 10,
+   "usable": 7,
+   "judged": 9,
+   "none": 1,
+   "render_rate": 1.0,
+   "usable_rate": 0.7,
+   "deterministic_rate": 1.0,
+   "mean_score": 4.24,
+   "by_dimension": {
+    "style_fidelity": 4.44,
+    "concept_wow": 3.33,
+    "motion_craft": 3.78,
+    "design_typography": 4.67,
+    "finish_texture": 4.11,
+    "technical": 5.11
+   },
+   "by_category": {
+    "motion": {
+     "n": 7,
+     "mean": 4.19
+    },
+    "interactive": {
+     "n": 2,
+     "mean": 4.42
+    }
+   },
+   "tokens_out_mean": 8349.0,
+   "latency_s_mean": 108.9,
+   "jury_mode": "images",
+   "same_model_judges": true
+  },
+  "items": [
+   {
+    "prompt": "pluvio9yte-662953",
+    "category": "motion",
+    "author": "Pluvio9yte",
+    "post_url": "https://x.com/Pluvio9yte/status/2107087191738662953",
+    "state": "done",
+    "outcome": "done",
+    "reason": "",
+    "detail": "",
+    "mean": 4.33,
+    "scores": {
+     "style_fidelity": 4.0,
+     "concept_wow": 3.0,
+     "motion_craft": 4.0,
+     "design_typography": 5.0,
+     "finish_texture": 4.0,
+     "technical": 6.0
+    },
+    "usable": true,
+    "deterministic": true,
+    "moves": true,
+    "duration": 28.0,
+    "html_chars": 17912,
+    "tokens_out": 6843,
+    "summary": "The page is a technically sound particle system with a working seek and a clean HUD, but it never delivers the brief's core promise: a source image decomposed into depth, subject and colour, then rebuilt in contrasting styles with beat-locked feedback. Every frame is an undifferentiated cloud of dots on black, so the 'before → particle' reveal, the subject silhouette, the depth push-in and the hero moment are all absent.",
+    "has_sheet": true
+   },
+   {
+    "prompt": "hsanat-012699",
+    "category": "motion",
+    "author": "hSanat",
+    "post_url": "https://x.com/hSanat/status/2103358205091012699",
+    "state": "done",
+    "outcome": "done",
+    "reason": "",
+    "detail": "",
+    "mean": 5.0,
+    "scores": {
+     "style_fidelity": 5.0,
+     "concept_wow": 4.0,
+     "motion_craft": 4.0,
+     "design_typography": 6.0,
+     "finish_texture": 5.0,
+     "technical": 6.0
+    },
+    "usable": true,
+    "deterministic": true,
+    "moves": true,
+    "duration": 24.0,
+    "html_chars": 21082,
+    "tokens_out": 7633,
+    "summary": "A competent but generic dark-SaaS template: logo, dashboard, feature cards, stats, quote, CTA, in that order, with no hook, no hero moment and no real product story. The typography is clean and the palette is consistent, but the motion is mostly fades and the 15.3s stat collision is a visible failure.",
+    "has_sheet": true
+   },
+   {
+    "prompt": "hicallmechai-878304",
+    "category": "motion",
+    "author": "hiCallMeChai",
+    "post_url": "https://x.com/hiCallMeChai/status/2103600312296878304",
+    "state": "done",
+    "outcome": "done",
+    "reason": "",
+    "detail": "",
+    "mean": 4.83,
+    "scores": {
+     "style_fidelity": 5.0,
+     "concept_wow": 4.0,
+     "motion_craft": 4.0,
+     "design_typography": 5.0,
+     "finish_texture": 5.0,
+     "technical": 6.0
+    },
+    "usable": true,
+    "deterministic": true,
+    "moves": true,
+    "duration": 14.0,
+    "html_chars": 21697,
+    "tokens_out": 8388,
+    "summary": "The state list is all there and the loop closes, but the camera never zooms, so every state sits as a tiny chip in a vast empty canvas — the opposite of the brief's 'each state fills the frame'. The morphs read as small, timid and mostly unreadable at contact-sheet scale, and the hero moments (volume stretch past max, liquid tab indicator, chart draw) are invisible.",
+    "has_sheet": true
+   },
+   {
+    "prompt": "dzhohola-249003",
+    "category": "motion",
+    "author": "dzhohola",
+    "post_url": "https://x.com/dzhohola/status/2103605737595249003",
+    "state": "done",
+    "outcome": "done",
+    "reason": "",
+    "detail": "",
+    "mean": 4.67,
+    "scores": {
+     "style_fidelity": 5.0,
+     "concept_wow": 4.0,
+     "motion_craft": 5.0,
+     "design_typography": 5.0,
+     "finish_texture": 5.0,
+     "technical": 4.0
+    },
+    "usable": true,
+    "deterministic": true,
+    "moves": true,
+    "duration": 14.0,
+    "html_chars": 25070,
+    "tokens_out": 9142,
+    "summary": "The morph chain is legible and the black-on-warm-gray palette is on brief, but the piece reads as a storyboard of separate widgets rather than one shape never cut: the container jumps size and position between states instead of morphing, the camera never zooms to fill frame, and the cursor is a tiny afterthought. The loop closes numerically but the last frame is a bare pill with no content, so the return to 'Get started' is a pop, not a resolution.",
+    "has_sheet": true
+   },
+   {
+    "prompt": "dale-vaz-879074",
+    "category": "motion",
+    "author": "dale_vaz",
+    "post_url": "https://x.com/dale_vaz/status/2103290592679879074",
+    "state": "done",
+    "outcome": "done",
+    "reason": "",
+    "detail": "",
+    "mean": 3.67,
+    "scores": {
+     "style_fidelity": 4.0,
+     "concept_wow": 3.0,
+     "motion_craft": 3.0,
+     "design_typography": 5.0,
+     "finish_texture": 4.0,
+     "technical": 3.0
+    },
+    "usable": false,
+    "deterministic": true,
+    "moves": true,
+    "duration": 30.0,
+    "html_chars": 19533,
+    "tokens_out": 7102,
+    "summary": "The desktop UI itself is competently drawn — the option chain, watchlist sparklines and chart panel read as a real terminal — but the film around it is mostly empty black: 5 blank frames, 3 still steps, and a first-to-last change of 0.0, meaning the piece begins and ends on nothing. The brief's two hero beats (zoom out to a point in space, zoom back in to a landscape mobile split-screen ending on 'Single Screen Trading on SAHI') are absent or invisible, so the whole thing reads as a UI mockup with a slow fade rather than a directed film.",
+    "has_sheet": true
+   },
+   {
+    "prompt": "okapi-fukugyo-166351",
+    "category": "motion",
+    "author": "okapi_fukugyo",
+    "post_url": "https://x.com/okapi_fukugyo/status/2103586082336166351",
+    "state": "done",
+    "outcome": "done",
+    "reason": "",
+    "detail": "",
+    "mean": 3.67,
+    "scores": {
+     "style_fidelity": 4.0,
+     "concept_wow": 3.0,
+     "motion_craft": 4.0,
+     "design_typography": 4.0,
+     "finish_texture": 4.0,
+     "technical": 3.0
+    },
+    "usable": true,
+    "deterministic": true,
+    "moves": true,
+    "duration": 14.0,
+    "html_chars": 25923,
+    "tokens_out": 9107,
+    "summary": "The single-morphing-shape premise is legible and the palette is right, but the piece is mostly empty warm-grey field with a small black blob in the middle: the camera never zooms to fill the frame, the states are unreadable at contact-sheet scale, and the text layer is a static dump of every label at every time. It reads as a proof-of-concept for the morph engine, not as a Dribbble-grade screen-motion piece.",
+    "has_sheet": true
+   },
+   {
+    "prompt": "thejohnnyhuy-282154",
+    "category": "motion",
+    "author": "thejohnnyhuy",
+    "post_url": "https://x.com/thejohnnyhuy/status/2104149060588282154",
+    "state": "done",
+    "outcome": "done",
+    "reason": "",
+    "detail": "",
+    "mean": 3.17,
+    "scores": {
+     "style_fidelity": 3.0,
+     "concept_wow": 2.0,
+     "motion_craft": 3.0,
+     "design_typography": 3.0,
+     "finish_texture": 2.0,
+     "technical": 6.0
+    },
+    "usable": true,
+    "deterministic": true,
+    "moves": true,
+    "duration": 27.0,
+    "html_chars": 10668,
+    "tokens_out": 3921,
+    "summary": "This is a soft-focus blob field drifting over a static iris polygon with a hue-cycling gradient behind it; nothing in it reads as liquid glass, goo, or an Apple keynote. The wordmark arrives as a blurred white sans sitting on top of the blobs rather than being formed by them, so the one hero moment the brief demands is missed.",
+    "has_sheet": true
+   },
+   {
+    "prompt": "zacxbt-944604",
+    "category": "interactive",
+    "author": "zacxbt",
+    "post_url": "https://x.com/zacxbt/status/2103808699466944604",
+    "state": "done",
+    "outcome": "done",
+    "reason": "",
+    "detail": "",
+    "mean": 5.17,
+    "scores": {
+     "style_fidelity": 6.0,
+     "concept_wow": 4.0,
+     "motion_craft": 4.0,
+     "design_typography": 5.0,
+     "finish_texture": 5.0,
+     "technical": 7.0
+    },
+    "usable": false,
+    "deterministic": true,
+    "moves": false,
+    "duration": 12.0,
+    "html_chars": 21405,
+    "tokens_out": 8140,
+    "summary": "A competent, correct pixel-art wizard that hits most of the brief's technical clauses (integer scaling, palette, pooled particles, deterministic seek) but reads as a static sprite with a sparkle emitter rather than an animated performance. The wizard barely moves, the 'cast' has no projectile, no burst, no shake, and the composition is a small figure floating in a large empty field with a flat two-band sky.",
+    "has_sheet": true
+   },
+   {
+    "prompt": "twoclipping-041659",
+    "category": "interactive",
+    "author": "twoclipping",
+    "post_url": "https://x.com/twoclipping/status/2107822293653041659",
+    "state": "done",
+    "outcome": "none",
+    "reason": "jury_unreadable",
+    "detail": {
+     "key": "vb_jury_unreadable",
+     "params": {},
+     "text": "The jury answered without scores twice."
+    },
+    "mean": null,
+    "scores": {},
+    "usable": true,
+    "deterministic": true,
+    "moves": true,
+    "duration": 20.0,
+    "html_chars": 31094,
+    "tokens_out": 11454,
+    "summary": "",
+    "has_sheet": true
+   },
+   {
+    "prompt": "aichrislee-922082",
+    "category": "interactive",
+    "author": "aichrislee",
+    "post_url": "https://x.com/aichrislee/status/2107260223907922082",
+    "state": "done",
+    "outcome": "done",
+    "reason": "",
+    "detail": "",
+    "mean": 3.67,
+    "scores": {
+     "style_fidelity": 4.0,
+     "concept_wow": 3.0,
+     "motion_craft": 3.0,
+     "design_typography": 4.0,
+     "finish_texture": 3.0,
+     "technical": 5.0
+    },
+    "usable": false,
+    "deterministic": true,
+    "moves": false,
+    "duration": 12.0,
+    "html_chars": 32654,
+    "tokens_out": 11756,
+    "summary": "The page renders and seeks deterministically, but the 'V8 engine' reads as a stack of flat grey slabs with a blue comb on top; the V-angle, cylinder banks, pistons, rods, crank, cams and valves are not legible as mechanical forms. Nothing in the 12 seconds demonstrates the explode, the labels, the hover state or the orbit, so the brief's core interactions are unproven and the hero moment is absent.",
+    "has_sheet": true
+   }
+  ],
+  "markdown": "| brief | category | outcome | moves | deterministic | mean | style_fidelity | concept_wow | motion_craft | design_typography | finish_texture | technical |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n| pluvio9yte-662953 | motion | done | True | True | 4.33 | 4.0 | 3.0 | 4.0 | 5.0 | 4.0 | 6.0 |\n| hsanat-012699 | motion | done | True | True | 5.0 | 5.0 | 4.0 | 4.0 | 6.0 | 5.0 | 6.0 |\n| hicallmechai-878304 | motion | done | True | True | 4.83 | 5.0 | 4.0 | 4.0 | 5.0 | 5.0 | 6.0 |\n| dzhohola-249003 | motion | done | True | True | 4.67 | 5.0 | 4.0 | 5.0 | 5.0 | 5.0 | 4.0 |\n| dale-vaz-879074 | motion | done | True | True | 3.67 | 4.0 | 3.0 | 3.0 | 5.0 | 4.0 | 3.0 |\n| okapi-fukugyo-166351 | motion | done | True | True | 3.67 | 4.0 | 3.0 | 4.0 | 4.0 | 4.0 | 3.0 |\n| thejohnnyhuy-282154 | motion | done | True | True | 3.17 | 3.0 | 2.0 | 3.0 | 3.0 | 2.0 | 6.0 |\n| zacxbt-944604 | interactive | done | False | True | 5.17 | 6.0 | 4.0 | 4.0 | 5.0 | 5.0 | 7.0 |\n| twoclipping-041659 | interactive | none (jury_unreadable) | True | True | - | - | - | - | - | - | - |\n| aichrislee-922082 | interactive | done | False | True | 3.67 | 4.0 | 3.0 | 3.0 | 4.0 | 3.0 | 5.0 |"
+ },
+ "items": {
+  "pluvio9yte-662953": {
+   "id": 1,
+   "run_id": "vb_01m622aw0885rdq8c5v4eywpcg",
+   "prompt_id": "pluvio9yte-662953",
+   "state": "done",
+   "outcome": "done",
+   "reason": "",
+   "detail": "",
+   "html_chars": 17912,
+   "tokens_in": 1136,
+   "tokens_out": 6843,
+   "latency_ms": 66332.5,
+   "static": {
+    "chars": 17912,
+    "defines_seek": true,
+    "defines_duration": true,
+    "external_references": 0,
+    "reads_clock": false,
+    "unseeded_random": false,
+    "truncated": false
+   },
+   "render": {
+    "ok": true,
+    "console_errors": [],
+    "page_errors": [],
+    "blocked_requests": [],
+    "has_seek": true,
+    "declared_duration": 28,
+    "duration": 28.0,
+    "times": [
+     0.0,
+     2.5455,
+     5.0909,
+     7.6364,
+     10.1818,
+     12.7273,
+     15.2727,
+     17.8182,
+     20.3636,
+     22.9091,
+     25.4545,
+     28.0
+    ],
+    "files": [
+     "f00.png",
+     "f01.png",
+     "f02.png",
+     "f03.png",
+     "f04.png",
+     "f05.png",
+     "f06.png",
+     "f07.png",
+     "f08.png",
+     "f09.png",
+     "f10.png",
+     "f11.png"
+    ],
+    "texts": [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    "frame_ms": [
+     105,
+     98,
+     82,
+     132,
+     193,
+     74,
+     84,
+     98,
+     82,
+     84,
+     82,
+     62
+    ],
+    "deterministic": true,
+    "render_s": 2.48
+   },
+   "auto": {
+    "blank_frames": 0,
+    "motion_mean": 0.11229,
+    "motion": [
+     0.00451,
+     0.01631,
+     0.064,
+     0.05086,
+     0.03578,
+     0.06251,
+     0.06061,
+     0.02842,
+     0.02196,
+     0.03271,
+     0.85755
+    ],
+    "still_steps": 0,
+    "first_last_change": 0.83505,
+    "max_change_from_first": 0.83505,
+    "luminance": [
+     0.062,
+     0.059,
+     0.044,
+     0.108,
+     0.061,
+     0.05,
+     0.09,
+     0.055,
+     0.058,
+     0.069,
+     0.039,
+     0.897
+    ],
+    "colourfulness_mean": 0.0599,
+    "moves": true,
+    "not_blank": true,
+    "usable": true
+   },
+   "jury": {
+    "scores": {
+     "style_fidelity": 4.0,
+     "concept_wow": 3.0,
+     "motion_craft": 4.0,
+     "design_typography": 5.0,
+     "finish_texture": 4.0,
+     "technical": 6.0
+    },
+    "mean": 4.33,
+    "dimensions_scored": 6,
+    "summary": "The page is a technically sound particle system with a working seek and a clean HUD, but it never delivers the brief's core promise: a source image decomposed into depth, subject and colour, then rebuilt in contrasting styles with beat-locked feedback. Every frame is an undifferentiated cloud of dots on black, so the 'before → particle' reveal, the subject silhouette, the depth push-in and the hero moment are all absent.",
+    "critical": [
+     "No source footage or subject is ever legible: all 12 frames are abstract dot fields, so the brief's 'subject complete / clean background / action moment' pipeline is invisible.",
+     "The opening does not 'explain the change' (先给原画面，再过渡到粒子) — t=0 is already particles, so the hook and the concept are lost in the first half second.",
+     "Styles are not differentiated enough: dots vs squares vs lines vs text is the only variation; the brief's three-rule matrix (placement / size / colour) and the 2D-vs-3D depth switch are not visibly exercised.",
+     "The final frame (t=28s) is a near-white blocky field with no readable payoff — the 'particles grow into colour blocks' ending reads as a rendering artefact, not a designed close.",
+     "HUD text ('文字/品红', '方块/冰蓝', 'BAR 6/14 · 120BPM') is tiny, low-contrast and sits in dead corners; it is the only typography and it is not doing compositional work."
+    ],
+    "fixes": [
+     {
+      "t": "0.0s",
+      "problem": "The animation opens on particles; there is no original-image beat, so the audience never sees what is being decomposed.",
+      "fix": "Add a 0.6–0.8s hold of the source frame (or a high-fidelity dot reconstruction at full density) that then dissolves into the sparse particle field; this is the brief's '开头交代变化' and is the single biggest missing beat."
+     },
+     {
+      "t": "5.1s",
+      "problem": "The 'line' style frame is a uniform scribble with no subject silhouette; the depth/subject mask is not driving placement.",
+      "fix": "Drive particle placement from a subject mask so the figure's contour is readable in every style; keep background particles at 20–30% density and desaturated so the silhouette pops."
+     },
+     {
+      "t": "15.3s",
+      "problem": "The 3D push-in frame is a flat wall of squares; there is no parallax or camera orbit, so the '推进三维空间' switch is not demonstrated.",
+      "fix": "Add a real z-depth per particle and a slow camera dolly/orbit across 2–3 bars; scale particle size by 1/z and add slight motion blur so the depth reads."
+     },
+     {
+      "t": "20.4s",
+      "problem": "The 'hero' moment (time-freeze + orbit) is indistinguishable from a normal style switch — no freeze, no orbit, no impact feedback.",
+      "fix": "Pick one beat (e.g. 20.4s) as the big feedback: freeze particle motion for 4–6 frames, orbit the camera 15–20°, and add a brief radial displacement of 10–15% of particles toward camera; keep it under 8 frames."
+     },
+     {
+      "t": "28.0s",
+      "problem": "The last frame is a blown-out white blocky field that reads as a glitch, not a designed resolution.",
+      "fix": "End on a deliberate image: either a clean return to the source frame, or particles coalescing into a single large colour block with a soft vignette and the title/credit set in the HUD. Remove the blocky aliasing by rendering the final block as a smooth gradient."
+     },
+     {
+      "t": "2.5s",
+      "problem": "Style switches are hard cuts with no anticipation or follow-through; the palette jumps but the motion does not sell the change.",
+      "fix": "Add 3–4 frame anticipation (particles contract slightly) before each style switch and 4–6 frame overshoot after, so cuts feel struck rather than swapped."
+     }
+    ]
+   },
+   "jury_mode": "images",
+   "mean": 4.33,
+   "ts": 1793219999.4597318,
+   "brief": {
+    "id": "pluvio9yte-662953",
+    "category": "motion",
+    "tech_tags": [],
+    "standalone": true,
+    "chars": 1335,
+    "author": "Pluvio9yte",
+    "author_url": "https://x.com/Pluvio9yte",
+    "post_url": "https://x.com/Pluvio9yte/status/2107087191738662953",
+    "excerpt": "公开我的制作方案，发给Opus5.5就能用 1. 选素材 三个标准，直接决定成败： - 主体完整：人物或物体全身入画。细节会在加工中丢失，观众靠轮廓认东西，特写会变成一团。 - 背景干净：纯色、雪地、天空都行，主体和背景容易分开。 - 有明确的动作瞬间：打击、起跳、落地、转身。这些是后面做特效的支点。 来源可以是自己拍的、视频模型生成的，或有授权的现成片段。 2. 拆素材 从每一帧提取三类信息： - 颜色：原画面。 - 远近：每个位置离",
+    "prompt": "公开我的制作方案，发给Opus5.5就能用\n\n  1. 选素材\n\n  三个标准，直接决定成败：\n\n  - 主体完整：人物或物体全身入画。细节会在加工中丢失，观众靠轮廓认东西，特写会变成一团。\n  - 背景干净：纯色、雪地、天空都行，主体和背景容易分开。\n  - 有明确的动作瞬间：打击、起跳、落地、转身。这些是后面做特效的支点。\n\n  来源可以是自己拍的、视频模型生成的，或有授权的现成片段。\n\n  2. 拆素材\n\n  从每一帧提取三类信息：\n\n  - 颜色：原画面。\n  - 远近：每个位置离镜头多远，用现成的深度估计模型算。\n  - 主体范围：哪里是主体、哪里是背景。\n\n  另外找出镜头切换发生在哪些时刻。这一步的要点是保持稳定：远近和主体范围要在同一个镜头内统一处理，否则播放起来会抖。\n\n  3. 定\"粒子\"和\"样式\"\n\n  先决定用什么东西来重建画面：圆点、方块、文字、线条都可以。\n\n  然后设计几种样式。每种样式其实只是三条规则的不同组合：\n\n  - 放在哪：整个画面都放，还是只放在主体上。\n  - 多大：统一大小，还是跟着明暗、远近变化。\n  - 什么颜色：用原画的颜色，还是统一用一两种颜色。\n\n  再加一个开关：是平铺在一个面上，还是按远近推进三维空间。推进去之后镜头才能环绕。\n\n  准备四到六种差异明显的样式就够用。粒子的疏密需要自己看着调：太大认不出内容，太小又和原片没区别。\n\n  4. 找节奏\n\n  - 定速度：选定音乐的速度，把时间切成等长的小格。让一格正好是整数帧，后面所有切换都好对齐。\n  - 找动作瞬间：结合\"声音突然变响\"和\"画面突然变动\"两个信号，找出素材里的打击点。\n  - 准备音乐：可以用现成的曲子并分析出它的拍子，也可以按定好的速度合成一段，并在打击点上加重音。\n\n  5. 编排\n\n  做一张时间表，写明每一格用哪种样式、什么配色、镜头在哪。这张表单独存放，以后调节奏只改它。\n\n  编排的四条原则：\n\n  - 开头交代变化：先给原画面，再过渡到粒子，让观众看懂发生了什么。\n  - 快慢交替：一直快会麻木，中间要有一段明显慢下来的部分。\n  - 配色要撞：相邻两格的颜色和样式反差越大，切换越有力。\n  - 结尾要有收束：比如粒子越来越大直到变成色块，或者回到原画面。\n\n  6. 关键时刻的反馈\n\n  在打击点上叠加短促的反应，按轻重分级：\n\n  - 每一次都有的轻反馈：粒子变形一下、镜头顶一下。\n  - 较重时才有的中反馈：一部分粒子朝镜头弹开。\n  - 最重的一两次才用的大反馈：时间静止，镜头环绕。\n\n  原则是弱而短。只动一部分粒子，几帧内结束，否则画面炸成一片，观众就看不清主体在做什么了。\n\n  贯穿全程的工作方法\n\n  - 先小样后全片：每做完一个环节，先渲染几帧看效果，确认了再往下。全片只在最后渲染。\n  - 拿不准的参数一次出一排：比如疏密，让 AI 同时出五六个档位并排放，你来挑。\n  - 改哪里渲哪里：调整某一段时只重新渲染那一段。\n  - 让 AI 自己看图：每一步都要求它把渲染结果打开看一遍再汇报。\n  - 所有随机都固定：保证同样的设置每次渲染结果一致，否则没法逐步修改。"
+   },
+   "files": {
+    "index.html": true,
+    "sheet.png": true,
+    "key1.png": true,
+    "key2.png": true
+   }
+  },
+  "hsanat-012699": {
+   "id": 2,
+   "run_id": "vb_01m622aw0885rdq8c5v4eywpcg",
+   "prompt_id": "hsanat-012699",
+   "state": "done",
+   "outcome": "done",
+   "reason": "",
+   "detail": "",
+   "html_chars": 21082,
+   "tokens_in": 415,
+   "tokens_out": 7633,
+   "latency_ms": 69751.6,
+   "static": {
+    "chars": 21082,
+    "defines_seek": true,
+    "defines_duration": true,
+    "external_references": 0,
+    "reads_clock": false,
+    "unseeded_random": false,
+    "truncated": false
+   },
+   "render": {
+    "ok": true,
+    "console_errors": [],
+    "page_errors": [],
+    "blocked_requests": [],
+    "has_seek": true,
+    "declared_duration": 24,
+    "duration": 24.0,
+    "times": [
+     0.0,
+     2.1818,
+     4.3636,
+     6.5455,
+     8.7273,
+     10.9091,
+     13.0909,
+     15.2727,
+     17.4545,
+     19.6364,
+     21.8182,
+     24.0
+    ],
+    "files": [
+     "f00.png",
+     "f01.png",
+     "f02.png",
+     "f03.png",
+     "f04.png",
+     "f05.png",
+     "f06.png",
+     "f07.png",
+     "f08.png",
+     "f09.png",
+     "f10.png",
+     "f11.png"
+    ],
+    "texts": [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    "frame_ms": [
+     286,
+     284,
+     213,
+     209,
+     200,
+     334,
+     285,
+     294,
+     291,
+     325,
+     333,
+     318
+    ],
+    "deterministic": true,
+    "render_s": 5.45
+   },
+   "auto": {
+    "blank_frames": 0,
+    "motion_mean": 0.01998,
+    "motion": [
+     0.0212,
+     0.03518,
+     0.01854,
+     0.00033,
+     0.03191,
+     0.00295,
+     0.01828,
+     0.03234,
+     0.02476,
+     0.03212,
+     0.00216
+    ],
+    "still_steps": 1,
+    "first_last_change": 0.03017,
+    "max_change_from_first": 0.04546,
+    "luminance": [
+     0.087,
+     0.098,
+     0.081,
+     0.095,
+     0.095,
+     0.099,
+     0.099,
+     0.116,
+     0.099,
+     0.089,
+     0.105,
+     0.105
+    ],
+    "colourfulness_mean": 0.0866,
+    "moves": true,
+    "not_blank": true,
+    "usable": true
+   },
+   "jury": {
+    "scores": {
+     "style_fidelity": 5.0,
+     "concept_wow": 4.0,
+     "motion_craft": 4.0,
+     "design_typography": 6.0,
+     "finish_texture": 5.0,
+     "technical": 6.0
+    },
+    "mean": 5.0,
+    "dimensions_scored": 6,
+    "summary": "A competent but generic dark-SaaS template: logo, dashboard, feature cards, stats, quote, CTA, in that order, with no hook, no hero moment and no real product story. The typography is clean and the palette is consistent, but the motion is mostly fades and the 15.3s stat collision is a visible failure.",
+    "critical": [
+     "The product is invented ('Nexus'), not a real, recognisable SaaS with real assets as the brief demanded; the dashboard is a mock, not captured product UI.",
+     "At 15.3s the stat numbers (12,483 / 99.99% / 4.9/5) overlap the feature-card text underneath, producing an unreadable pile-up — a hard layout failure.",
+     "No visible text at any sampled time in the automatic checks, and the whole piece is a sequence of centred fades: reads as a template, not a launch film.",
+     "Motion is nearly all opacity crossfades with no camera move, no scale-through, no product interaction; mean frame change 0.02 with a still step at 8.7s."
+    ],
+    "fixes": [
+     {
+      "t": "15.3s",
+      "problem": "Stat numbers land on top of the feature-card row, text collides and is unreadable.",
+      "fix": "Cut the feature cards out before the stats arrive (or push them down/out with a staggered exit), then bring the three stats in on a clean empty stage with a 40ms stagger and a 1.06→1.0 scale settle."
+     },
+     {
+      "t": "0.0s",
+      "problem": "Opens on a near-black frame with a centred wordmark and a subtitle; no hook, no product, nothing to identify with in the first half second.",
+      "fix": "Open on a real product moment: a cursor clicking a real button in a real captured UI, or a hard cut into a zooming dashboard with a live number ticking. Put the logo at the end, not the start."
+     },
+     {
+      "t": "4.4s",
+      "problem": "The dashboard is a static mock that just fades in and sits there; the 'Revenue growth' chart never draws, no metric animates, no interaction is shown.",
+      "fix": "Animate the chart path drawing with a mask over 0.8s, count the MRR/active-user numbers up, and add a cursor that hovers a card and opens a tooltip — one real interaction beat is the hero moment this film is missing."
+     },
+     {
+      "t": "8.7s",
+      "problem": "A still step: the frame barely changes for a full beat, killing momentum right before the feature section.",
+      "fix": "Overlap the dashboard exit with the feature-section entrance (cards rise in from y+24 with 60ms stagger while the dashboard scales to 0.96 and fades), so there is no dead frame."
+     },
+     {
+      "t": "19.6s",
+      "problem": "The testimonial is a centred quote with a tiny avatar on an empty field — flat and generic, no texture or depth.",
+      "fix": "Give the quote a real portrait or a blurred product screenshot behind it, add a subtle vignette and a slow 1.02 push-in on the quote, and animate the quote marks drawing in before the text."
+     },
+     {
+      "t": "24.0s",
+      "problem": "The final frame is the same logo lockup as the opening, so the film ends where it started with no payoff.",
+      "fix": "End on a composed hero frame: product UI behind, logo and CTA in front, with a single light sweep across the button and a URL that types in — a last frame worth screenshotting."
+     }
+    ]
+   },
+   "jury_mode": "images",
+   "mean": 5.0,
+   "ts": 1793219999.6110692,
+   "brief": {
+    "id": "hsanat-012699",
+    "category": "motion",
+    "tech_tags": [
+     "svg",
+     "gsap"
+    ],
+    "standalone": true,
+    "chars": 520,
+    "author": "hSanat",
+    "author_url": "https://x.com/hSanat",
+    "post_url": "https://x.com/hSanat/status/2103358205091012699",
+    "excerpt": "I want you to create a highly professional SaaS product launch video. Go and find some SaaS, preferably just one that people know, so it's easier to identify with it. Pick that, and then make sure to get actual assets an",
+    "prompt": "I want you to create a highly professional SaaS product launch video. Go and find some SaaS, preferably just one that people know, so it's easier to identify with it. Pick that, and then make sure to get actual assets and images and all of that stuff from the internet. Turn it into these typical, very professionally edited, motion-graphics-styled product launch videos that you see people making on Twitter when they launch new SaaS products (which are showing off the features, the benefits, and all of these things)."
+   },
+   "files": {
+    "index.html": true,
+    "sheet.png": true,
+    "key1.png": true,
+    "key2.png": true
+   }
+  },
+  "hicallmechai-878304": {
+   "id": 3,
+   "run_id": "vb_01m622aw0885rdq8c5v4eywpcg",
+   "prompt_id": "hicallmechai-878304",
+   "state": "done",
+   "outcome": "done",
+   "reason": "",
+   "detail": "",
+   "html_chars": 21697,
+   "tokens_in": 948,
+   "tokens_out": 8388,
+   "latency_ms": 79455.2,
+   "static": {
+    "chars": 21697,
+    "defines_seek": true,
+    "defines_duration": true,
+    "external_references": 0,
+    "reads_clock": false,
+    "unseeded_random": false,
+    "truncated": false
+   },
+   "render": {
+    "ok": true,
+    "console_errors": [],
+    "page_errors": [],
+    "blocked_requests": [],
+    "has_seek": true,
+    "declared_duration": 14,
+    "duration": 14.0,
+    "times": [
+     0.0,
+     1.2727,
+     2.5455,
+     3.8182,
+     5.0909,
+     6.3636,
+     7.6364,
+     8.9091,
+     10.1818,
+     11.4545,
+     12.7273,
+     14.0
+    ],
+    "files": [
+     "f00.png",
+     "f01.png",
+     "f02.png",
+     "f03.png",
+     "f04.png",
+     "f05.png",
+     "f06.png",
+     "f07.png",
+     "f08.png",
+     "f09.png",
+     "f10.png",
+     "f11.png"
+    ],
+    "texts": [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    "frame_ms": [
+     78,
+     79,
+     83,
+     81,
+     75,
+     81,
+     89,
+     88,
+     78,
+     80,
+     82,
+     64
+    ],
+    "deterministic": true,
+    "render_s": 2.13
+   },
+   "auto": {
+    "blank_frames": 0,
+    "motion_mean": 0.01592,
+    "motion": [
+     0.01011,
+     0.00531,
+     0.03047,
+     0.01388,
+     0.02675,
+     0.02062,
+     0.02478,
+     0.01352,
+     0.00081,
+     0.02171,
+     0.00716
+    ],
+    "still_steps": 1,
+    "first_last_change": 0.0,
+    "max_change_from_first": 0.02871,
+    "luminance": [
+     0.923,
+     0.928,
+     0.924,
+     0.894,
+     0.9,
+     0.926,
+     0.918,
+     0.927,
+     0.937,
+     0.938,
+     0.919,
+     0.923
+    ],
+    "colourfulness_mean": 0.0356,
+    "moves": true,
+    "not_blank": true,
+    "usable": true
+   },
+   "jury": {
+    "scores": {
+     "style_fidelity": 5.0,
+     "concept_wow": 4.0,
+     "motion_craft": 4.0,
+     "design_typography": 5.0,
+     "finish_texture": 5.0,
+     "technical": 6.0
+    },
+    "mean": 4.83,
+    "dimensions_scored": 6,
+    "summary": "The state list is all there and the loop closes, but the camera never zooms, so every state sits as a tiny chip in a vast empty canvas — the opposite of the brief's 'each state fills the frame'. The morphs read as small, timid and mostly unreadable at contact-sheet scale, and the hero moments (volume stretch past max, liquid tab indicator, chart draw) are invisible.",
+    "critical": [
+     "Camera never zooms: every state occupies ~10% of frame width; brief demands each state fills the frame. This alone makes the piece read as a template demo, not a Dribbble-level motion piece.",
+     "Text is illegible at delivered scale (e.g. 'VOL', 'New playing', 'Saved to library' are sub-8px in the 1280x720 render).",
+     "One still step detected (t=11.45s change 0.00081) — dead time on a beat, banned by the brief.",
+     "No visible cursor-driven drag on the volume slider past max, no liquid tab stretch, no chart self-draw with tooltip — the three signature moments are missing or invisible."
+    ],
+    "fixes": [
+     {
+      "t": "0.0s–14.0s",
+      "problem": "Camera is static; every state is a small chip centered in a huge warm-gray field. The brief's core idea — 'the camera zooms so each state fills the frame' — is not implemented.",
+      "fix": "Add a camera transform (scale + translate) driven by a closed-form spring per state change, targeting each state's bounding box to ~70–80% of frame width. This is the single biggest wow lever: it turns a chip demo into a cinematic morph reel."
+     },
+     {
+      "t": "5.0s–6.5s",
+      "problem": "Volume slider at 5.1s shows a static knob mid-track; no drag-past-max stretch, no spring-back. The 'stretches when dragged past max' beat is absent.",
+      "fix": "Animate the cursor grabbing the knob, dragging right past the track end so the track itself stretches (width spring overshoots), then release and spring back. Two-edge spring on the fill so the leading edge leads the trailing edge."
+     },
+     {
+      "t": "7.6s–8.9s",
+      "problem": "Chart at 8.9s appears fully drawn; no self-draw, no tooltip on hover. The 'chart draws itself with a tooltip on hover' beat is missing.",
+      "fix": "Stagger bar heights with per-bar springs starting on the beat, then move the cursor onto a bar and pop a tooltip with a 60ms blur-in. Bars should grow from baseline, not fade."
+     },
+     {
+      "t": "11.45s",
+      "problem": "Still step detected — the command palette sits idle for a full beat with no motion.",
+      "fix": "Fill the beat with the type-to-filter: cursor types 'pla', rows filter with a blur-swap, then Enter. Every beat must have a visible change."
+     },
+     {
+      "t": "0.0s / 14.0s",
+      "problem": "First and last frames match (good) but the button is a tiny pill in a sea of gray; the hook in the first half-second is weak.",
+      "fix": "Open with the camera already tight on the button (fills ~40% of frame), then zoom out as it morphs to loader. The first frame should feel like a close-up, not a wide."
+     },
+     {
+      "t": "3.8s–5.0s",
+      "problem": "Dynamic island and player states are visually near-identical black pills; the morph between them is not legible.",
+      "fix": "Differentiate silhouettes: island is a wide short pill with a single dot; player is a taller rounded rect with album art block. The morph should visibly change aspect ratio, not just width."
+     }
+    ]
+   },
+   "jury_mode": "images",
+   "mean": 4.83,
+   "ts": 1793219999.7439835,
+   "brief": {
+    "id": "hicallmechai-878304",
+    "category": "motion",
+    "tech_tags": [
+     "svg",
+     "gsap"
+    ],
+    "standalone": true,
+    "chars": 2711,
+    "author": "hiCallMeChai",
+    "author_url": "https://x.com/hiCallMeChai",
+    "post_url": "https://x.com/hiCallMeChai/status/2103600312296878304",
+    "excerpt": "<inputs> Ask me for: 8 to 12 UI states I want the shape to become (e.g. button, loader, player, slider, toggle, tabs, chart, command palette, toast), pure black and white or one accent color, and a royalty-free song arou",
+    "prompt": "<inputs>\nAsk me for: 8 to 12 UI states I want the shape to become (e.g. button, loader, player, slider, toggle, tabs, chart, command palette, toast), pure black and white or one accent color, and a royalty-free song around 120 BPM (e.g. Mixkit, free for commercial use).\n</inputs>\n\n<direction>\nDribbble-level UI motion. One shape, never cut: every state is the same element morphing its size, radius and color while its content swaps with a short blur. A cursor drives every change with real clicks and drags. Light warm-gray canvas, black and white components, one clean UI font (Geist). Springs everywhere, a tiny overshoot at most. The camera zooms so each state fills the frame. The last frame is the first frame, so it loops.\nBanned: bouncy easing, particle bursts, glows, gradients on UI chrome, mismatched icon strokes, dead time, anything that looks like a template.\n</direction>\n\n<structure>\n120 BPM, 7 bars, something happens on every beat.\nButton → loader → check → dynamic island → music player with a play/pause morph → scrub the progress bar → it becomes a volume slider that stretches when dragged past max → a toggle flips on the beat → the knob becomes a liquid tab indicator → the tabs open into a chart that draws itself, with a tooltip on hover → it collapses into ⌘K → type to filter → enter → toast → back to the button.\n</structure>\n\n<build>\n1. One HTML file, square 1440x1440. Every style is computed from time inside seek(t): no CSS transitions, no timers, no state carried between frames.\n2. Springs are closed-form step responses. A value that changes target many times is the sum of one spring per change, so it stays a pure function of time.\n3. The tab indicator's two edges ride different springs, so the leading edge stretches ahead of the trailing one. Same trick for the toggle knob.\n4. Drags are direct manipulation: while the cursor is held, the value is computed from its position. On release it springs back from wherever it was.\n5. Analyze the song with numpy for the beat grid and start on a downbeat. Place every UI sound by its measured peak.\n6. Render with Playwright: 4 subframes per frame, blended with ffmpeg tmix for motion blur at 60fps.\n7. Render one frame per beat before the full render. Fix anything off the grid, cramped or hard to read.\n</build>\n\n<gotchas>\nNever put will-change on anything the camera scales or the text renders blurry. Text that swaps inside a morphing container needs its own enter and exit timing or it overlaps. Make the last frame identical to the first, cursor position and speed included, or the loop stutters.\n</gotchas>\n\n<start>\nAsk me for the inputs, then show me the state list on the beat grid before you write any code.\n</start>"
+   },
+   "files": {
+    "index.html": true,
+    "sheet.png": true,
+    "key1.png": true,
+    "key2.png": true
+   }
+  },
+  "dzhohola-249003": {
+   "id": 4,
+   "run_id": "vb_01m622aw0885rdq8c5v4eywpcg",
+   "prompt_id": "dzhohola-249003",
+   "state": "done",
+   "outcome": "done",
+   "reason": "",
+   "detail": "",
+   "html_chars": 25070,
+   "tokens_in": 948,
+   "tokens_out": 9142,
+   "latency_ms": 85796.2,
+   "static": {
+    "chars": 25070,
+    "defines_seek": true,
+    "defines_duration": true,
+    "external_references": 0,
+    "reads_clock": false,
+    "unseeded_random": false,
+    "truncated": false
+   },
+   "render": {
+    "ok": true,
+    "console_errors": [],
+    "page_errors": [],
+    "blocked_requests": [],
+    "has_seek": true,
+    "declared_duration": 14,
+    "duration": 14.0,
+    "times": [
+     0.0,
+     1.2727,
+     2.5455,
+     3.8182,
+     5.0909,
+     6.3636,
+     7.6364,
+     8.9091,
+     10.1818,
+     11.4545,
+     12.7273,
+     14.0
+    ],
+    "files": [
+     "f00.png",
+     "f01.png",
+     "f02.png",
+     "f03.png",
+     "f04.png",
+     "f05.png",
+     "f06.png",
+     "f07.png",
+     "f08.png",
+     "f09.png",
+     "f10.png",
+     "f11.png"
+    ],
+    "texts": [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    "frame_ms": [
+     89,
+     88,
+     81,
+     78,
+     92,
+     83,
+     105,
+     88,
+     82,
+     93,
+     103,
+     89
+    ],
+    "deterministic": true,
+    "render_s": 2.3
+   },
+   "auto": {
+    "blank_frames": 0,
+    "motion_mean": 0.05517,
+    "motion": [
+     0.01211,
+     0.0217,
+     0.03928,
+     0.00067,
+     0.02274,
+     0.03403,
+     0.00617,
+     0.15905,
+     0.02728,
+     0.07989,
+     0.20391
+    ],
+    "still_steps": 1,
+    "first_last_change": 0.00073,
+    "max_change_from_first": 0.20465,
+    "luminance": [
+     0.918,
+     0.929,
+     0.908,
+     0.879,
+     0.879,
+     0.884,
+     0.917,
+     0.922,
+     0.763,
+     0.788,
+     0.713,
+     0.917
+    ],
+    "colourfulness_mean": 0.0379,
+    "moves": true,
+    "not_blank": true,
+    "usable": true
+   },
+   "jury": {
+    "scores": {
+     "style_fidelity": 5.0,
+     "concept_wow": 4.0,
+     "motion_craft": 5.0,
+     "design_typography": 5.0,
+     "finish_texture": 5.0,
+     "technical": 4.0
+    },
+    "mean": 4.67,
+    "dimensions_scored": 6,
+    "summary": "The morph chain is legible and the black-on-warm-gray palette is on brief, but the piece reads as a storyboard of separate widgets rather than one shape never cut: the container jumps size and position between states instead of morphing, the camera never zooms to fill frame, and the cursor is a tiny afterthought. The loop closes numerically but the last frame is a bare pill with no content, so the return to 'Get started' is a pop, not a resolution.",
+    "critical": [
+     "No visible text at any sampled frame despite the brief requiring Geist UI labels (Get started, Midnight, Play all, 90%) — the contact sheet shows text but the automatic check reports none, indicating text is rendered as paths/images or is being clipped/failing to paint at sample times; this is a con",
+     "The 'one shape, never cut' premise is not honored: at 1.3s the loader is a small circle, at 2.5s a wide pill, at 3.8s a large card — these are separate elements swapping, not one container morphing size/radius.",
+     "Camera does not zoom: every state sits at roughly the same scale in a 1280x720 frame with huge dead margins; the brief demands each state fill the frame.",
+     "The 5.1s frame is a near-still (change 0.00067) — dead time on a beat, banned by the direction.",
+     "The 14.0s frame is an empty black pill with no label, so the loop does not return to the first frame's content (Get started button), only its silhouette."
+    ],
+    "fixes": [
+     {
+      "t": "0.0s",
+      "problem": "First frame is a small 'Get started' pill floating in a vast empty canvas; no hook, no scale, no cursor intent.",
+      "fix": "Open tight: camera at ~2.5x so the button fills ~40% of frame width, cursor already mid-travel toward it with a visible click ripple on the downbeat. Pull back only as the shape grows."
+     },
+     {
+      "t": "1.3s",
+      "problem": "Loader is a separate small circle, not the button morphing — the container's width/height/radius snap between states.",
+      "fix": "Drive width, height, radius and background from a single spring per property with staggered targets; the button should squash to a circle (radius→50%, width→height) before the spinner fades in, so the silhouette is continuous."
+     },
+     {
+      "t": "5.1s",
+      "problem": "Near-still frame on a beat (delta 0.00067) — dead time.",
+      "fix": "Put the play/pause icon morph and the progress-bar scrub start on this beat; the cursor should be visibly dragging the scrubber with the fill tracking 1:1, so there is always motion on every beat."
+     },
+     {
+      "t": "10.2s",
+      "problem": "Chart state is a flat row of gray bars with no draw-on, no axis, no tooltip until 11.5s; it reads as a static widget, not a self-drawing chart.",
+      "fix": "Animate bar heights from 0 with per-bar spring delays (30ms stagger), draw the tooltip stem and value on the hover beat, and have the liquid tab indicator stretch into the first bar as the transition."
+     },
+     {
+      "t": "14.0s",
+      "problem": "Final frame is an empty pill; the loop does not restore the 'Get started' label or cursor position, so the cut back to 0.0s pops.",
+      "fix": "Make the toast collapse back into the exact button geometry and re-enter the label with the same blur-swap timing used elsewhere, and place the cursor at the identical position/velocity as t=0 so the loop is seamless."
+     },
+     {
+      "t": "3.8s",
+      "problem": "Dynamic island / player card is centered but small with no camera push; the hero moment (music player) has no scale emphasis.",
+      "fix": "Push camera to ~1.6x on the player beat so the card fills ~55% of frame, then ease back as it becomes the slider — this is the one moment that should feel like a product film."
+     }
+    ]
+   },
+   "jury_mode": "images",
+   "mean": 4.67,
+   "ts": 1793219999.867997,
+   "brief": {
+    "id": "dzhohola-249003",
+    "category": "motion",
+    "tech_tags": [
+     "css"
+    ],
+    "standalone": true,
+    "chars": 2711,
+    "author": "dzhohola",
+    "author_url": "https://x.com/dzhohola",
+    "post_url": "https://x.com/dzhohola/status/2103605737595249003",
+    "excerpt": "<inputs> Ask me for: 8 to 12 UI states I want the shape to become (e.g. button, loader, player, slider, toggle, tabs, chart, command palette, toast), pure black and white or one accent color, and a royalty-free song arou",
+    "prompt": "<inputs>\nAsk me for: 8 to 12 UI states I want the shape to become (e.g. button, loader, player, slider, toggle, tabs, chart, command palette, toast), pure black and white or one accent color, and a royalty-free song around 120 BPM (e.g. Mixkit, free for commercial use).\n</inputs>\n\n<direction>\nDribbble-level UI motion. One shape, never cut: every state is the same element morphing its size, radius and color while its content swaps with a short blur. A cursor drives every change with real clicks and drags. Light warm-gray canvas, black and white components, one clean UI font (Geist). Springs everywhere, a tiny overshoot at most. The camera zooms so each state fills the frame. The last frame is the first frame, so it loops.\nBanned: bouncy easing, particle bursts, glows, gradients on UI chrome, mismatched icon strokes, dead time, anything that looks like a template.\n</direction>\n\n<structure>\n120 BPM, 7 bars, something happens on every beat.\nButton → loader → check → dynamic island → music player with a play/pause morph → scrub the progress bar → it becomes a volume slider that stretches when dragged past max → a toggle flips on the beat → the knob becomes a liquid tab indicator → the tabs open into a chart that draws itself, with a tooltip on hover → it collapses into ⌘K → type to filter → enter → toast → back to the button.\n</structure>\n\n<build>\n1. One HTML file, square 1440x1440. Every style is computed from time inside seek(t): no CSS transitions, no timers, no state carried between frames.\n2. Springs are closed-form step responses. A value that changes target many times is the sum of one spring per change, so it stays a pure function of time.\n3. The tab indicator's two edges ride different springs, so the leading edge stretches ahead of the trailing one. Same trick for the toggle knob.\n4. Drags are direct manipulation: while the cursor is held, the value is computed from its position. On release it springs back from wherever it was.\n5. Analyze the song with numpy for the beat grid and start on a downbeat. Place every UI sound by its measured peak.\n6. Render with Playwright: 4 subframes per frame, blended with ffmpeg tmix for motion blur at 60fps.\n7. Render one frame per beat before the full render. Fix anything off the grid, cramped or hard to read.\n</build>\n\n<gotchas>\nNever put will-change on anything the camera scales or the text renders blurry. Text that swaps inside a morphing container needs its own enter and exit timing or it overlaps. Make the last frame identical to the first, cursor position and speed included, or the loop stutters.\n</gotchas>\n\n<start>\nAsk me for the inputs, then show me the state list on the beat grid before you write any code.\n</start>"
+   },
+   "files": {
+    "index.html": true,
+    "sheet.png": true,
+    "key1.png": true,
+    "key2.png": true
+   }
+  },
+  "dale-vaz-879074": {
+   "id": 5,
+   "run_id": "vb_01m622aw0885rdq8c5v4eywpcg",
+   "prompt_id": "dale-vaz-879074",
+   "state": "done",
+   "outcome": "done",
+   "reason": "",
+   "detail": "",
+   "html_chars": 19533,
+   "tokens_in": 447,
+   "tokens_out": 7102,
+   "latency_ms": 80277.9,
+   "static": {
+    "chars": 19533,
+    "defines_seek": true,
+    "defines_duration": true,
+    "external_references": 0,
+    "reads_clock": false,
+    "unseeded_random": false,
+    "truncated": false
+   },
+   "render": {
+    "ok": true,
+    "console_errors": [],
+    "page_errors": [],
+    "blocked_requests": [],
+    "has_seek": true,
+    "declared_duration": 46,
+    "duration": 30.0,
+    "times": [
+     0.0,
+     2.7273,
+     5.4545,
+     8.1818,
+     10.9091,
+     13.6364,
+     16.3636,
+     19.0909,
+     21.8182,
+     24.5455,
+     27.2727,
+     30.0
+    ],
+    "files": [
+     "f00.png",
+     "f01.png",
+     "f02.png",
+     "f03.png",
+     "f04.png",
+     "f05.png",
+     "f06.png",
+     "f07.png",
+     "f08.png",
+     "f09.png",
+     "f10.png",
+     "f11.png"
+    ],
+    "texts": [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    "frame_ms": [
+     97,
+     68,
+     163,
+     156,
+     157,
+     146,
+     146,
+     155,
+     126,
+     68,
+     83,
+     83
+    ],
+    "deterministic": true,
+    "render_s": 2.66
+   },
+   "auto": {
+    "blank_frames": 5,
+    "motion_mean": 0.02827,
+    "motion": [
+     8e-05,
+     0.0765,
+     0.00692,
+     0.03327,
+     0.03656,
+     0.03075,
+     0.03872,
+     0.05746,
+     0.03014,
+     0.00032,
+     0.00027
+    ],
+    "still_steps": 3,
+    "first_last_change": 0.0,
+    "max_change_from_first": 0.08443,
+    "luminance": [
+     0.0,
+     0.0,
+     0.077,
+     0.074,
+     0.082,
+     0.084,
+     0.082,
+     0.075,
+     0.03,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "colourfulness_mean": 0.0476,
+    "moves": true,
+    "not_blank": false,
+    "usable": false
+   },
+   "jury": {
+    "scores": {
+     "style_fidelity": 4.0,
+     "concept_wow": 3.0,
+     "motion_craft": 3.0,
+     "design_typography": 5.0,
+     "finish_texture": 4.0,
+     "technical": 3.0
+    },
+    "mean": 3.67,
+    "dimensions_scored": 6,
+    "summary": "The desktop UI itself is competently drawn — the option chain, watchlist sparklines and chart panel read as a real terminal — but the film around it is mostly empty black: 5 blank frames, 3 still steps, and a first-to-last change of 0.0, meaning the piece begins and ends on nothing. The brief's two hero beats (zoom out to a point in space, zoom back in to a landscape mobile split-screen ending on 'Single Screen Trading on SAHI') are absent or invisible, so the whole thing reads as a UI mockup with a slow fade rather than a directed film.",
+    "critical": [
+     "No visible text at any sampled frame — the required end card 'Single Screen Trading on SAHI' never appears, and no window titles/labels are legible in the contact sheet; the contract's payoff is missing.",
+     "5 blank frames and 3 still steps: t=0–2.7s is a dead black hold, and t=24.5–30s returns to black, so the film opens and closes on nothing (change first→last = 0.0).",
+     "The mobile landscape split-screen (chart | option chain) required by the brief is not present in any frame — the second half of the brief is unfulfilled.",
+     "The 'zoom out until the desktop is a point in space' beat is a tiny dot at 24.5s with no scale reference, no parallax, no starfield depth — it reads as a fade to black, not a cosmic pull-back."
+    ],
+    "fixes": [
+     {
+      "t": "0.0s",
+      "problem": "The first 2.7s is a pure black hold with a single sub-pixel dot; there is no hook in the first half second and the dot is too small to register as an idea.",
+      "fix": "Open on the dot at ~6–8px with a soft bloom and a slow breathing pulse, then have it snap-expand with an ease-out-expo into the first window edge by 0.6s. Give the dot a faint chromatic ring so the first frame is already a designed image, not a void."
+     },
+     {
+      "t": "24.5s",
+      "problem": "The zoom-out to 'a point in space' is a 2px dot on black with a few faint stars — no sense of scale, no depth, no awe. It is indistinguishable from the opening.",
+      "fix": "Build a real multi-plane pull-back: 3–4 parallax star layers at different scales/speeds, the desktop shrinking with motion blur and a lens-flare streak as it collapses, then a held beat where the point sits in a visible nebula/grid field. Add a subtle vignette and grain so the black is not flat #000."
+     },
+     {
+      "t": "21.8s",
+      "problem": "The film never delivers the required ending: no mobile landscape split-screen, no 'Single Screen Trading on SAHI' title. The last 8 seconds are empty.",
+      "fix": "At ~22s, zoom from the point back in and morph the desktop into a landscape phone frame: left half a live chart, right half the option chain, with a device bezel and a soft screen glow. Hold 1.5s, then set 'Single Screen Trading on SAHI' in a tight display face with a thin rule and a small SAHI mark, and end on that frame — do not fade to black."
+     },
+     {
+      "t": "5.5s",
+      "problem": "All four windows appear at once in a single step (change 0.0765 then 0.0069) — no staggered entrance, no overlap, no anticipation; the assembly has no choreography.",
+      "fix": "Stagger the four panels 80–120ms apart with individual scale-from-0.92 + fade + slight y-offset, each with ease-out-quint and a 1–2 frame overshoot. Have the chart line draw on after its panel lands so the eye has a sequence to follow."
+     },
+     {
+      "t": "10.9s",
+      "problem": "Between 8.2s and 19.1s the composition barely changes (luminance 0.074→0.075) — the 'zoom into and out at multiple scales' instruction is not visible; it is a static desktop with a drifting camera at best.",
+      "fix": "Choreograph three distinct camera moves: push into the option-chain strike row (scale 1→1.6, focus on the highlighted 24200 row), whip-pan to the watchlist sparklines, then pull back to full desktop. Use matched easing and a 4–6px motion-blur trail on each whip so the scale changes read as intentional."
+     },
+     {
+      "t": "5.5s",
+      "problem": "Typography is small, low-contrast and unlabelled — window titles are illegible at 1280x720 and the palette is a flat navy with no hierarchy beyond the one purple row.",
+      "fix": "Raise title-bar type to 11–12px with letterspaced caps, add a single accent (cyan) for live values and a warm amber for the highlighted strike, and increase panel-to-background contrast by ~15%. Add a faint inner stroke and top-edge highlight to each panel so the glass reads as glass."
+     }
+    ]
+   },
+   "jury_mode": "images",
+   "mean": 3.67,
+   "ts": 1793219999.991759,
+   "brief": {
+    "id": "dale-vaz-879074",
+    "category": "motion",
+    "tech_tags": [
+     "canvas"
+    ],
+    "standalone": true,
+    "chars": 636,
+    "author": "dale_vaz",
+    "author_url": "https://x.com/dale_vaz",
+    "post_url": "https://x.com/dale_vaz/status/2103290592679879074",
+    "excerpt": "create a self contained aesthetically pleasing, breathtaking animation of the Sahi Trading Terminal. it should start with a single dot on a black screen and then have multiple windows show up on the screen such as Charts",
+    "prompt": "create a self contained aesthetically pleasing, breathtaking animation of the Sahi Trading Terminal. it should start with a single dot on a black screen and then have multiple windows show up on the screen such as Charts, Positons , Option Chain, Watchlist. And zoom into and out at multiple scales. Finally the camera zooms out to make the desktop look like a point in space. And then it zooms back in to reveal a mobile screen in landscape mode with a chart in one half and an option chain in another. The video ends in Sjngle Screen Trading on SAHI\nuse javascript for it. be detailed and accurate. it should be visually stunning\n0:46"
+   },
+   "files": {
+    "index.html": true,
+    "sheet.png": true,
+    "key1.png": true,
+    "key2.png": true
+   }
+  },
+  "okapi-fukugyo-166351": {
+   "id": 6,
+   "run_id": "vb_01m622aw0885rdq8c5v4eywpcg",
+   "prompt_id": "okapi-fukugyo-166351",
+   "state": "done",
+   "outcome": "done",
+   "reason": "",
+   "detail": "",
+   "html_chars": 25923,
+   "tokens_in": 1568,
+   "tokens_out": 9107,
+   "latency_ms": 159190.4,
+   "static": {
+    "chars": 25923,
+    "defines_seek": true,
+    "defines_duration": true,
+    "external_references": 0,
+    "reads_clock": false,
+    "unseeded_random": false,
+    "truncated": false
+   },
+   "render": {
+    "ok": true,
+    "console_errors": [],
+    "page_errors": [],
+    "blocked_requests": [],
+    "has_seek": true,
+    "declared_duration": 14,
+    "duration": 14.0,
+    "times": [
+     0.0,
+     1.2727,
+     2.5455,
+     3.8182,
+     5.0909,
+     6.3636,
+     7.6364,
+     8.9091,
+     10.1818,
+     11.4545,
+     12.7273,
+     14.0
+    ],
+    "files": [
+     "f00.png",
+     "f01.png",
+     "f02.png",
+     "f03.png",
+     "f04.png",
+     "f05.png",
+     "f06.png",
+     "f07.png",
+     "f08.png",
+     "f09.png",
+     "f10.png",
+     "f11.png"
+    ],
+    "texts": [
+     "はじめる 再生中 · 3:24 Midnight Drive 3:24 再生位置 0:00 音量 0 オフ 概要 統計 設定 ⌘K 保存しました",
+     "はじめる 再生中 · 3:24 Midnight Drive 3:24 再生位置 0:36 音量 35 オフ 概要 統計 設定 ⌘K 保存しました",
+     "はじめる 再生中 · 3:24 Midnight Drive 3:24 再生位置 0:36 音量 35 オフ 概要 統計 設定 ⌘K 保存しました",
+     "はじめる 再生中 · 3:24 Midnight Drive 3:24 再生位置 0:36 音量 35 オフ 概要 統計 設定 ⌘K 保存しました",
+     "はじめる 再生中 · 3:24 Midnight Drive 3:24 再生位置 0:36 音量 35 オフ 概要 統計 設定 ⌘K 保存しました",
+     "はじめる 再生中 · 3:24 Midnight Drive 3:24 再生位置 2:47 音量 35 オフ 概要 統計 設定 ⌘K 保存しました",
+     "はじめる 再生中 · 3:24 Midnight Drive 3:24 再生位置 2:47 音量 85 オン 概要 統計 設定 ⌘K 保存しました",
+     "はじめる 再生中 · 3:24 Midnight Drive 3:24 再生位置 2:47 音量 85 オフ 概要 統計 設定 ⌘K 保存しました",
+     "はじめる 再生中 · 3:24 Midnight Drive 3:24 再生位置 2:47 音量 85 オフ 概要 統計 設定 ⌘K 保存しました",
+     "はじめる 再生中 · 3:24 Midnight Drive 3:24 再生位置 2:47 音量 85 オフ 概要 統計 設定 ⌘K 保存しました 値 264",
+     "はじめる 再生中 · 3:24 Midnight Drive 3:24 再生位置 2:47 音量 85 オフ 概要 統計 設定 ⌘K mor 保存しました",
+     "はじめる 再生中 · 3:24 Midnight Drive 3:24 再生位置 0:00 音量 0 オフ 概要 統計 設定 ⌘K 保存しました"
+    ],
+    "frame_ms": [
+     80,
+     77,
+     90,
+     89,
+     76,
+     81,
+     82,
+     67,
+     77,
+     85,
+     79,
+     81
+    ],
+    "deterministic": true,
+    "render_s": 2.08
+   },
+   "auto": {
+    "blank_frames": 2,
+    "motion_mean": 0.06109,
+    "motion": [
+     0.01017,
+     0.00098,
+     0.02173,
+     0.04304,
+     0.00097,
+     0.059,
+     0.00688,
+     0.22424,
+     0.0403,
+     0.23105,
+     0.03365
+    ],
+    "still_steps": 2,
+    "first_last_change": 0.0,
+    "max_change_from_first": 0.26104,
+    "luminance": [
+     0.914,
+     0.904,
+     0.904,
+     0.889,
+     0.849,
+     0.849,
+     0.907,
+     0.908,
+     0.684,
+     0.653,
+     0.881,
+     0.914
+    ],
+    "colourfulness_mean": 0.0382,
+    "moves": true,
+    "not_blank": true,
+    "usable": true
+   },
+   "jury": {
+    "scores": {
+     "style_fidelity": 4.0,
+     "concept_wow": 3.0,
+     "motion_craft": 4.0,
+     "design_typography": 4.0,
+     "finish_texture": 4.0,
+     "technical": 3.0
+    },
+    "mean": 3.67,
+    "dimensions_scored": 6,
+    "summary": "The single-morphing-shape premise is legible and the palette is right, but the piece is mostly empty warm-grey field with a small black blob in the middle: the camera never zooms to fill the frame, the states are unreadable at contact-sheet scale, and the text layer is a static dump of every label at every time. It reads as a proof-of-concept for the morph engine, not as a Dribbble-grade screen-motion piece.",
+    "critical": [
+     "Every label ('はじめる', '再生中 · 3:24', 'Midnight Drive', '再生位置', '音量', 'オフ', '概要 統計 設定', '⌘K', '保存しました') is visible at t=0 and at every subsequent frame — the content never swaps behind a blur, it just sits there. This is a direct violation of the brief's '中身は短いぼかしを挟んで入れ替える' and makes the whole piece re",
+     "The camera never zooms: at 5.1s and 6.4s the player is a small pill in a huge empty field; at 10.2s the graph card occupies maybe 40% of the frame. The brief demands each state fill the screen. This is the single biggest reason it doesn't look like agency work.",
+     "Two blank frames and two still steps in a 12-frame sample, plus mean change 0.061 — the piece is dead for long stretches (2.5s→3.8s change 0.001, 6.4s→7.6s change 0.001). The brief forbids '何も起きない無駄な間'.",
+     "The 5.1s frame shows a white slider track running edge-to-edge behind the black pill with a white knob floating outside the shape on the left — the component is not contained in the one shape, breaking the core rule.",
+     "The 12.7s search field shows '⌘K mor |' — the query text is clipped/overlapping the ⌘K chip and the caret, and the notification ('保存しました') is present at every frame rather than appearing for a beat. Text collision inside the morphing box is exactly the gotcha the brief warned about.",
+     "The graph at 11.5s is a generic line chart with a grey tooltip pill — no line-drawing animation is visible in the sample, no axis labels, no typographic hierarchy. It reads as a template chart, not a designed component."
+    ],
+    "fixes": [
+     {
+      "t": "0.0s–14.0s",
+      "problem": "All UI strings are rendered simultaneously and never swap; the 'blur swap' the brief requires is absent.",
+      "fix": "Gate every text node on its own state window with a 120ms blur-out / 120ms blur-in (filter: blur(6px) + opacity) centred on the beat where the shape changes. Only the label belonging to the current state should exist in the DOM at any t. This alone will make the piece feel authored."
+     },
+     {
+      "t": "3.8s–7.6s",
+      "problem": "Camera stays at 1.0; the player and volume slider are small pills in a vast empty field, so the morph reads as a tiny detail rather than a hero moment.",
+      "fix": "Drive a camera scale from the shape's bounding box: scale = min(1280/w, 720/h) * 0.72, eased with the same spring. At the player state the pill should span ~70% of frame width; at the graph state the card should nearly touch the safe margins. Re-time the morph so the zoom lands on the beat, not after it."
+     },
+     {
+      "t": "2.5s–3.8s and 6.4s–7.6s",
+      "problem": "Near-zero frame delta — the piece freezes for over a second twice in 14s.",
+      "fix": "Fill these beats with the content swap (blur in/out) and a micro-spring on the shape's corner radius, so something is always resolving. If a beat has no state change, give it a 1px cursor drift and a 2% scale breath — never a true hold."
+     },
+     {
+      "t": "5.1s",
+      "problem": "The volume slider's white track and knob escape the black shape and run to the frame edge; the component is not one shape.",
+      "fix": "Clip the track to the pill's inner padding (inset 24px) and keep the knob inside the pill at all times. The rubber-band overshoot should stretch the pill's right edge, not push the knob outside it."
+     },
+     {
+      "t": "12.7s",
+      "problem": "Search field text '⌘K mor |' collides with the chip and caret; the notification is permanently visible.",
+      "fix": "Reserve a fixed 56px left gutter for the ⌘K chip, start the query text at x=72, and give the caret its own 1px column. Show '保存しました' only for 0.6s after Enter with a 200ms spring-in from y+8 and a 200ms fade — it must not exist at t=0 or t=14."
+     },
+     {
+      "t": "10.2s–11.5s",
+      "problem": "The graph is a static-looking polyline with a grey tooltip; no draw-on, no hierarchy, generic chart look.",
+      "fix": "Animate the path with stroke-dashoffset driven by the same spring (draw-on over 6 beats), stagger the three gridlines in at 40ms intervals, and set the tooltip in Geist 12/16 with a 1px hairline border instead of a filled grey pill. Add a 2px dot at the last vertex that pulses once on the beat the cursor arrives."
+     }
+    ]
+   },
+   "jury_mode": "images",
+   "mean": 3.67,
+   "ts": 1793220000.1186972,
+   "brief": {
+    "id": "okapi-fukugyo-166351",
+    "category": "motion",
+    "tech_tags": [],
+    "standalone": true,
+    "chars": 1837,
+    "author": "okapi_fukugyo",
+    "author_url": "https://x.com/okapi_fukugyo",
+    "post_url": "https://x.com/okapi_fukugyo/status/2103586082336166351",
+    "excerpt": "<inputs> 次の3つを私に質問すること：図形が変身する8〜12個の画面部品（例：ボタン、読み込み中の表示、音楽プレーヤー、音量スライダー、オン/オフのスイッチ、タブ、グラフ、⌘Kで開く検索窓、一瞬出る通知）、色は完全な白黒か差し色1色か、そして120BPM（1分間に120拍のテンポ）前後の著作権フリーの曲（例：Mixkit、商用利用無料）。 </inputs> <direction> デザイナー向け作品サイト「Dribbble」に",
+    "prompt": "<inputs>\n次の3つを私に質問すること：図形が変身する8〜12個の画面部品（例：ボタン、読み込み中の表示、音楽プレーヤー、音量スライダー、オン/オフのスイッチ、タブ、グラフ、⌘Kで開く検索窓、一瞬出る通知）、色は完全な白黒か差し色1色か、そして120BPM（1分間に120拍のテンポ）前後の著作権フリーの曲（例：Mixkit、商用利用無料）。\n</inputs>\n\n<direction>\nデザイナー向け作品サイト「Dribbble」に載るレベルの、洗練された画面の動き。図形は1つだけで、絶対に場面を切り替えない。すべての状態は、同じ1つの図形が大きさ・角の丸み・色を変えながら形を変えていく動きで表し、中身は短いぼかしをはさんで入れ替える。カーソルが本物のクリックとドラッグで、すべての変化を起こす。背景はあたたかみのある明るいグレー、部品は白と黒、画面の文字は日本語で、日本語フォントはNoto Sans JP、英数字と記号はGeist（1種類のフォント）。動きはすべて「ばね」のような自然な動きにし、行き過ぎ（跳ね返り）はごくわずかまで。カメラはズームして、各状態が画面いっぱいになるようにする。最後のフレームは最初のフレームと同じにして、ループさせる。\n禁止：弾むような動き、粒が飛び散る演出、光るにじみ、部品へのグラデーション、線の太さが揃っていないアイコン、何も起きない無駄な間、テンプレっぽく見えるもの全般。\n</direction>\n\n<structure>\n120BPM、7小節（約14秒）、毎拍なにかが起きる。\nボタン → 読み込み中の表示 → チェック → iPhoneのダイナミックアイランド風の表示 → 再生/一時停止のマークが滑らかに変わる音楽プレーヤー → 再生バーのつまみをドラッグして再生位置を動かす → 音量スライダーに変身（最大を超えてドラッグするとゴムのように伸びる） → オン/オフのスイッチが拍に合わせて切り替わる → スイッチのつまみが液体のように動くタブの選択表示になる → タブが開いて、自分で線を描いていくグラフに（カーソルを乗せると吹き出しが出る） → ⌘Kの検索窓に折りたたまれる → 入力して候補を絞り込む → Enter → 一瞬出る通知 → ボタンに戻る。\n</structure>\n\n<build>\n1. HTMLファイル1つ、正方形1440x1440。すべての見た目は seek(t)（時間tを渡すと、その瞬間の画面が決まる関数）の中で、時間から計算する。CSSトランジション（自動アニメーション機能）もタイマーも使わず、フレーム間で状態を持ち越さない。\n2. 「ばね」の動きは、式で直接求められる形（閉形式のステップ応答）にする。目標が何度も変わる値は、変化ごとに1つずつ計算した動きを足し合わせる。そうすれば、いつでも時間だけで値が決まる。\n3. タブの選択表示は、左端と右端を別々のばねで動かし、進む方向の先端が後ろ側より先に伸びるようにする。スイッチのつまみも同じ手法。\n4. ドラッグは直接操作：カーソルを押している間、値はカーソル位置から計算する。離したら、その位置からばねで戻る。\n5. 曲はnumpy（計算用のツール）で解析して拍の位置を割り出し、小節の頭の拍から始める。操作音は、測定した音のピークの位置に置く。\n6. Playwright（ブラウザを自動操作して画面を画像に書き出すツール）で描画する。1フレームあたり4コマ分を書き出して、ffmpeg（動画を作るツール）のtmixで重ねてモーションブラー（動きの残像）をかけ、60fpsにする。\n7. 全編を書き出す前に、1拍ごとに1フレームだけ書き出して確認する。拍からズレているもの、窮屈なもの、読みにくいものを直す。\n</build>\n\n<gotchas>\nカメラで拡大縮小される要素には will-change（ブラウザの描画設定）を絶対に付けない。付けると文字がぼやける。形が変わる箱の中で入れ替わる文字には、それぞれ専用の出入りのタイミングを持たせる（重なるのを防ぐ）。最後のフレームは、カーソルの位置と速度も含めて最初のフレームと完全に一致させる。そうしないと、ループがカクつく。\n</gotchas>\n\n<start>\nまず入力内容を私に質問して、コードを書く前に、拍ごとの状態リストを見せて。\n</start>"
+   },
+   "files": {
+    "index.html": true,
+    "sheet.png": true,
+    "key1.png": true,
+    "key2.png": true
+   }
+  },
+  "thejohnnyhuy-282154": {
+   "id": 7,
+   "run_id": "vb_01m622aw0885rdq8c5v4eywpcg",
+   "prompt_id": "thejohnnyhuy-282154",
+   "state": "done",
+   "outcome": "done",
+   "reason": "",
+   "detail": "",
+   "html_chars": 10668,
+   "tokens_in": 445,
+   "tokens_out": 3921,
+   "latency_ms": 79971.2,
+   "static": {
+    "chars": 10668,
+    "defines_seek": true,
+    "defines_duration": true,
+    "external_references": 0,
+    "reads_clock": false,
+    "unseeded_random": false,
+    "truncated": false
+   },
+   "render": {
+    "ok": true,
+    "console_errors": [],
+    "page_errors": [],
+    "blocked_requests": [],
+    "has_seek": true,
+    "declared_duration": 27,
+    "duration": 27.0,
+    "times": [
+     0.0,
+     2.4545,
+     4.9091,
+     7.3636,
+     9.8182,
+     12.2727,
+     14.7273,
+     17.1818,
+     19.6364,
+     22.0909,
+     24.5455,
+     27.0
+    ],
+    "files": [
+     "f00.png",
+     "f01.png",
+     "f02.png",
+     "f03.png",
+     "f04.png",
+     "f05.png",
+     "f06.png",
+     "f07.png",
+     "f08.png",
+     "f09.png",
+     "f10.png",
+     "f11.png"
+    ],
+    "texts": [
+     "LUMEN",
+     "LUMEN",
+     "LUMEN",
+     "LUMEN",
+     "LUMEN",
+     "LUMEN",
+     "LUMEN",
+     "LUMEN",
+     "LUMEN",
+     "LUMEN",
+     "LUMEN",
+     "LUMEN"
+    ],
+    "frame_ms": [
+     439,
+     436,
+     480,
+     524,
+     457,
+     474,
+     494,
+     525,
+     570,
+     509,
+     473,
+     460
+    ],
+    "deterministic": true,
+    "render_s": 8.57
+   },
+   "auto": {
+    "blank_frames": 0,
+    "motion_mean": 0.08211,
+    "motion": [
+     0.05517,
+     0.08903,
+     0.06334,
+     0.08539,
+     0.07966,
+     0.07972,
+     0.05526,
+     0.0553,
+     0.11037,
+     0.12944,
+     0.1006
+    ],
+    "still_steps": 0,
+    "first_last_change": 0.15607,
+    "max_change_from_first": 0.15839,
+    "luminance": [
+     0.347,
+     0.334,
+     0.364,
+     0.343,
+     0.303,
+     0.328,
+     0.296,
+     0.32,
+     0.296,
+     0.366,
+     0.46,
+     0.456
+    ],
+    "colourfulness_mean": 0.2321,
+    "moves": true,
+    "not_blank": true,
+    "usable": true
+   },
+   "jury": {
+    "scores": {
+     "style_fidelity": 3.0,
+     "concept_wow": 2.0,
+     "motion_craft": 3.0,
+     "design_typography": 3.0,
+     "finish_texture": 2.0,
+     "technical": 6.0
+    },
+    "mean": 3.17,
+    "dimensions_scored": 6,
+    "summary": "This is a soft-focus blob field drifting over a static iris polygon with a hue-cycling gradient behind it; nothing in it reads as liquid glass, goo, or an Apple keynote. The wordmark arrives as a blurred white sans sitting on top of the blobs rather than being formed by them, so the one hero moment the brief demands is missed.",
+    "critical": [
+     "The 'goo' is a cluster of gaussian-blurred circles that never merge, stretch, or surface-tension; there is no metaball threshold, so it reads as bokeh, not liquid.",
+     "No liquid glass: no refraction, no specular highlight, no chromatic edge, no thickness. The iris blades are flat translucent polygons with a hairline stroke and never move.",
+     "The wordmark is a generic bold sans (looks like a system/fallback grotesque) with no custom setting, no tracking, no optical alignment; it is not revealed by the goo, it is pasted over it.",
+     "The background is a slow hue rotation of one radial gradient — the palette changes color but never composes; there is no lighting direction, no key/fill, no environment.",
+     "No beat structure is legible: 54 beats at 120 BPM should give 27 distinct accents; the frames at 2.5/4.9/7.4/9.8 are indistinguishable in rhythm from each other.",
+     "The iris blades are static for the entire 27s — the brief's named feature is decoration, not motion."
+    ],
+    "fixes": [
+     {
+      "t": "0.0s",
+      "problem": "Opening frame is a mid-luminance purple wash with a loose blob cluster; there is no hook in the first half second and no read of 'liquid glass'.",
+      "fix": "Open on a single specular highlight on a dark glass surface, then have the first beat (t=0.5s) send a shockwave through it that splits the surface into iris blades. Give the first 0.5s a hard, high-contrast image so the eye has something to grab."
+     },
+     {
+      "t": "22.1s",
+      "problem": "The hero moment is blobs sliding under a static wordmark; the goo never forms the letters, so the payoff is a caption, not a reveal.",
+      "fix": "Build the wordmark as a metaball/SDF mask: the blobs converge on the letterforms, surface-tension snaps them into the glyphs at the drop (t≈22.1s), then a glass pass adds refraction and a specular sweep across the letters. The letters should be made of the liquid, not covered by it."
+     },
+     {
+      "t": "9.8s",
+      "problem": "Iris blades are flat, static, and identical across all 12 frames; the named feature is inert.",
+      "fix": "Animate the blades: open from a closed aperture at t=0, rotate/iris-shift on each 4-beat bar, and close to a slit at the final frame. Add a bevel, a fresnel edge, and a subtle parallax so they read as physical glass."
+     },
+     {
+      "t": "4.9s",
+      "problem": "Palette is a hue-cycling gradient with no lighting logic; frames at 4.9s (magenta) and 9.8s (olive) feel like a screensaver, not a product film.",
+      "fix": "Lock a two-color palette (deep graphite + one accent) and drive color only through light: a moving key light, a rim light on the glass, and a caustic on the floor. Change color on beat accents, not continuously."
+     },
+     {
+      "t": "24.5s",
+      "problem": "Wordmark typography is default-weight, default-tracked, and sits centered on a blob with no hierarchy or negative space.",
+      "fix": "Set the wordmark in a tighter, higher-contrast face at large scale with optical tracking (-2 to -4%), align it to a 12-column grid, and let the final frame hold with generous negative space and a single specular glint on the L."
+     },
+     {
+      "t": "12.3s",
+      "problem": "Motion is uniform drift; no anticipation, no overlap, no follow-through, and the mean frame change (0.08) is flat across the whole piece.",
+      "fix": "Re-time to the 54-beat grid: each beat gets an ease-out snap with 2–3 frames of overshoot, blobs trail with staggered delays, and the breakdown (quiet section) drops to near-stillness so the drop at 22.1s lands hard."
+     }
+    ]
+   },
+   "jury_mode": "images",
+   "mean": 3.17,
+   "ts": 1793220000.310753,
+   "brief": {
+    "id": "thejohnnyhuy-282154",
+    "category": "motion",
+    "tech_tags": [],
+    "standalone": true,
+    "chars": 513,
+    "author": "thejohnnyhuy",
+    "author_url": "https://x.com/thejohnnyhuy",
+    "post_url": "https://x.com/thejohnnyhuy/status/2104149060588282154",
+    "excerpt": "Build an Apple-keynote launch film as a single HTML file, then render it to MP4. <inputs> Ask me for: a one-word brand name for the wordmark (a verb works best), 9 to 12 high-res photos, a royalty-free song around 120 BP",
+    "prompt": "Build an Apple-keynote launch film as a single HTML file, then render it to MP4.\n\n<inputs>\nAsk me for: a one-word brand name for the wordmark (a verb works best), 9 to 12 high-res photos, a royalty-free song around 120 BPM with a drop and a quiet breakdown (Mixkit, free for commercial use).\n</inputs>\n\nCreate one continuous take, no cuts, no fades. Use liquid glass, iris blades, and goo effects. Sync animations to 54 beats at 120 BPM. Source stock assets if needed, write one HTML file, and render it to 60fps."
+   },
+   "files": {
+    "index.html": true,
+    "sheet.png": true,
+    "key1.png": true,
+    "key2.png": true
+   }
+  },
+  "zacxbt-944604": {
+   "id": 8,
+   "run_id": "vb_01m622aw0885rdq8c5v4eywpcg",
+   "prompt_id": "zacxbt-944604",
+   "state": "done",
+   "outcome": "done",
+   "reason": "",
+   "detail": "",
+   "html_chars": 21405,
+   "tokens_in": 823,
+   "tokens_out": 8140,
+   "latency_ms": 160516.9,
+   "static": {
+    "chars": 21405,
+    "defines_seek": true,
+    "defines_duration": true,
+    "external_references": 0,
+    "reads_clock": false,
+    "unseeded_random": true,
+    "truncated": false
+   },
+   "render": {
+    "ok": true,
+    "console_errors": [],
+    "page_errors": [],
+    "blocked_requests": [],
+    "has_seek": true,
+    "declared_duration": 12,
+    "duration": 12.0,
+    "times": [
+     0.0,
+     1.0909,
+     2.1818,
+     3.2727,
+     4.3636,
+     5.4545,
+     6.5455,
+     7.6364,
+     8.7273,
+     9.8182,
+     10.9091,
+     12.0
+    ],
+    "files": [
+     "f00.png",
+     "f01.png",
+     "f02.png",
+     "f03.png",
+     "f04.png",
+     "f05.png",
+     "f06.png",
+     "f07.png",
+     "f08.png",
+     "f09.png",
+     "f10.png",
+     "f11.png"
+    ],
+    "texts": [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    "frame_ms": [
+     104,
+     73,
+     69,
+     79,
+     92,
+     76,
+     87,
+     88,
+     89,
+     88,
+     72,
+     79
+    ],
+    "deterministic": true,
+    "render_s": 2.3
+   },
+   "auto": {
+    "blank_frames": 0,
+    "motion_mean": 0.00398,
+    "motion": [
+     0.00228,
+     0.00126,
+     0.00359,
+     0.00547,
+     0.00715,
+     0.00732,
+     0.00571,
+     0.00254,
+     0.00205,
+     0.00285,
+     0.00355
+    ],
+    "still_steps": 1,
+    "first_last_change": 0.00036,
+    "max_change_from_first": 0.00538,
+    "luminance": [
+     0.111,
+     0.11,
+     0.11,
+     0.112,
+     0.113,
+     0.113,
+     0.113,
+     0.111,
+     0.111,
+     0.111,
+     0.111,
+     0.111
+    ],
+    "colourfulness_mean": 0.1052,
+    "moves": false,
+    "not_blank": true,
+    "usable": false
+   },
+   "jury": {
+    "scores": {
+     "style_fidelity": 6.0,
+     "concept_wow": 4.0,
+     "motion_craft": 4.0,
+     "design_typography": 5.0,
+     "finish_texture": 5.0,
+     "technical": 7.0
+    },
+    "mean": 5.17,
+    "dimensions_scored": 6,
+    "summary": "A competent, correct pixel-art wizard that hits most of the brief's technical clauses (integer scaling, palette, pooled particles, deterministic seek) but reads as a static sprite with a sparkle emitter rather than an animated performance. The wizard barely moves, the 'cast' has no projectile, no burst, no shake, and the composition is a small figure floating in a large empty field with a flat two-band sky.",
+    "critical": [
+     "The wizard is essentially a static sprite: across 12 seconds the pose changes are near-imperceptible (mean frame delta 0.004, one still step). The brief demands a parameterized pose with staff angle, arm raise, head tilt and robe sway animated and quantized; none of that reads.",
+     "No CAST event is visible: no bright burst, no projectile crossing the scene, no 1-2px screen shake. The state machine's hero moment is missing entirely, which is the single biggest failure of the brief.",
+     "The character is small and low-contrast against the sky; the silhouette does not 'read clearly' as required. The robe is a flat brown blob with almost no two-shade modelling or rim light visible at this scale.",
+     "Composition is generic: figure dead-centre, moon top-right, two flat horizontal sky bands, a dashed floor line. It looks like a template pixel-art scene, not an authored frame."
+    ],
+    "fixes": [
+     {
+      "t": "6.5s",
+      "problem": "The CAST moment has no burst, no projectile and no screen shake; the gem just sits there while sparks drift.",
+      "fix": "Add a real cast: at the cast keyframe, flash the gem to white for 2-3 frames, emit a 3-4px projectile that travels left-to-right across the full logical width in ~0.4s with a 1px trailing tail, and apply a 1-2px integer screen shake for 4 frames. This is the hero moment and must be unmistakable."
+     },
+     {
+      "t": "0.0s",
+      "problem": "The wizard's pose is static across the whole loop; staff angle, arm raise, head tilt and robe sway are not visibly animated.",
+      "fix": "Drive the pose parameters with eased keyframes per state (IDLE bob ±1px, CHARGE staff raise ~20°, head tilt 2-3px, robe sway 1px) and quantize to the grid at 10fps. Even a 1px beard sway and a 1px hat-bend wobble would transform the read."
+     },
+     {
+      "t": "3.3s",
+      "problem": "The character is too small and too low-contrast; the silhouette does not read against the sky.",
+      "fix": "Scale the wizard up to fill more of the 128x96 frame (target ~40x56 logical px), add a proper two-shade robe with a darker outline pass, and add the required 1px rim light on the gem-facing side that brightens during CHARGE and CAST."
+     },
+     {
+      "t": "0.0s",
+      "problem": "The background is a flat two-band sky with a dashed floor line and a generic moon; it reads as template.",
+      "fix": "Replace the flat bands with a dithered gradient (2-3 palette steps, ordered dither), add a few 1px twinkling stars with staggered phases, give the moon a subtle crater pixel, and make the floor a stone line with 1-2px variation rather than a uniform dash."
+     },
+     {
+      "t": "5.5s",
+      "problem": "Sparks during CHARGE spiral but are sparse and low-contrast; the 'spiral inward' motion is not legible.",
+      "fix": "Increase spark count during CHARGE, tighten the spiral radius so they visibly converge on the gem, and step each particle's palette index white→magic→dark as specified so the charge reads as energy gathering, not ambient dust."
+     },
+     {
+      "t": "12.0s",
+      "problem": "The loop does not close cleanly: first-to-last frame change is 0.00036 but the pose at 12.0s is not the same as 0.0s, so the seam will pop.",
+      "fix": "Make the final keyframe identical to the first (same pose parameters, same particle pool state) and cross-fade the last 0.2s into the first 0.2s so the loop is seamless."
+     }
+    ]
+   },
+   "jury_mode": "images",
+   "mean": 5.17,
+   "ts": 1793220000.4567082,
+   "brief": {
+    "id": "zacxbt-944604",
+    "category": "interactive",
+    "tech_tags": [
+     "canvas",
+     "pixel",
+     "playable"
+    ],
+    "standalone": true,
+    "chars": 2209,
+    "author": "zacxbt",
+    "author_url": "https://x.com/zacxbt",
+    "post_url": "https://x.com/zacxbt/status/2103808699466944604",
+    "excerpt": "Create a single self-contained HTML file that renders an animated pixel art wizard casting a spell, using vanilla JavaScript and Canvas 2D. No external assets, libraries, or network requests. RENDERING - Draw everything ",
+    "prompt": "Create a single self-contained HTML file that renders an animated pixel art wizard casting a spell, using vanilla JavaScript and Canvas 2D. No external assets, libraries, or network requests.\n\nRENDERING\n- Draw everything to an offscreen canvas at a fixed logical resolution of 128x96, then blit to a fullscreen display canvas scaled by the largest integer factor that fits the window, centered, with imageSmoothingEnabled = false and CSS image-rendering: pixelated.\n- All drawing snaps to integer coordinates on the logical canvas. No sub-pixel positions, anti-aliasing, gradients, or shadowBlur.\n- Fixed palette of ~24 hex colors: deep blues/purples for night sky, warm robe tones, 3-4 bright magic colors. Every pixel comes from this palette.\n\nCHARACTER\n- Build the wizard procedurally from filled rects and pixel runs, ~24x32 logical pixels: pointed hat with a bend, long beard, two-shade robe with darker outline, staff with a gem at the tip.\n- Parameterize the pose (staff angle, arm raise, head tilt, robe sway). Animate parameters smoothly, then quantize to the pixel grid each frame so motion reads at an 8-12 fps pixel animation feel even though the loop runs at 60fps.\n\nANIMATION\n- Looping state machine: IDLE (2-frame bob, beard sway) -> CHARGE (staff raises, gem flickers, sparks spiral inward) -> CAST (bright burst, projectile fires across the scene, 1-2 pixel screen shake) -> RECOVER (settle back). Ease pose parameters between keyframes.\n- Pooled allocation-free particle system: preallocate and reuse. Sparks orbit the gem during CHARGE, explode outward on CAST, each particle stepping its palette index from white to magic color to dark before despawn. Snap particle positions to the grid when drawing.\n- Fixed 60hz timestep update with rAF rendering. Zero object allocation inside the loop.\n\nSCENE\n- Minimal background: dark sky, a few twinkling 1px stars, moon, stone floor line. Character silhouette must read clearly.\n- Subtle 1px rim light on the wizard from the gem, brightening during CHARGE and CAST.\n\nQUALITY BAR\n- Crisp pixels at any window size, seamless loop, stable 60fps, readable silhouette. Should look like a polished 16-bit sprite animation, not vector shapes scaled down."
+   },
+   "files": {
+    "index.html": true,
+    "sheet.png": true,
+    "key1.png": true,
+    "key2.png": true
+   }
+  },
+  "twoclipping-041659": {
+   "id": 9,
+   "run_id": "vb_01m622aw0885rdq8c5v4eywpcg",
+   "prompt_id": "twoclipping-041659",
+   "state": "done",
+   "outcome": "none",
+   "reason": "jury_unreadable",
+   "detail": {
+    "key": "vb_jury_unreadable",
+    "params": {},
+    "text": "The jury answered without scores twice."
+   },
+   "html_chars": 31094,
+   "tokens_in": 1652,
+   "tokens_out": 11454,
+   "latency_ms": 172412.2,
+   "static": {
+    "chars": 31094,
+    "defines_seek": true,
+    "defines_duration": true,
+    "external_references": 0,
+    "reads_clock": false,
+    "unseeded_random": false,
+    "truncated": false
+   },
+   "render": {
+    "ok": true,
+    "console_errors": [],
+    "page_errors": [],
+    "blocked_requests": [],
+    "has_seek": true,
+    "declared_duration": 20,
+    "duration": 20.0,
+    "times": [
+     0.0,
+     1.8182,
+     3.6364,
+     5.4545,
+     7.2727,
+     9.0909,
+     10.9091,
+     12.7273,
+     14.5455,
+     16.3636,
+     18.1818,
+     20.0
+    ],
+    "files": [
+     "f00.png",
+     "f01.png",
+     "f02.png",
+     "f03.png",
+     "f04.png",
+     "f05.png",
+     "f06.png",
+     "f07.png",
+     "f08.png",
+     "f09.png",
+     "f10.png",
+     "f11.png"
+    ],
+    "texts": [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    "frame_ms": [
+     147,
+     162,
+     151,
+     101,
+     122,
+     162,
+     97,
+     101,
+     146,
+     179,
+     95,
+     153
+    ],
+    "deterministic": true,
+    "render_s": 2.95
+   },
+   "auto": {
+    "blank_frames": 0,
+    "motion_mean": 0.36941,
+    "motion": [
+     0.08331,
+     0.03442,
+     0.62153,
+     0.00993,
+     0.64747,
+     0.51858,
+     0.18149,
+     0.6737,
+     0.05484,
+     0.6291,
+     0.60909
+    ],
+    "still_steps": 0,
+    "first_last_change": 0.11875,
+    "max_change_from_first": 0.61853,
+    "luminance": [
+     0.69,
+     0.769,
+     0.738,
+     0.138,
+     0.142,
+     0.74,
+     0.222,
+     0.083,
+     0.742,
+     0.743,
+     0.117,
+     0.718
+    ],
+    "colourfulness_mean": 0.0783,
+    "moves": true,
+    "not_blank": true,
+    "usable": true
+   },
+   "jury": {},
+   "jury_mode": "",
+   "mean": null,
+   "ts": 1793220000.601649,
+   "brief": {
+    "id": "twoclipping-041659",
+    "category": "interactive",
+    "tech_tags": [],
+    "standalone": true,
+    "chars": 5616,
+    "author": "twoclipping",
+    "author_url": "https://x.com/twoclipping",
+    "post_url": "https://x.com/twoclipping/status/2107822293653041659",
+    "excerpt": "<inputs> Ask me for: a voiceover or song with a spoken line (the audio file) and its transcript, 10-12 small objects that sum up my life, two silhouettes to light like a heat camera (a head in profile and a raised hand),",
+    "prompt": "<inputs>\nAsk me for: a voiceover or song with a spoken line (the audio file) and its transcript, 10-12 small objects that sum up my life, two silhouettes to light like a heat camera (a head in profile and a raised hand), and the 3 words I want to land hardest. If I skip any, use the defaults: vinyl, book, camera, cat, coin, game controller, cap, heart, money, plant, clapperboard, skateboard; free CC0 silhouettes from Openverse; action, intention, curiosity.\n</inputs>\n\n<direction>\nA 20 second 4:3 film, 1440x1080 at 60fps, cut to the voice. Off-white paper, black, one red, one yellow, Geist for every word. Film grain on everything, a soft vignette, and a camera that never rests: a slow handheld float under everything plus a slow push inside every scene.\nNo scene cuts to the next: each handoff starts on the exact last frame of the scene before. The only hard cuts are the beat flips on the last word.\nEvery object is pixel art you draw yourself: a 16x16 grid per object, every cell a hand-placed colour, rendered as a 3D block (a darker extrusion down-right, a thin bevel on every cell) with a soft contact shadow.\nThe silhouettes are lit like a heat camera: the heat comes from how thick the body is at each point, so the nose, the hair and the fingertips run cooler, plus one hotspot and a slow moving noise, mapped through a black > red > orange > cream ramp. The edge stays razor sharp, with a soft glow outside it.\nMotion rules: nothing pops in (eased glides of about 0.5s with a soft start), fast moves get real motion blur instead of ghost copies, and captions type with the voice behind a block cursor.\nBanned: stock footage, AI video, 3D camera moves, particles, glitch.\n</direction>\n\n<structure>\nHang every scene on the transcript's word timings (measure them with faster-whisper word timestamps, one short chunk at a time):\n1. The first word fills a yellow card. The card wipes off to the left and the question types underneath on two centred lines that glide to stay centred as they grow, the key word underlined in red as it's spoken.\n2. The objects streak past in lanes above and below the words, a cyan four-point flare sweeps in, then the page burns away: black closes in from the edges onto the head, behind a hot red edge.\n3. The head heats up on black while the answer types low on the left. A thin white orbit draws itself around the head, its far half passing behind it. On the last word, paper blooms out from inside the head with the objects in it, and the camera falls through: the head rushes past the lens until the paper is all we see.\n4. The objects sit on a tilted ring seen in perspective (the front ones bigger and lower, drawn last), slowly turning, each one bobbing; the coin flips and lands with sparks.\n5. On each of the 3 words, that object flies out of the ring to the left and grows, the page floods black from it, and the word types beside it (camera: a red shutter star; book: a red ribbon sweep; record: two white orbits and red notes). Then the flood drains back into the object as it flies home, and the camera dives closer into the ring. Put each hero object in the slot that is front-left when its word lands.\n6. The ring pulls in a touch, bursts outward, every object turns to ink, and ink blots grow and swallow the page.\n7. The hand rises into frame, hot, with the line split either side of it. The heart drops into its palm, then lifts to the centre at the size the next scene holds it.\n8. The last word, one letter per beat, the background flipping paper / black / red, the heart holding its place across the cut, the centre object morphing pixel by pixel into the next one.\n9. Thin brush strokes sweep through, the letters drift apart and float, then settle back into the word with the heart above it. The camera keeps pushing through the hold.\n</structure>\n\n<build>\n1. One HTML canvas. Every frame is a pure function of time inside seek(t).\n2. Bake each pixel sprite once to an offscreen canvas (the extrusion layers, then the face), then draw it scaled and rotated.\n3. The heat: precompute each silhouette's base heat once (a distance transform of the mask, held at the edge value outside it so nothing dark bleeds in when it is upscaled). Every frame, add the hotspot and two octaves of value noise at quarter resolution, map it through a 256-step lookup, upscale it, and cut it with the full-resolution mask.\n4. The fall through the head: draw the ring scene into an offscreen layer, mask it with the head scaled up about a point inside the skull, and grow that scale on a cubed curve until the head covers the frame. The ring inside zooms less than the head does, so it reads as depth.\n5. The pixel morph: pair every cell of object A with a cell of object B and glide each one's position and colour, with a small random delay per cell.\n6. Render with Playwright at 60fps with 8 motion-blur subframes, then lay the original audio back on with ffmpeg.\n</build>\n\n<gotchas>\nA mask PNG with no alpha channel fills the whole box with heat, so put the silhouette in the alpha. A limb cut by the photo's border shows as a straight edge, so extend the mask past the frame. A handoff only reads as smooth when the last frame of one scene is the first frame of the next: draw the outgoing scene under the transition, and give scenes that show the same ring one shared zoom function. A flood that's still retreating when the next scene starts reads as a hard cut, so let it finish first. A fast ease-out flood reads as a jump; use a soft start.\n</gotchas>\n\n<start>\nAsk me for the inputs, measure the word timings, then show me 8 stills before you render.\n</start>"
+   },
+   "files": {
+    "index.html": true,
+    "sheet.png": true,
+    "key1.png": true,
+    "key2.png": true
+   }
+  },
+  "aichrislee-922082": {
+   "id": 10,
+   "run_id": "vb_01m622aw0885rdq8c5v4eywpcg",
+   "prompt_id": "aichrislee-922082",
+   "state": "done",
+   "outcome": "done",
+   "reason": "",
+   "detail": "",
+   "html_chars": 32654,
+   "tokens_in": 481,
+   "tokens_out": 11756,
+   "latency_ms": 135086.0,
+   "static": {
+    "chars": 32654,
+    "defines_seek": true,
+    "defines_duration": true,
+    "external_references": 0,
+    "reads_clock": true,
+    "unseeded_random": false,
+    "truncated": false
+   },
+   "render": {
+    "ok": true,
+    "console_errors": [],
+    "page_errors": [],
+    "blocked_requests": [],
+    "has_seek": true,
+    "declared_duration": 12,
+    "duration": 12.0,
+    "times": [
+     0.0,
+     1.0909,
+     2.1818,
+     3.2727,
+     4.3636,
+     5.4545,
+     6.5455,
+     7.6364,
+     8.7273,
+     9.8182,
+     10.9091,
+     12.0
+    ],
+    "files": [
+     "f00.png",
+     "f01.png",
+     "f02.png",
+     "f03.png",
+     "f04.png",
+     "f05.png",
+     "f06.png",
+     "f07.png",
+     "f08.png",
+     "f09.png",
+     "f10.png",
+     "f11.png"
+    ],
+    "texts": [
+     "ENGINE BLOCK CYLINDER BORES CRANKSHAFT CAMSHAFT CAMSHAFT VALVE COVER VALVE COVER INTAKE MANIFOLD EXHAUST HEADERS OIL PAN FLYWHEEL V8 ENGINE 90° cross-plane · interactive 3D EXPLODE drag to orbit · scroll to zoom hover a part for details",
+     "ENGINE BLOCK CYLINDER BORES CRANKSHAFT CAMSHAFT CAMSHAFT VALVE COVER VALVE COVER INTAKE MANIFOLD EXHAUST HEADERS OIL PAN FLYWHEEL V8 ENGINE 90° cross-plane · interactive 3D EXPLODE drag to orbit · scroll to zoom hover a part for details",
+     "ENGINE BLOCK CYLINDER BORES CRANKSHAFT CAMSHAFT CAMSHAFT VALVE COVER VALVE COVER INTAKE MANIFOLD EXHAUST HEADERS OIL PAN FLYWHEEL V8 ENGINE 90° cross-plane · interactive 3D EXPLODE drag to orbit · scroll to zoom hover a part for details",
+     "ENGINE BLOCK CYLINDER BORES CRANKSHAFT CAMSHAFT CAMSHAFT VALVE COVER VALVE COVER INTAKE MANIFOLD EXHAUST HEADERS OIL PAN FLYWHEEL V8 ENGINE 90° cross-plane · interactive 3D EXPLODE drag to orbit · scroll to zoom hover a part for details",
+     "ENGINE BLOCK CYLINDER BORES CRANKSHAFT CAMSHAFT CAMSHAFT VALVE COVER VALVE COVER INTAKE MANIFOLD EXHAUST HEADERS OIL PAN FLYWHEEL V8 ENGINE 90° cross-plane · interactive 3D EXPLODE drag to orbit · scroll to zoom hover a part for details",
+     "ENGINE BLOCK CYLINDER BORES CRANKSHAFT CAMSHAFT CAMSHAFT VALVE COVER VALVE COVER INTAKE MANIFOLD EXHAUST HEADERS OIL PAN FLYWHEEL V8 ENGINE 90° cross-plane · interactive 3D EXPLODE drag to orbit · scroll to zoom hover a part for details",
+     "ENGINE BLOCK CYLINDER BORES CRANKSHAFT CAMSHAFT CAMSHAFT VALVE COVER VALVE COVER INTAKE MANIFOLD EXHAUST HEADERS OIL PAN FLYWHEEL V8 ENGINE 90° cross-plane · interactive 3D EXPLODE drag to orbit · scroll to zoom hover a part for details",
+     "ENGINE BLOCK CYLINDER BORES CRANKSHAFT CAMSHAFT CAMSHAFT VALVE COVER VALVE COVER INTAKE MANIFOLD EXHAUST HEADERS OIL PAN FLYWHEEL V8 ENGINE 90° cross-plane · interactive 3D EXPLODE drag to orbit · scroll to zoom hover a part for details",
+     "ENGINE BLOCK CYLINDER BORES CRANKSHAFT CAMSHAFT CAMSHAFT VALVE COVER VALVE COVER INTAKE MANIFOLD EXHAUST HEADERS OIL PAN FLYWHEEL V8 ENGINE 90° cross-plane · interactive 3D EXPLODE drag to orbit · scroll to zoom hover a part for details",
+     "ENGINE BLOCK CYLINDER BORES CRANKSHAFT CAMSHAFT CAMSHAFT VALVE COVER VALVE COVER INTAKE MANIFOLD EXHAUST HEADERS OIL PAN FLYWHEEL V8 ENGINE 90° cross-plane · interactive 3D EXPLODE drag to orbit · scroll to zoom hover a part for details",
+     "ENGINE BLOCK CYLINDER BORES CRANKSHAFT CAMSHAFT CAMSHAFT VALVE COVER VALVE COVER INTAKE MANIFOLD EXHAUST HEADERS OIL PAN FLYWHEEL V8 ENGINE 90° cross-plane · interactive 3D EXPLODE drag to orbit · scroll to zoom hover a part for details",
+     "ENGINE BLOCK CYLINDER BORES CRANKSHAFT CAMSHAFT CAMSHAFT VALVE COVER VALVE COVER INTAKE MANIFOLD EXHAUST HEADERS OIL PAN FLYWHEEL V8 ENGINE 90° cross-plane · interactive 3D EXPLODE drag to orbit · scroll to zoom hover a part for details"
+    ],
+    "frame_ms": [
+     126,
+     132,
+     134,
+     130,
+     129,
+     154,
+     166,
+     150,
+     136,
+     157,
+     116,
+     123
+    ],
+    "deterministic": true,
+    "render_s": 3.09
+   },
+   "auto": {
+    "blank_frames": 0,
+    "motion_mean": 0.0057,
+    "motion": [
+     0.0072,
+     0.00531,
+     0.00556,
+     0.0062,
+     0.0055,
+     0.00191,
+     0.00616,
+     0.00516,
+     0.00713,
+     0.00568,
+     0.00688
+    ],
+    "still_steps": 1,
+    "first_last_change": 0.00077,
+    "max_change_from_first": 0.0085,
+    "luminance": [
+     0.111,
+     0.109,
+     0.112,
+     0.11,
+     0.11,
+     0.11,
+     0.11,
+     0.111,
+     0.109,
+     0.113,
+     0.11,
+     0.11
+    ],
+    "colourfulness_mean": 0.0646,
+    "moves": false,
+    "not_blank": true,
+    "usable": false
+   },
+   "jury": {
+    "scores": {
+     "style_fidelity": 4.0,
+     "concept_wow": 3.0,
+     "motion_craft": 3.0,
+     "design_typography": 4.0,
+     "finish_texture": 3.0,
+     "technical": 5.0
+    },
+    "mean": 3.67,
+    "dimensions_scored": 6,
+    "summary": "The page renders and seeks deterministically, but the 'V8 engine' reads as a stack of flat grey slabs with a blue comb on top; the V-angle, cylinder banks, pistons, rods, crank, cams and valves are not legible as mechanical forms. Nothing in the 12 seconds demonstrates the explode, the labels, the hover state or the orbit, so the brief's core interactions are unproven and the hero moment is absent.",
+    "critical": [
+     "The engine is not recognisable as a V8: no visible V-angle between banks, no distinct pistons/rods/crank/cams/valves — the brief's named parts are missing or unreadable.",
+     "The 12s capture is essentially static (mean change 0.0057, one still step, first-to-last 0.00077): no explode, no labels, no hover, no camera move is demonstrated.",
+     "Labels listed in the text layer (ENGINE BLOCK, CAMSHAFT, etc.) never appear as 3D-anchored labels in any frame — the explode feature is unverified.",
+     "Flat untextured grey slabs with a single blue 'comb' read as a generic Three.js placeholder, not a real engine; no material differentiation between cast aluminium, steel, and hot headers.",
+     "Exhaust 'glow' is a soft yellow blob floating over the block rather than emissive header geometry with bloom falloff."
+    ],
+    "fixes": [
+     {
+      "t": "0.0s",
+      "problem": "Silhouette is a flat wedge; the V-angle and cylinder banks are not readable, so the subject fails at frame one.",
+      "fix": "Rebuild the block as two distinct banks at 90° with visible bores, pistons, rods and a crank throw; open the camera to a 3/4 low angle so the V reads in silhouette. Add a slow 8s orbit so the form is proven in motion."
+     },
+     {
+      "t": "2.0s",
+      "problem": "No explode, no labels, no hover state anywhere in the 12s — the brief's headline interaction is absent from the capture.",
+      "fix": "Script a demo: at ~2s trigger explode with staggered per-part easing (block first, then cams, valves, headers, pan, flywheel), each part trailing a leader line to a name label that fades in 120ms after arrival. At ~7s hover a piston to show the one-line description, then at ~9s snap back with a single overshoot settle."
+     },
+     {
+      "t": "4.0s",
+      "problem": "Materials are uniform flat grey; no metal response, no cast texture, no hot-header gradient.",
+      "fix": "Use MeshStandardMaterial with metalness 0.9/roughness 0.35 for aluminium, darker steel for crank/rods, and a vertex-colour or shader gradient on the headers from dull steel to orange-white at the ports, with a bloom pass so the glow has falloff rather than a floating blob."
+     },
+     {
+      "t": "6.0s",
+      "problem": "Spark flash is a soft yellow disc hovering above the block, not anchored to plug positions.",
+      "fix": "Place an emissive point light + small sprite at each of the 8 plug tips, fire in cross-plane order (1-8-4-3-6-5-7-2), 60ms decay, and let the bloom pick it up so the flash reads as ignition inside the combustion chamber."
+     },
+     {
+      "t": "10.0s",
+      "problem": "Typography is a single small title and a bottom-right hint; no hierarchy, no label system, no editorial framing.",
+      "fix": "Set a proper title block (V8 / 90° CROSS-PLANE) with a monospaced spec line, and design the part-label style now (small caps, hairline leader, 11px) so the explode reads as a designed diagram, not debug text."
+     },
+     {
+      "t": "11.5s",
+      "problem": "Last frame is identical to the first — no resolution, no satisfying close.",
+      "fix": "End on a tight hero angle with the engine fully assembled, headers glowing, one spark firing, and the title settling in — a deliberate final composition rather than a loop back to the opening pose."
+     }
+    ]
+   },
+   "jury_mode": "images",
+   "mean": 3.67,
+   "ts": 1793220000.729457,
+   "brief": {
+    "id": "aichrislee-922082",
+    "category": "interactive",
+    "tech_tags": [],
+    "standalone": true,
+    "chars": 709,
+    "author": "aichrislee",
+    "author_url": "https://x.com/aichrislee",
+    "post_url": "https://x.com/aichrislee/status/2107260223907922082",
+    "excerpt": "Build me a V8 car engine in interactive 3D, in one HTML file with Three.js. Make it look real: the engine block with its two banks of cylinders in a V, the pistons and connecting rods, the crankshaft, the camshafts and v",
+    "prompt": "Build me a V8 car engine in interactive 3D, in one HTML file with Three.js.\n\nMake it look real: the engine block with its two banks of cylinders in a V, the pistons and connecting rods, the crankshaft, the camshafts and valves on top, the intake manifold and the exhaust headers glowing hot. The pistons pump up and down, the crankshaft turns, and the spark plugs flash when each cylinder fires. I can drag to orbit around it and scroll to zoom.\n\nAdd an Explode button. When I press it, every part slides apart with its name on a label. Press it again and it all snaps back together. When I hover a part, it lights up and shows one line on what it does.\n\nNo images. Do not ask me any questions. Just build it."
+   },
+   "files": {
+    "index.html": true,
+    "sheet.png": true,
+    "key1.png": true,
+    "key2.png": true
+   }
+  }
+ }
+}

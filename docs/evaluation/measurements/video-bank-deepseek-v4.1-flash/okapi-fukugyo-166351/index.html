@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Morph</title>
+<style>
+  html,body{margin:0;padding:0;background:#EDEAE4;overflow:hidden;}
+  #stage{position:relative;width:1280px;height:720px;overflow:hidden;
+    background:#EDEAE4;
+    font-family:'Noto Sans JP','Geist',system-ui,-apple-system,sans-serif;
+    color:#111;font-weight:500;}
+  #world{position:absolute;left:0;top:0;width:1280px;height:720px;
+    transform-origin:0 0;}
+  .shape{position:absolute;left:0;top:0;background:#111;}
+  .label{position:absolute;left:0;top:0;display:flex;align-items:center;justify-content:center;
+    font-size:22px;letter-spacing:.02em;white-space:nowrap;pointer-events:none;}
+  .cursor{position:absolute;left:0;top:0;width:26px;height:26px;pointer-events:none;
+    transform-origin:2px 2px;}
+  .cursor svg{display:block;}
+  .ring{position:absolute;left:0;top:0;border-radius:50%;border:2px solid #111;pointer-events:none;}
+  .kbd{display:inline-flex;align-items:center;justify-content:center;
+    border:1.5px solid currentColor;border-radius:6px;padding:0 6px;height:26px;
+    font-size:15px;font-weight:600;margin-right:6px;opacity:.85;}
+  .thin{font-weight:400;opacity:.55;font-size:16px;}
+  .mono{font-family:'Geist',ui-monospace,monospace;font-weight:600;}
+  .tickrow{position:absolute;left:0;top:0;display:flex;align-items:center;}
+  .tick{background:#111;border-radius:2px;}
+  .tick.on{background:#111;}
+  .tick.off{background:#C9C5BD;}
+  .spark{position:absolute;left:0;top:0;background:#111;border-radius:50%;}
+  .tip{position:absolute;left:0;top:0;background:#111;color:#fff;border-radius:10px;
+    padding:6px 10px;font-size:14px;font-weight:600;white-space:nowrap;}
+  .dot{position:absolute;border-radius:50%;background:#111;}
+  .notif{position:absolute;left:0;top:0;background:#111;color:#fff;border-radius:18px;
+    padding:14px 18px;display:flex;align-items:center;gap:12px;font-size:18px;font-weight:600;}
+  .notif .ic{width:26px;height:26px;border-radius:50%;background:#fff;display:flex;
+    align-items:center;justify-content:center;}
+  .notif .ic svg{display:block;}
+  .searchtxt{position:absolute;left:0;top:0;display:flex;align-items:center;font-size:24px;font-weight:500;}
+  .caret{display:inline-block;width:2px;height:26px;background:#111;margin-left:2px;}
+  .row{position:absolute;left:0;top:0;display:flex;align-items:center;font-size:20px;font-weight:500;}
+  .row .hl{background:#111;color:#fff;border-radius:8px;padding:4px 10px;}
+  .row .dim{opacity:.4;}
+  .ringbig{position:absolute;border-radius:50%;border:3px solid #111;}
+  .playtri{position:absolute;width:0;height:0;}
+</style>
+</head>
+<body>
+<div id="stage"><div id="world">
+  <div id="shape" class="shape"></div>
+  <div id="contents"></div>
+  <div id="cursor" class="cursor">
+    <svg width="26" height="26" viewBox="0 0 26 26">
+      <path d="M4 3 L4 21 L9 16 L12 23 L15 21.5 L12 15 L19 15 Z"
+        fill="#111" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <div id="ring" class="ring"></div>
+</div></div>
+<script>
+(function(){
+const W=1280,H=720;
+const DURATION=14;
+window.DURATION=DURATION;
+
+// ---------- utilities ----------
+function clamp(v,a,b){return v<a?a:v>b?b:v;}
+function lerp(a,b,t){return a+(b-a)*t;}
+function smoothstep(a,b,x){x=clamp((x-a)/(b-a),0,1);return x*x*(3-2*x);}
+function easeOutCubic(t){t=clamp(t,0,1);return 1-Math.pow(1-t,3);}
+function easeInOutCubic(t){t=clamp(t,0,1);return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+
+// spring step response: from 0 to 1, natural freq w, damping zeta
+// closed form, returns value (overshoot small)
+function spring(t, w, zeta){
+  if(t<=0) return 0;
+  zeta = zeta===undefined?0.72:zeta;
+  const wd = w*Math.sqrt(1-zeta*zeta);
+  const env = Math.exp(-zeta*w*t);
+  const c = Math.cos(wd*t), s = Math.sin(wd*t);
+  return 1 - env*(c + (zeta*w/wd)*s);
+}
+// spring returning to 0 from 1 (mirror)
+function springDown(t,w,zeta){return 1-spring(t,w,zeta);}
+
+// Build spring value for a signal that changes target at given times.
+// keyframes: [{t:startTime, v:target, w:.., z:..}]
+// returns function(time) -> value, summing deltas
+function springSignal(keyframes, w, zeta){
+  w=w||14; zeta=zeta===undefined?0.72:zeta;
+  // precompute cumulative
+  return function(time){
+    let val = 0;
+    let prev = 0;
+    for(let i=0;i<keyframes.length;i++){
+      const k=keyframes[i];
+      if(time < k.t) break;
+      const dt = time - k.t;
+      const delta = k.v - prev;
+      const ww = k.w||w, zz = (k.z===undefined?zeta:k.z);
+      val += delta*spring(dt, ww, zz);
+      prev = k.v;
+    }
+    return val;
+  };
+}
+
+// ---------- timeline ----------
+// 120 BPM => beat = 0.5s. 7 bars * 4 beats = 28 beats = 14s.
+const BPM=120, BEAT=60/BPM; // 0.5
+const T = (b)=> b*BEAT; // beat -> seconds
+
+// Key beats (in beats):
+// 0 button
+// 2 press -> loading
+// 4 check
+// 6 dynamic island
+// 8 player play/pause
+// 10 progress bar drag
+// 12 volume slider (stretch over max)
+// 14 toggle switch -> on
+// 16 toggle -> off
+// 18 tab liquid indicator
+// 20 tab opens -> graph draws
+// 22 graph hover tooltip
+// 24 search collapse (⌘K)
+// 25 typing / filtering
+// 26 enter -> notification
+// 27 back to button
+// 28 loop (== beat 0)
+
+// State machine: shape geometry target at each beat
+// We'll define shape params via spring signals per property.
+
+// Property keyframes (targets). Each entry: {t(seconds), v}
+const K = {
+  // x,y center of shape (in world coords)
+  cx: [
+    {t:0, v:640},
+  ],
+  cy: [{t:0, v:360}],
+  w: [
+    {t:0, v:220},        // button
+    {t:T(2), v:120},     // loading circle-ish (square w rounded)
+    {t:T(4), v:120},     // check
+    {t:T(6), v:340},     // dynamic island (pill)
+    {t:T(8), v:520},     // player
+    {t:T(10), v:520},    // progress
+    {t:T(12), v:520},    // volume
+    {t:T(14), v:140},    // switch
+    {t:T(16), v:140},
+    {t:T(18), v:520},    // tab bar
+    {t:T(20), v:640},    // graph
+    {t:T(22), v:640},
+    {t:T(24), v:520},    // search
+    {t:T(26), v:520},
+    {t:T(27), v:220},    // back to button
+  ],
+  h: [
+    {t:0, v:64},
+    {t:T(2), v:120},
+    {t:T(4), v:120},
+    {t:T(6), v:64},
+    {t:T(8), v:120},
+    {t:T(10), v:120},
+    {t:T(12), v:120},
+    {t:T(14), v:72},
+    {t:T(16), v:72},
+    {t:T(18), v:72},
+    {t:T(20), v:360},
+    {t:T(22), v:360},
+    {t:T(24), v:72},
+    {t:T(26), v:72},
+    {t:T(27), v:64},
+  ],
+  r: [ // corner radius
+    {t:0, v:32},
+    {t:T(2), v:60},
+    {t:T(4), v:60},
+    {t:T(6), v:32},
+    {t:T(8), v:32},
+    {t:T(10), v:32},
+    {t:T(12), v:32},
+    {t:T(14), v:36},
+    {t:T(16), v:36},
+    {t:T(18), v:36},
+    {t:T(20), v:28},
+    {t:T(22), v:28},
+    {t:T(24), v:36},
+    {t:T(26), v:36},
+    {t:T(27), v:32},
+  ],
+};
+
+const wSpring = 16, zSpring = 0.78;
+
+const sW = springSignal(K.w, wSpring, zSpring);
+const sH = springSignal(K.h, wSpring, zSpring);
+const sR = springSignal(K.r, wSpring, zSpring);
+
+// ---------- cursor path ----------
+// cursor positions keyed to beats
+const cursorPath = [
+  {t:0, x:880, y:420},        // resting right-lower of button
+  {t:T(1.2),x:760, y:392},    // approach
+  {t:T(2), x:750, y:392},     // press (click at beat 2)
+  {t:T(4), x:690, y:392},     // after loading, check
+  {t:T(6), x:820, y:392},
+  {t:T(8), x:900, y:420},     // player
+  {t:T(9.2),x:640,y:420},     // move to progress
+  {t:T(10.2),x:760,y:420},    // drag progress to right
+  {t:T(11), x:820, y:420},
+  {t:T(12), x:820, y:420},
+  {t:T(12.6),x:900,y:420},    // volume drag past max
+  {t:T(13.2),x:960,y:420},
+  {t:T(14), x:720, y:420},    // switch
+  {t:T(15), x:720, y:420},
+  {t:T(16), x:720, y:420},
+  {t:T(18), x:820, y:420},    // tab
+  {t:T(20), x:820, y:420},
+  {t:T(21.2),x:900,y:400},    // graph hover
+  {t:T(22), x:900, y:400},
+  {t:T(24), x:820, y:420},    // search
+  {t:T(25.4),x:820,y:420},
+  {t:T(26), x:820, y:420},
+  {t:T(27), x:880, y:420},
+  {t:T(28), x:880, y:420},    // == beat 0
+];
+// smooth cursor with a "spring-ish" interpolation between keys using smoothstep
+function cursorAt(time){
+  const p=cursorPath;
+  if(time<=p[0].t) return {x:p[0].x,y:p[0].y};
+  for(let i=0;i<p.length-1;i++){
+    if(time<=p[i+1].t){
+      const a=p[i], b=p[i+1];
+      const u = (time-a.t)/(b.t-a.t);
+      const e = easeInOutCubic(u);
+      return {x:lerp(a.x,b.x,e), y:lerp(a.y,b.y,e)};
+    }
+  }
+  return {x:p[p.length-1].x, y:p[p.length-1].y};
+}
+
+// clicks: press down/up times
+const clicks = [
+  {down:T(1.8), up:T(2.2)},   // button
+  {down:T(3.8), up:T(4.2)},   // check
+  {down:T(5.8), up:T(6.2)},   // dynamic island
+  {down:T(7.8), up:T(8.2)},   // play
+  {down:T(9.8), up:T(11.2)},  // progress drag
+  {down:T(12.4), up:T(13.4)}, // volume drag
+  {down:T(13.8), up:T(14.2)}, // toggle on
+  {down:T(15.8), up:T(16.2)}, // toggle off
+  {down:T(17.8), up:T(18.2)}, // tab
+  {down:T(19.8), up:T(20.2)}, // open graph
+  {down:T(23.8), up:T(24.2)}, // search collapse
+  {down:T(25.8), up:T(26.2)}, // enter
+  {down:T(26.8), up:T(27.2)}, // back to button
+];
+function isDown(time){
+  for(const c of clicks){ if(time>=c.down && time<=c.up) return true; }
+  return false;
+}
+function lastClick(time){
+  let r=null;
+  for(const c of clicks){ if(time>=c.down) r=c; }
+  return r;
+}
+
+// ---------- drag values ----------
+// progress 0..1, volume 0..1 (with stretch beyond 1)
+const progressSpring = springSignal([
+  {t:0, v:0.18},
+  {t:T(9.8), v:0.18},
+  {t:T(11.2), v:0.82},   // dragged
+], 18, 0.8);
+const volumeSpring = springSignal([
+  {t:0, v:0.35},
+  {t:T(12.4), v:0.35},
+  {t:T(12.9), v:1.18},  // stretch past max
+  {t:T(13.4), v:0.85},  // relax back
+], 20, 0.75);
+
+// toggle state: 0 off, 1 on
+const toggleSpring = springSignal([
+  {t:0, v:0},
+  {t:T(14), v:1},
+  {t:T(16), v:0},
+], 18, 0.72);
+// tab indicator: 0..2 (three tabs) with direction lead
+const tabSpring = springSignal([
+  {t:0, v:0},
+  {t:T(18), v:1},
+  {t:T(19), v:2},
+], 16, 0.72);
+
+// search query typing progress
+const queryFull = "morph";
+function queryLen(time){
+  const start=T(24.8), end=T(25.8);
+  const u=clamp((time-start)/(end-start),0,1);
+  return Math.round(u*queryFull.length);
+}
+
+// notification visible window
+function notifAlpha(time){
+  const a=T(26.0), b=T(27.0);
+  if(time<a||time>b) return 0;
+  const inT=smoothstep(a,a+0.12,time);
+  const outT=1-smoothstep(b-0.12,b,time);
+  return Math.min(inT,outT);
+}
+
+// graph draw progress
+function graphDraw(time){
+  return clamp((time-T(20.2))/(T(22)-T(20.2)),0,1);
+}
+
+// ---------- DOM ----------
+const shape=document.getElementById('shape');
+const contents=document.getElementById('contents');
+const cursorEl=document.getElementById('cursor');
+const ringEl=document.getElementById('ring');
+const world=document.getElementById('world');
+
+// camera: zoom so shape fills more of screen at certain states
+// slight zoom in for player/graph, back to 1 at start/end
+function cameraZoom(time){
+  const z = springSignal([
+    {t:0, v:1},
+    {t:T(6), v:1.15},
+    {t:T(8), v:1.08},
+    {t:T(20), v:1.12},
+    {t:T(24), v:1.0},
+    {t:T(27), v:1.0},
+  ], 8, 0.9);
+  return z(time);
+}
+
+// helper to render text content that fades in/out per state
+function setHTML(el, html){ if(el._h!==html){el.innerHTML=html; el._h=html;} }
+function setStyle(el, prop, val){ if(el.style[prop]!==val) el.style[prop]=val; }
+
+// Build content layers once
+const layers = {};
+['btn','load','check','island','player','progress','volume','toggle','tab','graph','search','notif'].forEach(k=>{
+  const d=document.createElement('div');
+  d.style.position='absolute'; d.style.left='0'; d.style.top='0';
+  d.style.width='100%'; d.style.height='100%';
+  d.style.opacity='0'; d.style.pointerEvents='none';
+  d.style.display='flex'; d.style.alignItems='center'; d.style.justifyContent='center';
+  contents.appendChild(d); layers[k]=d;
+});
+
+layers.btn.innerHTML = '<div style="font-size:24px;font-weight:600;color:#fff;">はじめる</div>';
+layers.load.innerHTML = '<div id="ld" style="width:56px;height:56px;border-radius:50%;border:4px solid rgba(255,255,255,.25);border-top-color:#fff;"></div>';
+layers.check.innerHTML = '<svg width="64" height="64" viewBox="0 0 64 64"><path d="M16 34 L28 46 L48 20" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+layers.island.innerHTML = '<div style="display:flex;align-items:center;gap:12px;color:#fff;font-size:18px;font-weight:600;"><span style="width:10px;height:10px;border-radius:50%;background:#fff;"></span>再生中 · 3:24</div>';
+layers.player.innerHTML = '<div style="display:flex;align-items:center;gap:18px;color:#fff;"><div id="playbtn" style="width:44px;height:44px;position:relative;"><svg width="44" height="44" viewBox="0 0 44 44"><g id="playg" fill="#fff"></g></svg></div><div style="font-size:20px;font-weight:600;">Midnight Drive</div><div style="margin-left:auto;font-size:16px;opacity:.7;">3:24</div></div>';
+layers.progress.innerHTML = '<div style="width:100%;display:flex;flex-direction:column;gap:14px;color:#fff;"><div style="display:flex;justify-content:space-between;font-size:16px;opacity:.7;"><span>再生位置</span><span id="ptime">1:12</span></div><div id="ptrack" style="position:relative;height:6px;background:rgba(255,255,255,.25);border-radius:3px;"><div id="pfill" style="position:absolute;left:0;top:0;height:100%;background:#fff;border-radius:3px;"></div><div id="pknob" style="position:absolute;top:50%;width:18px;height:18px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);"></div></div></div>';
+layers.volume.innerHTML = '<div style="width:100%;display:flex;flex-direction:column;gap:14px;color:#fff;"><div style="display:flex;justify-content:space-between;font-size:16px;opacity:.7;"><span>音量</span><span id="vval">35</span></div><div id="vtrack" style="position:relative;height:6px;background:rgba(255,255,255,.25);border-radius:3px;"><div id="vfill" style="position:absolute;left:0;top:0;height:100%;background:#fff;border-radius:3px;"></div><div id="vknob" style="position:absolute;top:50%;width:18px;height:18px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);"></div></div></div>';
+layers.toggle.innerHTML = '<div style="display:flex;align-items:center;gap:16px;color:#fff;font-size:18px;font-weight:600;"><span id="tlab">オフ</span></div>';
+layers.tab.innerHTML = '<div style="display:flex;gap:8px;color:#fff;font-size:16px;font-weight:600;"><span style="padding:8px 18px;border-radius:12px;">概要</span><span style="padding:8px 18px;border-radius:12px;">統計</span><span style="padding:8px 18px;border-radius:12px;">設定</span></div>';
+layers.graph.innerHTML = '<svg id="gsvg" width="560" height="300" viewBox="0 0 560 300" style="overflow:visible;"></svg>';
+layers.search.innerHTML = '<div style="display:flex;align-items:center;gap:12px;color:#fff;font-size:20px;"><span class="kbd" style="border-color:#fff;color:#fff;">⌘K</span><span id="qtext"></span><span class="caret" style="background:#fff;"></span></div>';
+layers.notif.innerHTML = '<div style="display:flex;align-items:center;gap:12px;color:#fff;font-size:18px;font-weight:600;"><span style="width:26px;height:26px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 8 L7 12 L13 4" fill="none" stroke="#111" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>保存しました</div>';
+
+// set graph svg static structure
+const gsvg = layers.graph.querySelector('#gsvg');
+const pts = [[20,240],[120,200],[220,220],[320,140],[420,160],[520,80]];
+// build path
+let dpath="M";
+pts.forEach((p,i)=>{ dpath += (i===0?"":" L")+p[0]+" "+p[1]; });
+gsvg.innerHTML = `
+  <g stroke="rgba(255,255,255,.15)" stroke-width="1">
+    <line x1="0" y1="60" x2="560" y2="60"/>
+    <line x1="0" y1="140" x2="560" y2="140"/>
+    <line x1="0" y1="220" x2="560" y2="220"/>
+  </g>
+  <path id="gpath" d="${dpath}" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle id="ghover" cx="0" cy="0" r="7" fill="#fff" opacity="0"/>
+`;
+const gpath = gsvg.querySelector('#gpath');
+const ghover = gsvg.querySelector('#ghover');
+const gpathLen = gpath.getTotalLength ? gpath.getTotalLength() : 600;
+
+// ---------- main seek ----------
+function seek(t){
+  t=clamp(t,0,DURATION);
+
+  // shape geometry
+  const w=sW(t), h=sH(t), r=sR(t);
+  const cx=640, cy=360;
+  const x=cx-w/2, y=cy-h/2;
+
+  // color: mostly black
+  shape.style.background='#111';
+  shape.style.width=w+'px';
+  shape.style.height=h+'px';
+  shape.style.left=x+'px';
+  shape.style.top=y+'px';
+  shape.style.borderRadius=r+'px';
+
+  // camera
+  const zoom=cameraZoom(t);
+  world.style.transform=`translate(640px,360px) scale(${zoom}) translate(-640px,-360px)`;
+
+  // cursor
+  const cur=cursorAt(t);
+  cursorEl.style.transform=`translate(${cur.x-4}px,${cur.y-3}px) scale(${isDown(t)?0.9:1})`;
+  // click ring
+  const lc=lastClick(t);
+  if(lc && t>=lc.down && t<=lc.down+0.25){
+    const u=(t-lc.down)/0.25;
+    ringEl.style.display='block';
+    const s=lerp(10,44,easeOutCubic(u));
+    ringEl.style.width=s+'px'; ringEl.style.height=s+'px';
+    ringEl.style.left=(cur.x-s/2)+'px'; ringEl.style.top=(cur.y-s/2)+'px';
+    ringEl.style.opacity=(1-u)*0.6;
+    ringEl.style.borderColor='#111';
+  } else {
+    ringEl.style.display='none';
+  }
+
+  // content layer visibility windows
+  function vis(lo,hi,fade){
+    fade=fade||0.10;
+    if(t<lo-fade||t>hi+fade) return 0;
+    const a=smoothstep(lo-fade,lo+fade,t);
+    const b=1-smoothstep(hi-fade,hi+fade,t);
+    return Math.min(a,b);
+  }
+  // windows per beat (seconds)
+  const win = {
+    btn:   [T(0), T(2)],
+    load:  [T(2), T(4)],
+    check: [T(4), T(6)],
+    island:[T(6), T(8)],
+    player:[T(8), T(10)],
+    progress:[T(10), T(12)],
+    volume:[T(12), T(14)],
+    toggle:[T(14), T(18)],
+    tab:   [T(18), T(20)],
+    graph: [T(20), T(24)],
+    search:[T(24), T(26)],
+    notif: [T(26), T(27)],
+  };
+  // button returns
+  if(t>=T(27) || t< T(0.2)) win.btn=[T(27), T(28)];
+  // special: at very start and very end show button
+  if(t<T(0.3)) win.btn=[T(0)-0.01, T(2)];
+
+  Object.keys(layers).forEach(k=>{
+    let a=0;
+    if(k==='btn'){
+      if(t<T(2) || t>=T(27)) a=1;
+    } else if(k==='notif'){
+      a=notifAlpha(t);
+    } else {
+      const wv=win[k]||[0,0];
+      a=vis(wv[0],wv[1],0.10);
+    }
+    layers[k].style.opacity=a;
+  });
+
+  // Loading spinner rotation
+  const ld=document.getElementById('ld');
+  if(ld){ ld.style.transform=`rotate(${(t*720)%360}deg)`; }
+
+  // Play/pause morph (beat 8-10). Use smooth morph between triangle and two bars.
+  const playg=document.getElementById('playg');
+  if(playg){
+    const morph = smoothstep(T(8.4), T(9.4), t); // 0=play 1=pause
+    // triangle points
+    const tri=[[16,12],[16,32],[32,22]];
+    // pause bars: two rects
+    // interpolate: left bar from triangle edge, right bar from triangle
+    const barW=5, gap=6;
+    const cx=22, cy=22;
+    // We'll draw as path with two rounded shapes morphing
+    // left: triangle left edge -> bar
+    const lx = lerp(16, cx-gap/2-barW/2, morph);
+    const rx = lerp(16, cx+gap/2+barW/2, morph);
+    // simpler: two elements
+    playg.innerHTML = `
+      <rect x="${lerp(16,19,morph)}" y="${lerp(12,14,morph)}" width="${lerp(3,6,morph)}" height="${lerp(20,16,morph)}" rx="2" fill="#fff" transform="rotate(${lerp(0,-8,morph*(1-morph)*4)} 20 22)"/>
+      <polygon points="${lerp(19,25,morph)},${lerp(14,14,morph)} ${lerp(19,25,morph)},${lerp(30,30,morph)} ${lerp(31,25,morph)},${lerp(22,22,morph)}" fill="#fff" opacity="${1-morph}"/>
+      <rect x="${lerp(25,25,morph)}" y="${lerp(14,14,morph)}" width="${lerp(0,6,morph)}" height="${lerp(0,16,morph)}" rx="2" fill="#fff" opacity="${morph}"/>
+    `;
+  }
+
+  // progress bar
+  const pfill=document.getElementById('pfill');
+  const pknob=document.getElementById('pknob');
+  const ptime=document.getElementById('ptime');
+  if(pfill){
+    const pv=clamp(progressSpring(t),0,1);
+    pfill.style.width=(pv*100)+'%';
+    pknob.style.left=(pv*100)+'%';
+    const secs=Math.floor(pv*204);
+    ptime.textContent=Math.floor(secs/60)+':'+String(secs%60).padStart(2,'0');
+  }
+
+  // volume
+  const vfill=document.getElementById('vfill');
+  const vknob=document.getElementById('vknob');
+  const vval=document.getElementById('vval');
+  if(vfill){
+    let vv=volumeSpring(t);
+    // stretch visual beyond 100% -> knob goes past, track stretches
+    const vnorm=clamp(vv,0,1);
+    vfill.style.width=(vnorm*100)+'%';
+    vknob.style.left=(vv*100)+'%';
+    // stretch track width when over 1
+    const over=Math.max(0,vv-1);
+    const track=document.getElementById('vtrack');
+    if(track){ track.style.width=(100+over*30)+'%'; }
+    vval.textContent=Math.round(vnorm*100);
+  }
+
+  // toggle
+  const tlab=document.getElementById('tlab');
+  if(tlab){
+    const tv=clamp(toggleSpring(t),0,1);
+    tlab.textContent = tv>0.5?'オン':'オフ';
+  }
+  // toggle knob: draw as separate element positioned on shape
+  // We'll render knob via a dedicated element
+  let knob=document.getElementById('tknob');
+  if(!knob){
+    knob=document.createElement('div');
+    knob.id='tknob';
+    knob.style.position='absolute'; knob.style.background='#fff';
+    knob.style.borderRadius='50%'; knob.style.pointerEvents='none';
+    knob.style.zIndex='5';
+    contents.appendChild(knob);
+  }
+  {
+    const tv=clamp(toggleSpring(t),0,1);
+    // switch shape is 140x72 centered at 640,360
+    const sx=640-70, sy=360-36;
+    // knob travels inside with padding
+    const pad=8, kw=72-pad*2;
+    // directional lead: left edge and right edge separate springs
+    // use tv for right edge, and a slightly delayed for left when going right
+    const lead=0.06;
+    const tvL = clamp(toggleSpring(t-lead*0.5),0,1);
+    const left = sx+pad + tvL*(140-pad*2-kw);
+    const right = left+kw;
+    knob.style.width=kw+'px'; knob.style.height=kw+'px';
+    knob.style.left=left+'px'; knob.style.top=(sy+pad)+'px';
+    knob.style.display = (t>=T(14)-0.1 && t<T(18)+0.1)?'block':'none';
+    // liquid stretch: width grows when moving
+    const vel = Math.abs(tv-tvL);
+    knob.style.width=(kw+vel*30)+'px';
+    knob.style.background='#fff';
+  }
+
+  // tab liquid indicator
+  let tabInd=document.getElementById('tabind');
+  if(!tabInd){
+    tabInd=document.createElement('div');
+    tabInd.id='tabind';
+    tabInd.style.position='absolute'; tabInd.style.background='#fff';
+    tabInd.style.borderRadius='12px'; tabInd.style.zIndex='1';
+    tabInd.style.pointerEvents='none';
+    contents.appendChild(tabInd);
+  }
+  {
+    const tabVis = (t>=T(18)-0.1 && t<T(20)+0.1);
+    tabInd.style.display = tabVis?'block':'none';
+    if(tabVis){
+      const tv=clamp(tabSpring(t),0,2);
+      // tab positions: 3 tabs, each ~? use fixed layout
+      const tabW=[78,78,78], gap=8;
+      const totalW=tabW[0]+tabW[1]+tabW[2]+gap*2;
+      const startX=640-totalW/2;
+      const positions=[startX, startX+tabW[0]+gap, startX+tabW[0]+tabW[1]+gap*2];
+      const idx=Math.floor(tv), frac=tv-idx;
+      const nextIdx=Math.min(idx+1,2);
+      let left = lerp(positions[idx], positions[nextIdx], frac);
+      // directional lead: right edge leads when moving right
+      const dir = (tv>0.5)?1:-1;
+      const vel = Math.abs(tv - clamp(tabSpring(t-0.06),0,2));
+      const extra = vel*40;
+      const baseW = 78+extra;
+      tabInd.style.left=(left-extra/2)+'px';
+      tabInd.style.top=(360-36+8)+'px';
+      tabInd.style.width=baseW+'px';
+      tabInd.style.height=(72-16)+'px';
+    }
+  }
+
+  // graph draw
+  if(gpath){
+    const gv=graphDraw(t);
+    const len=gpathLen;
+    gpath.style.strokeDasharray=len;
+    gpath.style.strokeDashoffset=len*(1-gv);
+    // hover tooltip
+    const hoverT = (t>=T(21.2) && t<T(23));
+    if(hoverT){
+      // find nearest point along path to cursor x
+      const cur=cursorAt(t);
+      // map cursor to graph local coords: graph centered at 640,360, width 560 height 300
+      const gx=clamp((cur.x-(640-280)),0,560);
+      // find y on path at gx approx by sampling
+      let best=pts[0], bd=1e9;
+      for(let i=0;i<pts.length;i++){
+        const d=Math.abs(pts[i][0]-gx);
+        if(d<bd){bd=d;best=pts[i];}
+      }
+      ghover.setAttribute('cx',best[0]);
+      ghover.setAttribute('cy',best[1]);
+      ghover.setAttribute('opacity',smoothstep(T(21.2),T(21.4),t)*(1-smoothstep(T(22.8),T(23),t)));
+      // tooltip element
+      let tip=document.getElementById('gtip');
+      if(!tip){
+        tip=document.createElement('div'); tip.id='gtip';
+        tip.style.position='absolute'; tip.style.background='#fff'; tip.style.color='#111';
+        tip.style.borderRadius='10px'; tip.style.padding='6px 10px'; tip.style.fontSize='14px';
+        tip.style.fontWeight='600'; tip.style.zIndex='10'; tip.style.pointerEvents='none';
+        contents.appendChild(tip);
+      }
+      const gxScreen = 640-280 + best[0];
+      const gyScreen = 360-150 + best[1];
+      tip.textContent = '値 '+Math.round((300-best[1])*1.2);
+      tip.style.left=(gxScreen-30)+'px';
+      tip.style.top=(gyScreen-44)+'px';
+      tip.style.opacity=ghover.getAttribute('opacity');
+      tip.style.display='block';
+    } else {
+      const tip=document.getElementById('gtip');
+      if(tip) tip.style.display='none';
+    }
+  }
+
+  // search query
+  const qtext=document.getElementById('qtext');
+  if(qtext){
+    const n=queryLen(t);
+    qtext.textContent=queryFull.slice(0,n);
+  }
+
+  // notification transform (slide up)
+  if(layers.notif){
+    const a=notifAlpha(t);
+    const u=clamp((t-T(26))/0.3,0,1);
+    layers.notif.style.transform=`translateY(${(1-easeOutCubic(u))*20}px)`;
+  }
+
+  // start frame == end frame: at t=0 and t=14 cursor at 880,420, button visible
+  // ensure at t>=DURATION-0.001 same as t=0
+  if(t>=DURATION-0.0001){
+    // redraw as t=0
+    seek(0);
+  }
+}
+window.seek=seek;
+
+// play loop
+let start=null;
+function loop(ts){
+  if(start===null) start=ts;
+  const el=((ts-start)/1000)%DURATION;
+  seek(el);
+  requestAnimationFrame(loop);
+}
+seek(0);
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
