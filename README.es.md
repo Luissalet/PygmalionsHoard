@@ -6,13 +6,13 @@ Pygmalion incorpora todas las funciones de Galton de forma nativa. Un servidor e
 
 Entrenamiento conserva datasets, LoRA/QLoRA, fusiones, contexto, conversión, cuantización, captura, linaje y publicación. Evaluación conserva modelos y suites, importaciones, ejecuciones y reanudación, resultados, comparación y estadísticas, arena, rutas, pruebas de reglas, usuarios simulados, matrices de arneses (también por un eje de idioma español/inglés), un banco de vídeo hecho con código y campañas de agentes. Las evaluaciones de entrenamiento llaman a este motor dentro del mismo proceso. La vigilancia periódica necesita además el control de Evaluaciones automáticas; los ajustes históricos permanecen intactos y no reanudamos colas antiguas al abrir un módulo. Los trabajos anteriores se pueden reanudar explícitamente.
 
-Las páginas originales se encuentran en `/training/` y `/evaluation/`, sin marcos embebidos. Se conservan `/capture/...` para los arneses existentes. El catálogo combinado expone **127 herramientas**: las 50 de entrenamiento, 75 de evaluación y `pygmalion_modules` / `pygmalion_set_module`. Tres colisiones se publican con prefijo: `evaluation_settings_get`, `evaluation_settings_set`, `evaluation_gpu_status`.
+Las páginas originales se encuentran en `/training/` y `/evaluation/`, sin marcos embebidos. Se conservan `/capture/...` para los arneses existentes. El catálogo combinado expone **132 herramientas**: las 50 de entrenamiento, 80 de evaluación y `pygmalion_modules` / `pygmalion_set_module`. Tres colisiones se publican con prefijo: `evaluation_settings_get`, `evaluation_settings_set`, `evaluation_gpu_status`.
 
 Los datos se utilizan en su ubicación original mediante `data/modules.json` (`data_paths.training` y `data_paths.evaluation`). No se copian ni convierten bases de datos, datasets, modelos, resultados o linaje. `python scripts/adopt_evaluation.py --evaluation-data <carpeta>` configura la ubicación con todos los módulos OFF. Desactivar detiene workers y solicitudes antes de cerrar sus bases; los datos permanecen.
 
 Esta fusión no cambia las leases de GPU ni el servicio global de modelos. Las pruebas del producto usan datos inventados y motores simulados; no certifican nuevos resultados de un modelo real. Inventario y arquitectura: [fusión](docs/FUSION.md), [API de evaluación](docs/evaluation/API.md), [procedencia](provenance/galton/source.json).
 
-### Herramientas de evaluación (75):
+### Herramientas de evaluación (80):
 
 - `galton_overview` — Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.
 - `galton_status` — Health: scheduler, watch, llama-server, GPUs, settings. Estado de Galton.
@@ -83,6 +83,11 @@ Esta fusión no cambia las leases de GPU ni el servicio global de modelos. Las p
 - `videobench_item` — One video-bank item: the brief, automatic checks, jury scores, fixes and the files. Detalle de un encargo.
 - `videobench_cancel` — Cancel a video-bank run: finished items kept. Cancelar banco de vídeo.
 - `videobench_list` — Recent video-bank runs with state and summary. Historial del banco de vídeo.
+- `logit_judge_run` — Logit judge: rubric answered from next-token probabilities, base vs adapter. Juez por logits.
+- `logit_judge_result` — A logit-judge run: totals, distributions and base-vs-adapter deltas. Resultado del juez logit.
+- `logit_judge_list` — Recent logit-judge runs. Historial del juez por logits.
+- `logit_judge_probe` — Does this server return logprobs? Servidor con logprobs.
+- `logit_judge_cancel` — Stop a running logit-judge run (kills the model worker). Cancelar el juez por logits.
 - `agentbench_catalog` — Agent bench: benchmarks, their task subsets and the configured agent harnesses. Catálogo del banco de agentes.
 - `agentbench_start` — Run real agent harnesses on published benchmarks with one model. Lanzar campaña de agentes.
 - `agentbench_status` — Progress of an agent-bench campaign. Estado de la campaña de agentes.

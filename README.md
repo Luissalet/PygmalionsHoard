@@ -6,13 +6,13 @@ Pygmalion incorporates every Galton capability natively in one ASGI process on p
 
 Training retains datasets, LoRA/QLoRA, merges, context extension, conversion, quantization, capture, lineage and publishing. Evaluation retains model discovery, suites and benchmark imports, runs/resume/results, statistics/comparison, arena, routing, rule testing, simulated users, harness matrices (also along a Spanish/English language axis), a code-made video bank and agent campaigns. Training evaluations call the incorporated evaluator directly in process. Periodic discovery, watch and housekeeping additionally require the Automatic evaluation switch; saved settings remain unchanged. Opening a module never resumes historical queued jobs or campaigns. Resume them explicitly when wanted.
 
-Native pages live at `/training/` and `/evaluation/`, without frames. Existing `/capture/...` endpoints remain available. The combined MCP catalogue has **127 tools**: 50 training, 75 evaluation and `pygmalion_modules` / `pygmalion_set_module`. Three collisions use `evaluation_settings_get`, `evaluation_settings_set` and `evaluation_gpu_status`.
+Native pages live at `/training/` and `/evaluation/`, without frames. Existing `/capture/...` endpoints remain available. The combined MCP catalogue has **132 tools**: 50 training, 80 evaluation and `pygmalion_modules` / `pygmalion_set_module`. Three collisions use `evaluation_settings_get`, `evaluation_settings_set` and `evaluation_gpu_status`.
 
 Data stays in its original location through `data/modules.json` (`data_paths.training`, `data_paths.evaluation`). No database, dataset, model, result or lineage copy/conversion is required. `python scripts/adopt_evaluation.py --evaluation-data <folder>` configures the existing folder with all modules OFF. Disabling drains workers and requests before database close; saved data remains.
 
 GPU leases and the family's configured global model service remain in force. Product verification uses invented data and fake workers, without certifying a new live-model result. See [fusion architecture](docs/FUSION.md), [evaluation API](docs/evaluation/API.md) and [source provenance](provenance/galton/source.json).
 
-### Evaluation tools (75):
+### Evaluation tools (80):
 
 - `galton_overview` — Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.
 - `galton_status` — Health: scheduler, watch, llama-server, GPUs, settings. Estado de Galton.
@@ -83,6 +83,11 @@ GPU leases and the family's configured global model service remain in force. Pro
 - `videobench_item` — One video-bank item: the brief, automatic checks, jury scores, fixes and the files. Detalle de un encargo.
 - `videobench_cancel` — Cancel a video-bank run: finished items kept. Cancelar banco de vídeo.
 - `videobench_list` — Recent video-bank runs with state and summary. Historial del banco de vídeo.
+- `logit_judge_run` — Logit judge: rubric answered from next-token probabilities, base vs adapter. Juez por logits.
+- `logit_judge_result` — A logit-judge run: totals, distributions and base-vs-adapter deltas. Resultado del juez logit.
+- `logit_judge_list` — Recent logit-judge runs. Historial del juez por logits.
+- `logit_judge_probe` — Does this server return logprobs? Servidor con logprobs.
+- `logit_judge_cancel` — Stop a running logit-judge run (kills the model worker). Cancelar el juez por logits.
 - `agentbench_catalog` — Agent bench: benchmarks, their task subsets and the configured agent harnesses. Catálogo del banco de agentes.
 - `agentbench_start` — Run real agent harnesses on published benchmarks with one model. Lanzar campaña de agentes.
 - `agentbench_status` — Progress of an agent-bench campaign. Estado de la campaña de agentes.

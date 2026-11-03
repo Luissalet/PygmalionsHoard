@@ -6522,6 +6522,210 @@
     "module": "evaluation"
   },
   {
+    "name": "logit_judge_run",
+    "description": "Logit judge: rubric answered from next-token probabilities, base vs adapter. Juez por logits.\nInstead of asking a judge to write JSON, each question (choice with labels A, B, C... or a 0-9 score) is sent with its context and the probability of every option token is read: chosen option, distribution, expected score. Backends: a Hugging Face model in the trainer environment (with an optional LoRA adapter: base and adapter are both scored) or an chat-completions server that returns logprobs (llama.cpp server, vLLM, Ollama). A server that ignores logprobs is reported, never replaced by a generated answer. Stored as a run; compare sets by their deltas.\nSinónimos: juez logit, probabilidades del siguiente token, logprobs, rúbrica, antes y después del adaptador, LoRA contra base, puntuación esperada",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "targets": {
+          "description": "Who answers. A running chat-completions server that returns logprobs (a model id or name, or {kind: 'server', url, model}: llama.cpp server, vLLM, a recent Ollama) or a local Hugging Face model {kind: 'hf', base_path, adapter_path?}. An hf target with an adapter gives two result sets, the base model and the base model with the adapter, from one load. Deltas are always the later sets against the first.",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Targets",
+          "type": "array"
+        },
+        "rubric": {
+          "description": "Questions {id, type: choice|score, instructions, options?, min?, max?, anchors?}. A choice lists its option texts (read as the labels A, B, C...). A score is a single digit scale, default 0..9 (min 0 or more, max 9 or less); anchors {\"0\": \"text\"} describe digits.",
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "maxItems": 40,
+          "minItems": 1,
+          "title": "Rubric",
+          "type": "array"
+        },
+        "items": {
+          "description": "What is judged: shared contexts, each a text or {id, context}. Every question is asked about every context.",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "maxItems": 200,
+          "minItems": 1,
+          "title": "Items",
+          "type": "array"
+        },
+        "label": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Label",
+          "type": "string"
+        },
+        "dry_run": {
+          "default": false,
+          "description": "Check the rubric, resolve the targets and show the labels and the number of questions; ask nothing.",
+          "title": "Dry Run",
+          "type": "boolean"
+        },
+        "detail": {
+          "default": false,
+          "description": "Include every item's answers (chosen option, distribution, expected score, log-probabilities). Off: only the totals per question and the deltas.",
+          "title": "Detail",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "targets",
+        "rubric",
+        "items"
+      ],
+      "title": "LogitRunArgs",
+      "type": "object"
+    },
+    "x-timeout-s": 660.0,
+    "module": "evaluation"
+  },
+  {
+    "name": "logit_judge_result",
+    "description": "A logit-judge run: totals, distributions and base-vs-adapter deltas. Resultado del juez logit.\nSinónimos: ver el juez logit, deltas, antes y después, distribución de probabilidad",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "default": "",
+          "description": "Run id (lj_…). Empty: the latest logit-judge run.",
+          "maxLength": 60,
+          "title": "Run",
+          "type": "string"
+        },
+        "detail": {
+          "default": false,
+          "description": "Include every item's answers, not only the totals per question and the deltas.",
+          "title": "Detail",
+          "type": "boolean"
+        }
+      },
+      "title": "LogitResultArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "logit_judge_list",
+    "description": "Recent logit-judge runs. Historial del juez por logits.\nSinónimos: ejecuciones anteriores del juez logit",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "limit": {
+          "default": 15,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "LogitListArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "logit_judge_probe",
+    "description": "Check whether a server returns logprobs. Servidor con logprobs.\nAsks one two-option question and reports whether the server sent the alternatives of the first token, unreachable, or ignored the request.\nSinónimos: comprobar logprobs, llama-server, vLLM, Ollama, top_logprobs",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "targets": {
+          "description": "Servers to test: a model id or name, or {kind: 'server', url, model}.",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Targets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "targets"
+      ],
+      "title": "LogitProbeArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "logit_judge_cancel",
+    "description": "Stop a running logit-judge run (kills the model worker). Cancelar el juez por logits.\nSinónimos: parar, detener",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "default": "",
+          "description": "Run id (lj_…). Empty: every running logit-judge run.",
+          "maxLength": 60,
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "title": "LogitCancelArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
     "name": "agentbench_catalog",
     "description": "Agent bench: benchmarks, their task subsets and the configured agent harnesses. Catálogo del banco de agentes.\nPublished agentic benchmarks (terminal work, repository fixes, multi-language edits, dialogues with tools, algorithmic problems), the fixed subset Galton uses of each with its dev and test split, and the harness lines of the setting agentbench.harnesses.\nSinónimos: benchmarks de agentes, arneses reales, terminal, swe, polyglot, tau, livecodebench",
     "annotations": {

@@ -1,0 +1,5 @@
+Logit judge
+
+The scoring method (reading next-token probabilities over single-token option labels to get a choice, a distribution and an expected score) is adapted from simple-jev by Featherless AI, https://github.com/featherless-ai/simple-jev, licensed under the Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
+
+The code in galton_hoard/logitjudge and pygmalion_hoard/workers/logit_judge.py is a new implementation of that idea; no source files were copied.

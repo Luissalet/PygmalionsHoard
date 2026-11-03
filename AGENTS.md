@@ -49,6 +49,7 @@ To try the whole app without a GPU, run it with `PYGMALION_WORKERS_DIR=tests/fak
 | What a result is compared with, the base file to prepare | `reference.py`, `Operations.evaluate_start` |
 | Publishing | `publish.py` |
 | The UI | `client/src/pages/*.jsx`, `client/src/components/*`, `client/src/i18n.js` |
+| Logit judge (next-token probabilities of option labels, base vs adapter) | `galton_hoard/logitjudge/` (rubric, scoring, scorers, service), `pygmalion_hoard/workers/logit_judge.py`, `evaluation-client/src/components/LogitJudge.jsx`, `evaluation_tests/test_logitjudge.py` |
 
 ## Before finishing a change
 

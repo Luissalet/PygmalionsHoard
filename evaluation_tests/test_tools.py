@@ -712,6 +712,20 @@ def test_video_bank_tools_browse_briefs_and_run(svc):
     assert call(svc, "videobench_list")["count"] == 1
 
 
+def test_logit_judge_tools_run_list_probe_and_cancel(tmp_path):
+    from evaluation_tests.helpers import Clock, build_services, mock_client_factory
+    from evaluation_tests.test_logitjudge import ITEMS, RUBRIC, SERVER, responder
+    lsvc = build_services(tmp_path, clock=Clock(), client_factory=mock_client_factory(responder))
+    try:
+        run = call(lsvc, "logit_judge_run", rubric=RUBRIC, items=ITEMS, targets=[SERVER])["run"]
+        assert call(lsvc, "logit_judge_result", run=run)["run"]["state"] == "done"
+        assert call(lsvc, "logit_judge_list")["runs"][0]["id"] == run
+        assert call(lsvc, "logit_judge_probe", targets=[SERVER])["servers"][0]["supported"] is True
+        assert call(lsvc, "logit_judge_cancel", run=run)["cancelled"] == []
+    finally:
+        lsvc.db.close()
+
+
 def test_every_tool_was_called():
     missing = sorted(set(TOOLS_BY_NAME) - CALLED)
     assert not missing, f"tools never called in this module: {missing}"

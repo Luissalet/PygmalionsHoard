@@ -960,6 +960,74 @@ Annotations: readOnlyHint, idempotentHint.
 |---|---|---|
 | `limit` (integer) | no |  |
 
+## `logit_judge_run`
+
+Logit judge: rubric answered from next-token probabilities, base vs adapter. Juez por logits.
+
+Instead of asking a judge to write JSON, each question (choice with labels A, B, C... or a 0-9 score) is sent with its context and the probability of every option token is read: chosen option, distribution, expected score. Backends: a Hugging Face model in the trainer environment (with an optional LoRA adapter: base and adapter are both scored) or an chat-completions server that returns logprobs (llama.cpp server, vLLM, Ollama). A server that ignores logprobs is reported, never replaced by a generated answer. Stored as a run; compare sets by their deltas.
+Sinónimos: juez logit, probabilidades del siguiente token, logprobs, rúbrica, antes y después del adaptador, LoRA contra base, puntuación esperada
+
+Annotations: openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `targets` (array) | yes | Who answers. A running chat-completions server that returns logprobs (a model id or name, or {kind: 'server', url, model}: llama.cpp server, vLLM, a recent Ollama) or a local Hugging Face model {kind: 'hf', base_path, adapter_path?}. An hf target with an adapter gives two result sets, the base model and the base model with the adapter, from one load. Deltas are always the later sets against the first. |
+| `rubric` (array) | yes | Questions {id, type: choice\|score, instructions, options?, min?, max?, anchors?}. A choice lists its option texts (read as the labels A, B, C...). A score is a single digit scale, default 0..9 (min 0 or more, max 9 or less); anchors {"0": "text"} describe digits. |
+| `items` (array) | yes | What is judged: shared contexts, each a text or {id, context}. Every question is asked about every context. |
+| `label` (string) | no |  |
+| `dry_run` (boolean) | no | Check the rubric, resolve the targets and show the labels and the number of questions; ask nothing. |
+| `detail` (boolean) | no | Include every item's answers (chosen option, distribution, expected score, log-probabilities). Off: only the totals per question and the deltas. |
+
+## `logit_judge_result`
+
+A logit-judge run: totals, distributions and base-vs-adapter deltas. Resultado del juez logit.
+
+Sinónimos: ver el juez logit, deltas, antes y después, distribución de probabilidad
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (lj_…). Empty: the latest logit-judge run. |
+| `detail` (boolean) | no | Include every item's answers, not only the totals per question and the deltas. |
+
+## `logit_judge_list`
+
+Recent logit-judge runs. Historial del juez por logits.
+
+Sinónimos: ejecuciones anteriores del juez logit
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `limit` (integer) | no |  |
+
+## `logit_judge_probe`
+
+Check whether a server returns logprobs. Servidor con logprobs.
+
+Asks one two-option question and reports whether the server sent the alternatives of the first token, unreachable, or ignored the request.
+Sinónimos: comprobar logprobs, llama-server, vLLM, Ollama, top_logprobs
+
+Annotations: readOnlyHint, idempotentHint, openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `targets` (array) | yes | Servers to test: a model id or name, or {kind: 'server', url, model}. |
+
+## `logit_judge_cancel`
+
+Stop a running logit-judge run (kills the model worker). Cancelar el juez por logits.
+
+Sinónimos: parar, detener
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (lj_…). Empty: every running logit-judge run. |
+
 ## `agentbench_catalog`
 
 Agent bench: benchmarks, their task subsets and the configured agent harnesses. Catálogo del banco de agentes.

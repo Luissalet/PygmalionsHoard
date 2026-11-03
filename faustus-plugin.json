@@ -39,7 +39,9 @@
     "model-routing",
     "simulated-users",
     "rule-bench",
-    "independent-modules"
+    "independent-modules",
+    "logit-judge",
+    "logprobs"
   ],
   "placeholders": [
     "PYGMALION_DIR",

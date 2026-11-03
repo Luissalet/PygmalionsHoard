@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { answers, changedFields } from "../copilot-context.js";
 import { useApp } from "../context.js";
-import { Busy, Chip, Empty, ErrorBox, Failure, Field, Icon, ICONS, Modal, Problem, Rel, Section, Spinner, Switch, useBusy, useLoad } from "../components/ui.jsx";
+import { Busy, Chip, Empty, ErrorBox, Failure, Field, Icon, ICONS, Modal, Problem, Rel, Section, Spinner, Switch, Tabs, useBusy, useLoad } from "../components/ui.jsx";
+import { LogitForm, LogitRunDetail } from "../components/LogitJudge.jsx";
 import { CpuBadge, Progress, StateChip } from "../components/parts.jsx";
 import { usePoll } from "../components/hooks.js";
 import { ACTIVE_STATES, CATEGORIES, EFFORTS, RESUMABLE_STATES as RESUMABLE } from "../meta.js";
@@ -397,11 +398,15 @@ function RunDetail({ id }) {
 
 export default function Ejecutar({ param, query }) {
   const { t } = useApp();
+  if (param && param.startsWith("lj_")) return <LogitRunDetail key={param} id={param} />;
   if (param) return <RunDetail key={param} id={param} />;
+  const mode = query.get("judge") === "logit" ? "logit" : "suites";
+  const setMode = (m) => { window.location.hash = m === "logit" ? "#/ejecutar?judge=logit" : "#/ejecutar"; };
   return (
     <div className="space-y-5">
       <h1>{t("nav_run")}</h1>
-      <NewRun query={query} />
+      <Tabs tabs={[{ id: "suites", label: t("mode_suites") }, { id: "logit", label: t("mode_logit") }]} value={mode} onChange={setMode} />
+      {mode === "logit" ? <LogitForm /> : <NewRun query={query} />}
       <History />
     </div>
   );
