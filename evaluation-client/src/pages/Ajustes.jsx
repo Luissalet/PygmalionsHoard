@@ -247,6 +247,14 @@ export default function Ajustes() {
         </div>
       </Section>
 
+      <Section title={t("suit_section")}>
+        <div className="panel space-y-3">
+          <p className="help">{t("suit_set_help")}</p>
+          {field("suiteval.darwin_url", t("suit_set_url"), t("suit_set_url_hint"))}
+          {field("suiteval.export_folder", t("suit_set_folder"), t("suit_set_folder_hint"))}
+          {saveBar(["suiteval.darwin_url", "suiteval.export_folder"])}
+        </div>
+      </Section>
       <Section title={t("videobench_section")}>
         <div className="panel space-y-3">
           <p className="help">{t("videobench_help")}</p>

@@ -70,7 +70,7 @@ def test_the_shared_bridge_lists_and_calls_the_tools_of_the_running_app(running_
         return tools, settings, missing
 
     tools, settings, missing = asyncio.run(go())
-    assert len(tools) == len(TOOLS) + 82
+    assert len(tools) == len(TOOLS) + 90
     assert not settings.is_error and "values" in settings.body or "settings" in settings.body or not settings.is_error
     assert missing.is_error and missing.body["code"] == "not_found" and missing.body["hint"] and missing.body["key"]
 

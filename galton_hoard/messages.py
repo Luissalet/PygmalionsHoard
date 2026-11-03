@@ -224,6 +224,26 @@ ERRORS: dict[str, tuple[str, str]] = {
     "confirm_delete": ("Deleting {what} is permanent.", "Repeat the call with confirm=true if the user asked for it."),
     "confirm_discard": ("Discarding {what} removes its results from every statistic, ranking, route and comparison.",
                         "Repeat the call with confirm=true if the user asked for it; run_restore brings them back."),
+    # suit evaluation
+    "se_bad_path": ("The path '{path}' is not allowed.", "Use a relative path inside the deliverable folder, without '..' or a drive letter."),
+    "se_schema_keyword": ("The schema uses '{keyword}', which this check does not support.", "Supported: type, enum, const, required, properties, additionalProperties, items, minimum, maximum, minLength, maxLength, pattern, minItems, maxItems."),
+    "se_case_no_checks": ("Case {case} has no acceptance checks.", "Give at least one: file_exists, json_schema, numeric, regex or judge."),
+    "se_check_kind": ("Check {n} of case {case} has an unknown kind.", "Use one of: {kinds}."),
+    "se_check_dup": ("Case {case} has two checks with the id '{id}'.", "Give each check its own id."),
+    "se_check_field": ("Check '{id}' of case {case} ({kind}) needs a valid {field}.", ""),
+    "se_check_regex": ("The pattern of check '{id}' in case {case} is not valid: {error}", ""),
+    "se_no_eval": ("No suit evaluation {id}.", "List them with pygmalion_suit_eval_list."),
+    "se_no_case": ("The evaluation has no case '{case}'.", "Take the ids from pygmalion_suit_eval_get."),
+    "se_bad_arm": ("Unknown arm '{arm}'.", "Use generic, current or candidate."),
+    "se_no_cases": ("An evaluation needs at least one case.", ""),
+    "se_case_dup": ("The case id '{id}' appears twice.", ""),
+    "se_case_has_records": ("Case {case} already has results and cannot be removed.", "Delete the evaluation, or keep the case and mark it as used for building."),
+    "se_build_unknown": ("candidate.built_from_cases names '{case}', which is not a case of this evaluation.", ""),
+    "se_bad_suit": ("The suit id '{slug}' is not valid.", "Use 3 to 64 lower case letters, digits and hyphens, as in Darwin's Hoard."),
+    "se_bad_deliverable": ("The deliverable folder '{path}' does not exist.", "Give the folder the arm produced, or only an answer text."),
+    "se_nothing_scored": ("Nothing to export: no case outside the building set has a result.", "Run the cases that were not used to build the candidate, then export."),
+    "se_export_url": ("'{url}' is not an http or https address.", "Set suiteval.darwin_url in the settings."),
+    "se_export_failed": ("Darwin's Hoard did not accept the results: {reason}", "Export to a file instead and import it there with darwin_suit_import_eval."),
 }
 
 # ------------------------------------------------------------------------------------------------- texts: key -> sentence
@@ -341,6 +361,13 @@ TEXTS: dict[str, str] = {
     "prob_checker_object": "{path}: must be an object with a `type`",
     "prob_checker_checks": "{path}: `{kind}` needs a non-empty `checks` list",
     "prob_checker_unknown": "{path}: unknown checker type '{kind}' (known: {options})",
+    # suit evaluation
+    "se_warn_excluded": "Cases used to build the candidate are left out of the score: {cases}.",
+    "se_warn_tuned": "The candidate was run on cases it was built from ({cases}); those results are not counted.",
+    "se_warn_no_build_cases": "No case is marked as used to build the candidate, so nothing shows that it was not tuned on the cases that judge it.",
+    "se_warn_no_scored": "No case outside the building set has a result yet.",
+    "se_warn_low_n": "Arm {arm} has only {n} scored case(s); its rates are weak.",
+    "se_warn_pending": "Arm {arm} has {n} case(s) waiting for a judge verdict; they are not counted.",
 }
 
 # ------------------------------------------------------------------------------------------------- notices: kind -> (title, body)

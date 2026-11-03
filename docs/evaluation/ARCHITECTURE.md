@@ -19,7 +19,7 @@
                       ├──► routes.py: policy ─► routes.json (atomic) ─► event galton.routes.updated
                       ├──► watch.py: new/changed models ─► quick run; regression check after each run ─► notice + galton.regression
                       └──► arena.py: blind pairs from stored answers, votes, ratings
- agent_tools.py: one catalogue (80 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
+ agent_tools.py: one catalogue (88 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
  scheduler.py (hoard_link.lanes): lane "gpu" (runs, judging) · lane "io" (refresh every watch.interval_h, watch every minute, housekeeping hourly)
 ```
 
@@ -61,6 +61,7 @@
 | `galton_hoard/langbench/` | The language axis of the harness bench: `tasks.py` (27 tasks, each written once and localised to es and en with the same id), `canon.py` (the canonical entity map), `shop.py` and `family.py` (the datasets), `bm25.py` (the search), `langworld.py` (a `World` whose search tools count empty searches and arguments in the wrong language), `judge.py` (the lexical language judge) |
 | `galton_hoard/videobench/` | Code-made video bank: `prompts.py` and `data/prompts.json` (139 briefs with author and post), `contract.py` (what the model is asked for and how its reply is read), `render_worker.py` and `render.py` (frames in a browser subprocess, automatic checks, contact sheet), `jury.py` (rubric, jury messages, reading the verdict), `store.py` (`vb_runs`, `vb_items`), `service.py` (the three phases) |
 | `galton_hoard/agentbench/` | Real harnesses on published benchmarks through a container trial runner: `spec.py` (harness lines, benchmark catalogue, deterministic subsets with dev/test split), `harbor.py` (job command line, reading `result.json` into trial rows, outcome `none` apart), `scoring.py` (cells, ranking, paired sign test), `campaign.py` (jobs with a fixed number of trials in flight, retries of `none`, resumable from the job folders), `store.py` (`ab_campaigns`, `ab_trials`), `service.py` (background threads, views for the tools) |
+| `galton_hoard/suiteval/` | Evaluation of suits kept in Darwin's Hoard: `checks.py` (file, JSON-schema subset, numeric, regex and judge checks on a deliverable folder; paths cannot leave it), `stats.py` (per-arm aggregation with spread, paired comparison, build cases left out), `store.py` (`se_evals`, `se_records`), `service.py` (define, record, score, export to Darwin's API or a JSON file); REST in `api/suiteval.py`. See [SUITEVAL.md](SUITEVAL.md) |
 | `galton_hoard/fakes.py` | Fake GPUs, leases, launcher and models for the tests and the demo mode |
 | `galton_hoard/hoard_link/` | Vendored family library (event bus, leases, calls to other apps). Not edited here |
 | `mcp_server.py` | The shared stdio bridge (`hoard_link.bridge.CatalogBridge`, default timeout 660 s): proxies to the running app, refreshes the tool list, starts the app when needed |

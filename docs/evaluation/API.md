@@ -1149,6 +1149,130 @@ Annotations: readOnlyHint, idempotentHint.
 |---|---|---|
 | `limit` (integer) | no |  |
 
+## `pygmalion_suit_eval_define`
+
+Define a suit evaluation: cases with executable checks and a candidate. Definir evaluación de traje.
+
+Three arms are compared: generic tools, the current suit and a candidate improvement. Cases the candidate was built from (used_for_building, candidate.built_from_cases) are excluded from the score.
+Sinónimos: evaluar un traje, casos de aceptación, brazos, mejora candidata, comprobaciones ejecutables
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `id` (string) | no | Empty: a new evaluation. An existing id replaces its definition (cases with results cannot be removed). |
+| `suit` (string) | yes | Slug of the suit in Darwin's Hoard, e.g. repository-intake. |
+| `name` (string) | no |  |
+| `cases` (array) | yes |  |
+| `candidate` (null) | no |  |
+| `notes` (string) | no |  |
+
+## `pygmalion_suit_eval_list`
+
+List suit evaluations with cases, scored cases and export state. Evaluaciones de trajes.
+
+Sinónimos: evaluaciones de un traje, historial
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `suit` (string) | no | Only the evaluations of this suit. |
+
+## `pygmalion_suit_eval_get`
+
+One suit evaluation: definition, records and score per arm with warnings. Detalle de una evaluación.
+
+Sinónimos: ver evaluación de traje, resultados por caso
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `id` (string) | yes | Evaluation id (se_…). |
+
+## `pygmalion_suit_eval_record`
+
+Record what an arm produced for a case; checks run on it. Registrar resultado de un caso.
+
+Runs the case's checks on the deliverable folder, answer text, numbers and judge verdicts given. Calling again for the same case, arm and run updates it, so a person can add correction_minutes later.
+Sinónimos: registrar un caso, minutos de corrección, tiempo total, defectos, tokens
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `id` (string) | yes | Evaluation id. |
+| `case` (string) | yes |  |
+| `arm` (generic \| current \| candidate) | yes | generic: plain tools. current: the suit as it is. candidate: the improvement under test. |
+| `run` (integer) | no | Repetition number when the same case and arm are run more than once (averaged per case). |
+| `deliverable` (string) | no | Folder with what the arm produced; the file, JSON and number checks read it (never outside it). |
+| `answer` (string/null) | no | The arm's text answer, for regex checks with target answer. |
+| `values` (object/null) | no | Numbers for numeric checks that use value: <name>. |
+| `judgements` (object/null) | no | Verdicts of judge checks by check id: {ok: bool, score?, judge?, note?}. From a judge model, the logit judge or a person. |
+| `correction_minutes` (number/null) | no | Minutes a person spent correcting the deliverable. Entered by a person; leave out when unknown. |
+| `total_time_s` (number/null) | no | Total time of the run in seconds. |
+| `defects` (integer/null) | no | Defects found. Left out: counted from the failed checks. |
+| `tokens` (integer/null) | no | Tokens used, when the harness reports them. |
+| `notes` (string/null) | no |  |
+
+## `pygmalion_suit_eval_check`
+
+Try acceptance checks on a folder or text without saving. Probar comprobaciones.
+
+Sinónimos: probar un criterio de aceptación, esquema JSON, tolerancia numérica, expresión regular
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `checks` (array) | yes | Same shape as the checks of a case. |
+| `deliverable` (string) | no |  |
+| `answer` (string) | no |  |
+| `values` (object/null) | no |  |
+| `judgements` (object/null) | no |  |
+
+## `pygmalion_suit_eval_score`
+
+Score a suit evaluation per arm, with spread; build cases excluded. Puntuar evaluación.
+
+Cases used to build the candidate are excluded and listed; paired comparisons give wins, losses and an exact sign test.
+Sinónimos: agregado por brazo, dispersión, candidato frente a actual, casos excluidos
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `id` (string) | yes | Evaluation id (se_…). |
+
+## `pygmalion_suit_eval_export`
+
+Send a suit evaluation to Darwin's Hoard or write a JSON file. Exportar a Darwin.
+
+Refused while no case outside the building set has a result. In Darwin the suit becomes evaluated.
+Sinónimos: enviar resultados a Darwin, marcar traje como evaluado, fichero de importación
+
+Annotations: idempotentHint, openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `id` (string) | yes |  |
+| `mode` (auto \| api \| file) | no | auto: Darwin's API if it answers, otherwise a JSON file. api: only the API. file: only a file. |
+| `url` (string) | no | Darwin's base URL; default the setting suiteval.darwin_url. |
+
+## `pygmalion_suit_eval_delete`
+
+Delete a suit evaluation and its results (confirm=true). Borrar evaluación de traje.
+
+Sinónimos: quitar evaluación
+
+Annotations: destructiveHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `id` (string) | yes |  |
+| `confirm` (boolean) | no |  |
+
 ## REST routes for the UI
 
 - `GET /api/health`, `GET /api/status`

@@ -97,6 +97,8 @@ SPECS: list[Spec] = [
     Spec("logit.timeout_s", "int", 120, "logit", low=5, high=1800),
     Spec("logit.hf_timeout_s", "int", 1800, "logit", low=60, high=14400),
     Spec("logit.no_thinking", "bool", True, "logit"),
+    Spec("suiteval.darwin_url", "str", "http://127.0.0.1:5233", "suiteval"),
+    Spec("suiteval.export_folder", "str", "", "suiteval"),
     Spec("agentbench.harnesses", "str_list", [], "agentbench"),
     Spec("agentbench.runner", "str", "", "agentbench"),
     Spec("agentbench.jobs_dir", "str", "", "agentbench"),

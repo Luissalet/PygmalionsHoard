@@ -32,7 +32,7 @@ def test_the_catalogue_has_unique_names_and_valid_schemas():
 
 def test_destructive_tools_are_annotated_and_need_confirm():
     destructive = {t.name for t in TOOLS if t.annotations["destructiveHint"]}
-    assert destructive == {"model_remove", "suite_remove", "case_remove"}
+    assert destructive == {"model_remove", "suite_remove", "case_remove", "pygmalion_suit_eval_delete"}
     discard = TOOLS_BY_NAME["run_discard"]
     assert not discard.annotations["destructiveHint"] and "confirm" in discard.input_model.model_fields and "reason" in discard.input_model.model_fields, "reversible, but it asks for confirm"
     for t in TOOLS:
@@ -724,6 +724,21 @@ def test_logit_judge_tools_run_list_probe_and_cancel(tmp_path):
         assert call(lsvc, "logit_judge_cancel", run=run)["cancelled"] == []
     finally:
         lsvc.db.close()
+
+
+def test_suit_evaluation_tools(svc, tmp_path):
+    made = call(svc, "pygmalion_suit_eval_define", suit="repository-intake", name="Intake", cases=[
+        {"id": "a", "used_for_building": True, "checks": [{"kind": "regex", "pattern": "ok"}]}, {"id": "b", "checks": [{"kind": "regex", "pattern": "ok"}]}],
+        candidate={"description": "tuned", "built_from_cases": ["a"]})["evaluation"]
+    assert call(svc, "pygmalion_suit_eval_check", checks=[{"kind": "regex", "pattern": "ok"}], answer="ok")["success"] is True
+    for arm in ("generic", "current", "candidate"):
+        assert call(svc, "pygmalion_suit_eval_record", id=made["id"], case="b", arm=arm, answer="ok")["success"] is True
+    assert call(svc, "pygmalion_suit_eval_score", id=made["id"])["cases_scored"] == 1
+    assert call(svc, "pygmalion_suit_eval_get", id=made["id"])["evaluation"]["suit"] == "repository-intake"
+    assert call(svc, "pygmalion_suit_eval_list")["count"] == 1
+    svc.suiteval.post_fn = lambda url, payload: (200, {})
+    assert call(svc, "pygmalion_suit_eval_export", id=made["id"])["exported"]["delivered"] is True
+    assert call(svc, "pygmalion_suit_eval_delete", id=made["id"], confirm=True)["deleted"] == made["id"]
 
 
 def test_every_tool_was_called():

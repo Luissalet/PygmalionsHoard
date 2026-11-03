@@ -6,13 +6,17 @@ Pygmalion incorporates every Galton capability natively in one ASGI process on p
 
 Training retains datasets, LoRA/QLoRA, merges, context extension, conversion, quantization, capture, lineage and publishing. Evaluation retains model discovery, suites and benchmark imports, runs/resume/results, statistics/comparison, arena, routing, rule testing, simulated users, harness matrices (also along a Spanish/English language axis), a code-made video bank and agent campaigns. Training evaluations call the incorporated evaluator directly in process. Periodic discovery, watch and housekeeping additionally require the Automatic evaluation switch; saved settings remain unchanged. Opening a module never resumes historical queued jobs or campaigns. Resume them explicitly when wanted.
 
-Native pages live at `/training/` and `/evaluation/`, without frames. Existing `/capture/...` endpoints remain available. The combined MCP catalogue has **132 tools**: 50 training, 80 evaluation and `pygmalion_modules` / `pygmalion_set_module`. Three collisions use `evaluation_settings_get`, `evaluation_settings_set` and `evaluation_gpu_status`.
+Native pages live at `/training/` and `/evaluation/`, without frames. Existing `/capture/...` endpoints remain available. The combined MCP catalogue has **140 tools**: 50 training, 88 evaluation and `pygmalion_modules` / `pygmalion_set_module`. Three collisions use `evaluation_settings_get`, `evaluation_settings_set` and `evaluation_gpu_status`.
 
 Data stays in its original location through `data/modules.json` (`data_paths.training`, `data_paths.evaluation`). No database, dataset, model, result or lineage copy/conversion is required. `python scripts/adopt_evaluation.py --evaluation-data <folder>` configures the existing folder with all modules OFF. Disabling drains workers and requests before database close; saved data remains.
 
 GPU leases and the family's configured global model service remain in force. Product verification uses invented data and fake workers, without certifying a new live-model result. See [fusion architecture](docs/FUSION.md), [evaluation API](docs/evaluation/API.md) and [source provenance](provenance/galton/source.json).
 
-### Evaluation tools (80):
+### Suit evaluation
+
+Evaluation of the suits kept in Darwin's Hoard (reusable work configurations for a kind of engagement): cases with executable acceptance checks (file exists, JSON schema, numeric tolerance, regular expression or a judge rubric), three arms (generic tools, current suit, candidate improvement), and per case and arm the success of the deliverable, the minutes a person spent correcting it (optional, entered by a person), total time, defects and tokens. Aggregates come with their spread, and a case the candidate was built from is marked and left out of the score. Results go to Darwin's Hoard (`/api/evaluations`) or to a JSON file it imports; the suit then reads *evaluated* there. Page **Trajes**, tools `pygmalion_suit_eval_*`, details in [docs/evaluation/SUITEVAL.md](docs/evaluation/SUITEVAL.md).
+
+### Evaluation tools (88):
 
 - `galton_overview` — Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.
 - `galton_status` — Health: scheduler, watch, llama-server, GPUs, settings. Estado de Galton.
@@ -97,6 +101,14 @@ GPU leases and the family's configured global model service remain in force. Pro
 - `agentbench_sync` — Read a campaign's job folders again into the database. Releer las carpetas de la campaña.
 - `agentbench_cancel` — Cancel an agent-bench campaign: trials already finished are kept. Cancelar campaña de agentes.
 - `agentbench_list` — Recent agent-bench campaigns. Historial de campañas de agentes.
+- `pygmalion_suit_eval_define` — Define a suit evaluation: cases with executable checks and a candidate. Definir evaluación de traje.
+- `pygmalion_suit_eval_list` — List suit evaluations with cases, scored cases and export state. Evaluaciones de trajes.
+- `pygmalion_suit_eval_get` — One suit evaluation: definition, records and score per arm with warnings. Detalle de una evaluación.
+- `pygmalion_suit_eval_record` — Record what an arm produced for a case; checks run on it. Registrar resultado de un caso.
+- `pygmalion_suit_eval_check` — Try acceptance checks on a folder or text without saving. Probar comprobaciones.
+- `pygmalion_suit_eval_score` — Score a suit evaluation per arm, with spread; build cases excluded. Puntuar evaluación.
+- `pygmalion_suit_eval_export` — Send a suit evaluation to Darwin's Hoard or write a JSON file. Exportar a Darwin.
+- `pygmalion_suit_eval_delete` — Delete a suit evaluation and its results (confirm=true). Borrar evaluación de traje.
 
 A local studio to adapt language models. It prepares datasets, trains LoRA and QLoRA adapters, merges adapters and whole models, extends the context window, converts to GGUF, quantizes with an importance matrix computed on your own text, measures the result against its parent and publishes the winner to Ollama or as a llama.cpp server. Every file it produces keeps its lineage, and the recipe that made it can be exported and replayed.
 

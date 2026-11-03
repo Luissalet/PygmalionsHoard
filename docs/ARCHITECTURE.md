@@ -1,6 +1,6 @@
 # Architecture
 
-Production entry point: `pygmalion_hoard.fusion.app:create_app`. The shell owns three independent lifetimes, all OFF initially. Its static catalogue combines 50 training tools and 80 tools from the incorporated evaluation engine, plus two module controls. Native pages/API stay under `/training/` and `/evaluation/`. See [FUSION.md](FUSION.md) for data mapping, concurrency, shutdown and compatibility. The diagram below describes the retained training domain.
+Production entry point: `pygmalion_hoard.fusion.app:create_app`. The shell owns three independent lifetimes, all OFF initially. Its static catalogue combines 50 training tools and 88 tools from the incorporated evaluation engine, plus two module controls. Native pages/API stay under `/training/` and `/evaluation/`. See [FUSION.md](FUSION.md) for data mapping, concurrency, shutdown and compatibility. The diagram below describes the retained training domain.
 
 
 ```

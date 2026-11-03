@@ -405,6 +405,37 @@ MIGRATIONS: list[str] = [
     );
     CREATE INDEX vb_items_run ON vb_items(run_id);
     """,
+    # 12: suit evaluations: an evaluation of a suit from Darwin's Hoard (cases with executable checks, three arms) and its records
+    """
+    CREATE TABLE se_evals (
+      id TEXT PRIMARY KEY,
+      suit TEXT NOT NULL,
+      name TEXT NOT NULL DEFAULT '',
+      definition TEXT NOT NULL DEFAULT '{}',
+      exported TEXT NOT NULL DEFAULT '{}',
+      created_ts REAL NOT NULL,
+      updated_ts REAL NOT NULL
+    );
+    CREATE INDEX se_evals_suit ON se_evals(suit);
+    CREATE TABLE se_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      eval_id TEXT NOT NULL REFERENCES se_evals(id) ON DELETE CASCADE,
+      case_id TEXT NOT NULL,
+      arm TEXT NOT NULL,
+      run INTEGER NOT NULL DEFAULT 1,
+      success INTEGER,
+      checks TEXT NOT NULL DEFAULT '[]',
+      inputs TEXT NOT NULL DEFAULT '{}',
+      correction_minutes REAL,
+      total_time_s REAL,
+      defects INTEGER,
+      tokens INTEGER,
+      notes TEXT NOT NULL DEFAULT '',
+      ts REAL NOT NULL,
+      UNIQUE(eval_id, case_id, arm, run)
+    );
+    CREATE INDEX se_records_eval ON se_records(eval_id);
+    """,
 ]
 
 

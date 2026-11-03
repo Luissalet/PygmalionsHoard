@@ -28,6 +28,8 @@ from .agentbench.service import AgentBench
 from .agentbench.store import AgentBenchStore
 from .videobench.service import VideoBench
 from .logitjudge import LogitJudge
+from .suiteval.service import SuitEvals
+from .suiteval.store import SuitEvalStore
 from .videobench.store import VideoStore
 from .hoard_link import family
 from .hoard_link.docs.sniff import sniff
@@ -101,6 +103,7 @@ class Services:
         self.videobench = VideoBench(self.video_store, self.runner, self.settings, data_dir=config.data_dir, emit=self.emit, clock=clock_fn,
                                      base_url=lambda: f"http://127.0.0.1:{config.port}{config.url_prefix}")
         self.logit = LogitJudge(self.store, self.settings, data_dir=config.data_dir, clock=clock_fn, emit=self.emit, client_factory=client_factory, meta_reader=meta_reader, digest_fn=digest_fn)
+        self.suiteval = SuitEvals(SuitEvalStore(self.db, clock_fn), self.settings, data_dir=config.data_dir, clock=clock_fn)
         self.arena = Arena(self.store, self.settings)
         self.routes = Routes(self.store, self.settings, config.routes_path, clock=clock_fn, emit=self.emit)
         self.board = Board(self.store, self.settings, self.routes, clock_fn)

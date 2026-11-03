@@ -41,6 +41,7 @@
     "rule-bench",
     "independent-modules",
     "logit-judge",
+    "suit-evaluation",
     "logprobs"
   ],
   "placeholders": [

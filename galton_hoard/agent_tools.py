@@ -1249,6 +1249,86 @@ def run_logit_judge_cancel(svc: Services, a: LogitCancelArgs) -> dict[str, Any]:
     return svc.logit.cancel(a.run)
 
 
+# ---------------------------------------------------------------------------- suit evaluation (suits of Darwin's Hoard)
+class SuitCaseArg(BaseModel):
+    id: str = Field("", max_length=60, description="Case id; default k1, k2... by position.")
+    title: str = Field("", max_length=200)
+    input: Any = Field("", description="What the arms are given for this case (text or an object): kept for the people who run it.")
+    used_for_building: bool = Field(False, description="True when the candidate improvement was built or tuned on this case: it is then left out of the score.")
+    checks: list[dict[str, Any]] = Field(..., min_length=1, description=(
+        "Acceptance checks, all must pass. {kind: file_exists, path, min_bytes?} | {kind: json_schema, path, schema} | "
+        "{kind: numeric, path + pointer or value, expected, tolerance, relative?} | {kind: regex, pattern, path or target: answer, flags?, min_matches?, max_matches?, forbid?} | "
+        "{kind: judge, rubric} (its verdict is handed in with the record). Each may carry an id."))
+    notes: str = Field("", max_length=1000)
+
+
+class SuitCandidateArg(BaseModel):
+    description: str = Field("", max_length=2000, description="What the improvement changes.")
+    built_from_cases: list[str] = Field(default_factory=list, description="Ids of the cases used to build or tune it: excluded from the score.")
+
+
+class SuitEvalDefineArgs(BaseModel):
+    id: str = Field("", max_length=80, description="Empty: a new evaluation. An existing id replaces its definition (cases with results cannot be removed).")
+    suit: str = Field(..., min_length=3, max_length=64, description="Slug of the suit in Darwin's Hoard, e.g. repository-intake.")
+    name: str = Field("", max_length=200)
+    cases: list[SuitCaseArg] = Field(..., min_length=1, max_length=200)
+    candidate: Optional[SuitCandidateArg] = None
+    notes: str = Field("", max_length=2000)
+
+
+class SuitEvalRef(BaseModel):
+    id: str = Field(..., min_length=1, max_length=80, description="Evaluation id (se_…).")
+
+
+class SuitEvalListArgs(BaseModel):
+    suit: str = Field("", max_length=64, description="Only the evaluations of this suit.")
+
+
+class SuitEvalRecordArgs(BaseModel):
+    id: str = Field(..., min_length=1, max_length=80, description="Evaluation id.")
+    case: str = Field(..., min_length=1, max_length=60)
+    arm: Literal["generic", "current", "candidate"] = Field(..., description="generic: plain tools. current: the suit as it is. candidate: the improvement under test.")
+    run: int = Field(1, ge=1, le=100, description="Repetition number when the same case and arm are run more than once (averaged per case).")
+    deliverable: str = Field("", max_length=1000, description="Folder with what the arm produced; the file, JSON and number checks read it (never outside it).")
+    answer: Optional[str] = Field(None, max_length=1_000_000, description="The arm's text answer, for regex checks with target answer.")
+    values: Optional[dict[str, float]] = Field(None, description="Numbers for numeric checks that use value: <name>.")
+    judgements: Optional[dict[str, dict[str, Any]]] = Field(None, description="Verdicts of judge checks by check id: {ok: bool, score?, judge?, note?}. From a judge model, the logit judge or a person.")
+    correction_minutes: Optional[float] = Field(None, ge=0, le=100_000, description="Minutes a person spent correcting the deliverable. Entered by a person; leave out when unknown.")
+    total_time_s: Optional[float] = Field(None, ge=0, le=10_000_000, description="Total time of the run in seconds.")
+    defects: Optional[int] = Field(None, ge=0, le=100_000, description="Defects found. Left out: counted from the failed checks.")
+    tokens: Optional[int] = Field(None, ge=0, le=1_000_000_000, description="Tokens used, when the harness reports them.")
+    notes: Optional[str] = Field(None, max_length=2000)
+
+
+class SuitEvalCheckArgs(BaseModel):
+    checks: list[dict[str, Any]] = Field(..., min_length=1, description="Same shape as the checks of a case.")
+    deliverable: str = Field("", max_length=1000)
+    answer: str = Field("", max_length=1_000_000)
+    values: Optional[dict[str, float]] = None
+    judgements: Optional[dict[str, dict[str, Any]]] = None
+
+
+class SuitEvalExportArgs(BaseModel):
+    id: str = Field(..., min_length=1, max_length=80)
+    mode: Literal["auto", "api", "file"] = Field("auto", description="auto: Darwin's API if it answers, otherwise a JSON file. api: only the API. file: only a file.")
+    url: str = Field("", max_length=300, description="Darwin's base URL; default the setting suiteval.darwin_url.")
+
+
+class SuitEvalDeleteArgs(BaseModel):
+    id: str = Field(..., min_length=1, max_length=80)
+    confirm: bool = False
+
+
+def run_suit_eval_define(s: Services, a: SuitEvalDefineArgs) -> dict[str, Any]:
+    return s.suiteval.define(**a.model_dump())
+
+
+def run_suit_eval_delete(s: Services, a: SuitEvalDeleteArgs) -> dict[str, Any]:
+    _confirm(a.confirm, "this suit evaluation and its results")
+    return s.suiteval.delete(a.id)
+
+
+
 TOOLS: list[Tool] = [
     Tool("galton_overview", _d("Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.",
                                "Start here: what was measured, what is new or stale, what the routing table says, whether a run is in progress.",
@@ -1475,6 +1555,32 @@ TOOLS: list[Tool] = [
          AgentBenchRef, ann(False, idempotent=True), run_agentbench_cancel),
     Tool("agentbench_list", _d("Recent agent-bench campaigns. Historial de campañas de agentes.", synonyms="campañas anteriores"),
          AgentBenchListArgs, ann(True), run_agentbench_list),
+    Tool("pygmalion_suit_eval_define", _d("Define a suit evaluation: cases with executable checks and a candidate. Definir evaluación de traje.",
+                                          "Three arms are compared: generic tools, the current suit and a candidate improvement. Cases the candidate was built from "
+                                          "(used_for_building, candidate.built_from_cases) are excluded from the score.",
+                                          "evaluar un traje, casos de aceptación, brazos, mejora candidata, comprobaciones ejecutables"),
+         SuitEvalDefineArgs, ann(False, idempotent=True), run_suit_eval_define),
+    Tool("pygmalion_suit_eval_list", _d("List suit evaluations with cases, scored cases and export state. Evaluaciones de trajes.", synonyms="evaluaciones de un traje, historial"),
+         SuitEvalListArgs, ann(True), lambda s, a: s.suiteval.list(a.suit)),
+    Tool("pygmalion_suit_eval_get", _d("One suit evaluation: definition, records and score per arm with warnings. Detalle de una evaluación.",
+                                       synonyms="ver evaluación de traje, resultados por caso"), SuitEvalRef, ann(True), lambda s, a: s.suiteval.get(a.id)),
+    Tool("pygmalion_suit_eval_record", _d("Record what an arm produced for a case; checks run on it. Registrar resultado de un caso.",
+                                          "Runs the case's checks on the deliverable folder, answer text, numbers and judge verdicts given. Calling again for the same "
+                                          "case, arm and run updates it, so a person can add correction_minutes later.",
+                                          "registrar un caso, minutos de corrección, tiempo total, defectos, tokens"),
+         SuitEvalRecordArgs, ann(False, idempotent=True), lambda s, a: s.suiteval.record(eval=a.id, **a.model_dump(exclude={"id"}))),
+    Tool("pygmalion_suit_eval_check", _d("Try acceptance checks on a folder or text without saving. Probar comprobaciones.",
+                                         synonyms="probar un criterio de aceptación, esquema JSON, tolerancia numérica, expresión regular"),
+         SuitEvalCheckArgs, ann(True), lambda s, a: s.suiteval.check(**a.model_dump())),
+    Tool("pygmalion_suit_eval_score", _d("Score a suit evaluation per arm, with spread; build cases excluded. Puntuar evaluación.",
+                                         "Cases used to build the candidate are excluded and listed; paired comparisons give wins, losses and an exact sign test.",
+                                         "agregado por brazo, dispersión, candidato frente a actual, casos excluidos"), SuitEvalRef, ann(True), lambda s, a: s.suiteval.score(a.id)),
+    Tool("pygmalion_suit_eval_export", _d("Send a suit evaluation to Darwin's Hoard or write a JSON file. Exportar a Darwin.",
+                                          "Refused while no case outside the building set has a result. In Darwin the suit becomes evaluated.",
+                                          "enviar resultados a Darwin, marcar traje como evaluado, fichero de importación"),
+         SuitEvalExportArgs, ann(False, idempotent=True, open_world=True), lambda s, a: s.suiteval.export(a.id, mode=a.mode, url=a.url)),
+    Tool("pygmalion_suit_eval_delete", _d("Delete a suit evaluation and its results (confirm=true). Borrar evaluación de traje.", synonyms="quitar evaluación"),
+         SuitEvalDeleteArgs, ann(False, destructive=True), run_suit_eval_delete),
 ]
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 assert len(TOOLS_BY_NAME) == len(TOOLS)

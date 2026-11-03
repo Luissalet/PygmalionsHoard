@@ -7048,5 +7048,550 @@
       "type": "object"
     },
     "module": "evaluation"
+  },
+  {
+    "name": "pygmalion_suit_eval_define",
+    "description": "Define a suit evaluation: cases with executable checks and a candidate. Definir evaluación de traje.\nThree arms are compared: generic tools, the current suit and a candidate improvement. Cases the candidate was built from (used_for_building, candidate.built_from_cases) are excluded from the score.\nSinónimos: evaluar un traje, casos de aceptación, brazos, mejora candidata, comprobaciones ejecutables",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "$defs": {
+        "SuitCandidateArg": {
+          "properties": {
+            "description": {
+              "default": "",
+              "description": "What the improvement changes.",
+              "maxLength": 2000,
+              "title": "Description",
+              "type": "string"
+            },
+            "built_from_cases": {
+              "description": "Ids of the cases used to build or tune it: excluded from the score.",
+              "items": {
+                "type": "string"
+              },
+              "title": "Built From Cases",
+              "type": "array"
+            }
+          },
+          "title": "SuitCandidateArg",
+          "type": "object"
+        },
+        "SuitCaseArg": {
+          "properties": {
+            "id": {
+              "default": "",
+              "description": "Case id; default k1, k2... by position.",
+              "maxLength": 60,
+              "title": "Id",
+              "type": "string"
+            },
+            "title": {
+              "default": "",
+              "maxLength": 200,
+              "title": "Title",
+              "type": "string"
+            },
+            "input": {
+              "default": "",
+              "description": "What the arms are given for this case (text or an object): kept for the people who run it.",
+              "title": "Input"
+            },
+            "used_for_building": {
+              "default": false,
+              "description": "True when the candidate improvement was built or tuned on this case: it is then left out of the score.",
+              "title": "Used For Building",
+              "type": "boolean"
+            },
+            "checks": {
+              "description": "Acceptance checks, all must pass. {kind: file_exists, path, min_bytes?} | {kind: json_schema, path, schema} | {kind: numeric, path + pointer or value, expected, tolerance, relative?} | {kind: regex, pattern, path or target: answer, flags?, min_matches?, max_matches?, forbid?} | {kind: judge, rubric} (its verdict is handed in with the record). Each may carry an id.",
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "minItems": 1,
+              "title": "Checks",
+              "type": "array"
+            },
+            "notes": {
+              "default": "",
+              "maxLength": 1000,
+              "title": "Notes",
+              "type": "string"
+            }
+          },
+          "required": [
+            "checks"
+          ],
+          "title": "SuitCaseArg",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "id": {
+          "default": "",
+          "description": "Empty: a new evaluation. An existing id replaces its definition (cases with results cannot be removed).",
+          "maxLength": 80,
+          "title": "Id",
+          "type": "string"
+        },
+        "suit": {
+          "description": "Slug of the suit in Darwin's Hoard, e.g. repository-intake.",
+          "maxLength": 64,
+          "minLength": 3,
+          "title": "Suit",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Name",
+          "type": "string"
+        },
+        "cases": {
+          "items": {
+            "$ref": "#/$defs/SuitCaseArg"
+          },
+          "maxItems": 200,
+          "minItems": 1,
+          "title": "Cases",
+          "type": "array"
+        },
+        "candidate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SuitCandidateArg"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "notes": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Notes",
+          "type": "string"
+        }
+      },
+      "required": [
+        "suit",
+        "cases"
+      ],
+      "title": "SuitEvalDefineArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "pygmalion_suit_eval_list",
+    "description": "List suit evaluations with cases, scored cases and export state. Evaluaciones de trajes.\nSinónimos: evaluaciones de un traje, historial",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "suit": {
+          "default": "",
+          "description": "Only the evaluations of this suit.",
+          "maxLength": 64,
+          "title": "Suit",
+          "type": "string"
+        }
+      },
+      "title": "SuitEvalListArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "pygmalion_suit_eval_get",
+    "description": "One suit evaluation: definition, records and score per arm with warnings. Detalle de una evaluación.\nSinónimos: ver evaluación de traje, resultados por caso",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "Evaluation id (se_…).",
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "SuitEvalRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "pygmalion_suit_eval_record",
+    "description": "Record what an arm produced for a case; checks run on it. Registrar resultado de un caso.\nRuns the case's checks on the deliverable folder, answer text, numbers and judge verdicts given. Calling again for the same case, arm and run updates it, so a person can add correction_minutes later.\nSinónimos: registrar un caso, minutos de corrección, tiempo total, defectos, tokens",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "Evaluation id.",
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "case": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Case",
+          "type": "string"
+        },
+        "arm": {
+          "description": "generic: plain tools. current: the suit as it is. candidate: the improvement under test.",
+          "enum": [
+            "generic",
+            "current",
+            "candidate"
+          ],
+          "title": "Arm",
+          "type": "string"
+        },
+        "run": {
+          "default": 1,
+          "description": "Repetition number when the same case and arm are run more than once (averaged per case).",
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Run",
+          "type": "integer"
+        },
+        "deliverable": {
+          "default": "",
+          "description": "Folder with what the arm produced; the file, JSON and number checks read it (never outside it).",
+          "maxLength": 1000,
+          "title": "Deliverable",
+          "type": "string"
+        },
+        "answer": {
+          "anyOf": [
+            {
+              "maxLength": 1000000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The arm's text answer, for regex checks with target answer.",
+          "title": "Answer"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Numbers for numeric checks that use value: <name>.",
+          "title": "Values"
+        },
+        "judgements": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Verdicts of judge checks by check id: {ok: bool, score?, judge?, note?}. From a judge model, the logit judge or a person.",
+          "title": "Judgements"
+        },
+        "correction_minutes": {
+          "anyOf": [
+            {
+              "maximum": 100000,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Minutes a person spent correcting the deliverable. Entered by a person; leave out when unknown.",
+          "title": "Correction Minutes"
+        },
+        "total_time_s": {
+          "anyOf": [
+            {
+              "maximum": 10000000,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Total time of the run in seconds.",
+          "title": "Total Time S"
+        },
+        "defects": {
+          "anyOf": [
+            {
+              "maximum": 100000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Defects found. Left out: counted from the failed checks.",
+          "title": "Defects"
+        },
+        "tokens": {
+          "anyOf": [
+            {
+              "maximum": 1000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Tokens used, when the harness reports them.",
+          "title": "Tokens"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "id",
+        "case",
+        "arm"
+      ],
+      "title": "SuitEvalRecordArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "pygmalion_suit_eval_check",
+    "description": "Try acceptance checks on a folder or text without saving. Probar comprobaciones.\nSinónimos: probar un criterio de aceptación, esquema JSON, tolerancia numérica, expresión regular",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "checks": {
+          "description": "Same shape as the checks of a case.",
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "minItems": 1,
+          "title": "Checks",
+          "type": "array"
+        },
+        "deliverable": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Deliverable",
+          "type": "string"
+        },
+        "answer": {
+          "default": "",
+          "maxLength": 1000000,
+          "title": "Answer",
+          "type": "string"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Values"
+        },
+        "judgements": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Judgements"
+        }
+      },
+      "required": [
+        "checks"
+      ],
+      "title": "SuitEvalCheckArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "pygmalion_suit_eval_score",
+    "description": "Score a suit evaluation per arm, with spread; build cases excluded. Puntuar evaluación.\nCases used to build the candidate are excluded and listed; paired comparisons give wins, losses and an exact sign test.\nSinónimos: agregado por brazo, dispersión, candidato frente a actual, casos excluidos",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "Evaluation id (se_…).",
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "SuitEvalRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "pygmalion_suit_eval_export",
+    "description": "Send a suit evaluation to Darwin's Hoard or write a JSON file. Exportar a Darwin.\nRefused while no case outside the building set has a result. In Darwin the suit becomes evaluated.\nSinónimos: enviar resultados a Darwin, marcar traje como evaluado, fichero de importación",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "mode": {
+          "default": "auto",
+          "description": "auto: Darwin's API if it answers, otherwise a JSON file. api: only the API. file: only a file.",
+          "enum": [
+            "auto",
+            "api",
+            "file"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "url": {
+          "default": "",
+          "description": "Darwin's base URL; default the setting suiteval.darwin_url.",
+          "maxLength": 300,
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "SuitEvalExportArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "pygmalion_suit_eval_delete",
+    "description": "Delete a suit evaluation and its results (confirm=true). Borrar evaluación de traje.\nSinónimos: quitar evaluación",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "SuitEvalDeleteArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
   }
 ]
