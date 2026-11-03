@@ -6,7 +6,7 @@ Pygmalion incorporates every Galton capability natively in one ASGI process on p
 
 Training retains datasets, LoRA/QLoRA, merges, context extension, conversion, quantization, capture, lineage and publishing. Evaluation retains model discovery, suites and benchmark imports, runs/resume/results, statistics/comparison, arena, routing, rule testing, simulated users, harness matrices (also along a Spanish/English language axis), a code-made video bank and agent campaigns. Training evaluations call the incorporated evaluator directly in process. Periodic discovery, watch and housekeeping additionally require the Automatic evaluation switch; saved settings remain unchanged. Opening a module never resumes historical queued jobs or campaigns. Resume them explicitly when wanted.
 
-Native pages live at `/training/` and `/evaluation/`, without frames. Existing `/capture/...` endpoints remain available. The combined MCP catalogue has **140 tools**: 50 training, 88 evaluation and `pygmalion_modules` / `pygmalion_set_module`. Three collisions use `evaluation_settings_get`, `evaluation_settings_set` and `evaluation_gpu_status`.
+Native pages live at `/training/` and `/evaluation/`, without frames. Existing `/capture/...` endpoints remain available. The combined MCP catalogue has **141 tools**: 50 training, 89 evaluation and `pygmalion_modules` / `pygmalion_set_module`. Three collisions use `evaluation_settings_get`, `evaluation_settings_set` and `evaluation_gpu_status`.
 
 Data stays in its original location through `data/modules.json` (`data_paths.training`, `data_paths.evaluation`). No database, dataset, model, result or lineage copy/conversion is required. `python scripts/adopt_evaluation.py --evaluation-data <folder>` configures the existing folder with all modules OFF. Disabling drains workers and requests before database close; saved data remains.
 
@@ -16,7 +16,7 @@ GPU leases and the family's configured global model service remain in force. Pro
 
 Evaluation of the suits kept in Darwin's Hoard (reusable work configurations for a kind of engagement): cases with executable acceptance checks (file exists, JSON schema, numeric tolerance, regular expression or a judge rubric), three arms (generic tools, current suit, candidate improvement), and per case and arm the success of the deliverable, the minutes a person spent correcting it (optional, entered by a person), total time, defects and tokens. Aggregates come with their spread, and a case the candidate was built from is marked and left out of the score. Results go to Darwin's Hoard (`/api/evaluations`) or to a JSON file it imports; the suit then reads *evaluated* there. Page **Trajes**, tools `pygmalion_suit_eval_*`, details in [docs/evaluation/SUITEVAL.md](docs/evaluation/SUITEVAL.md).
 
-### Evaluation tools (88):
+### Evaluation tools (89):
 
 - `galton_overview` — Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.
 - `galton_status` — Health: scheduler, watch, llama-server, GPUs, settings. Estado de Galton.
@@ -92,6 +92,7 @@ Evaluation of the suits kept in Darwin's Hoard (reusable work configurations for
 - `logit_judge_list` — Recent logit-judge runs. Historial del juez por logits.
 - `logit_judge_probe` — Does this server return logprobs? Servidor con logprobs.
 - `logit_judge_cancel` — Stop a running logit-judge run (kills the model worker). Cancelar el juez por logits.
+- `logit_judge_delete` — Delete a logit-judge run for good (confirm=true). Borrar una ejecución del juez por logits.
 - `agentbench_catalog` — Agent bench: benchmarks, their task subsets and the configured agent harnesses. Catálogo del banco de agentes.
 - `agentbench_start` — Run real agent harnesses on published benchmarks with one model. Lanzar campaña de agentes.
 - `agentbench_status` — Progress of an agent-bench campaign. Estado de la campaña de agentes.

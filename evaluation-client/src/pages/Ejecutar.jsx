@@ -3,7 +3,7 @@ import { api } from "../api.js";
 import { answers, changedFields } from "../copilot-context.js";
 import { useApp } from "../context.js";
 import { Busy, Chip, Empty, ErrorBox, Failure, Field, Icon, ICONS, Modal, Problem, Rel, Section, Spinner, Switch, Tabs, useBusy, useLoad } from "../components/ui.jsx";
-import { LogitForm, LogitRunDetail } from "../components/LogitJudge.jsx";
+import { LogitForm, LogitRunDetail, useLogitDelete } from "../components/LogitJudge.jsx";
 import { CpuBadge, Progress, StateChip } from "../components/parts.jsx";
 import { usePoll } from "../components/hooks.js";
 import { ACTIVE_STATES, CATEGORIES, EFFORTS, RESUMABLE_STATES as RESUMABLE } from "../meta.js";
@@ -150,6 +150,7 @@ function History() {
   const { data, error, loading, reload } = useLoad(() => api.call("runs_list", { limit: 30 }), [version]);
   const active = (data?.runs || []).some((r) => ACTIVE_STATES.has(r.state));
   usePoll(reload, 3000, active);
+  const removeLogit = useLogitDelete();
   const runs = data?.runs || [];
   return (
     <Section title={t("history")} count={runs.length || undefined}>
@@ -159,7 +160,7 @@ function History() {
       {runs.length > 0 && (
         <div className="panel scroll-x" style={{ padding: 0 }}>
           <table className="tbl">
-            <thead><tr><th>{t("run")}</th><th>{t("status")}</th><th>{t("progress")}</th><th>{t("models")}</th><th>{t("created")}</th></tr></thead>
+            <thead><tr><th>{t("run")}</th><th>{t("status")}</th><th>{t("progress")}</th><th>{t("models")}</th><th>{t("created")}</th><th /></tr></thead>
             <tbody>
               {runs.map((r) => (
                 <tr key={r.id} style={r.discarded ? { opacity: 0.65 } : undefined}>
@@ -168,6 +169,9 @@ function History() {
                   <td style={{ minWidth: 120 }}><div className="help num">{r.progress.done}/{r.progress.total}</div><Progress done={r.progress.done} total={r.progress.total} /></td>
                   <td className="help">{r.contestants.map((c) => c.name).join(", ")}</td>
                   <td className="help"><Rel ts={r.created_ts} /></td>
+                  <td>{r.source === "logit_judge" && !ACTIVE_STATES.has(r.state) && (
+                    <button type="button" className="btn btn-sm" data-testid="history-logit-delete" title={t("logit_delete")} aria-label={t("logit_delete")} onClick={() => removeLogit(r)}>{t("logit_delete")}</button>
+                  )}</td>
                 </tr>
               ))}
             </tbody>

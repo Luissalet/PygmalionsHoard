@@ -32,7 +32,7 @@ def test_the_catalogue_has_unique_names_and_valid_schemas():
 
 def test_destructive_tools_are_annotated_and_need_confirm():
     destructive = {t.name for t in TOOLS if t.annotations["destructiveHint"]}
-    assert destructive == {"model_remove", "suite_remove", "case_remove", "pygmalion_suit_eval_delete"}
+    assert destructive == {"model_remove", "suite_remove", "case_remove", "pygmalion_suit_eval_delete", "logit_judge_delete"}
     discard = TOOLS_BY_NAME["run_discard"]
     assert not discard.annotations["destructiveHint"] and "confirm" in discard.input_model.model_fields and "reason" in discard.input_model.model_fields, "reversible, but it asks for confirm"
     for t in TOOLS:
@@ -722,6 +722,8 @@ def test_logit_judge_tools_run_list_probe_and_cancel(tmp_path):
         assert call(lsvc, "logit_judge_list")["runs"][0]["id"] == run
         assert call(lsvc, "logit_judge_probe", targets=[SERVER])["servers"][0]["supported"] is True
         assert call(lsvc, "logit_judge_cancel", run=run)["cancelled"] == []
+        assert call(lsvc, "logit_judge_delete", run=run, confirm=True)["deleted"] == run
+        assert call(lsvc, "logit_judge_list")["count"] == 0
     finally:
         lsvc.db.close()
 

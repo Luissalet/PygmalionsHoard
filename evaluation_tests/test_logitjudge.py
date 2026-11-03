@@ -274,3 +274,156 @@ def test_worker_scores_every_request_for_every_variant(capsys):
     result = next(e for e in lines if e["event"] == "result")["data"]
     assert engine.entered == ["base", "adapter"] and set(result) == {"base", "adapter"} and set(result["base"]) == {"k0", "k1", "k2"}
     assert set(result["base"]["k0"]) == {"A", "B"} and sum(1 for e in lines if e["event"] == "progress") == 4
+
+
+# ------------------------------------------------------------------ review regressions
+def test_server_with_only_the_sampled_token_is_not_read_as_certainty(tmp_path):
+    only_sampled = {"choices": [{"message": {"content": "A"}, "logprobs": {"content": [{"token": "A", "logprob": lp(0.6), "top_logprobs": []}]}}]}
+    svc = build_services(tmp_path, clock=Clock(), client_factory=mock_client_factory(lambda r: json_response(only_sampled)))
+    try:
+        with pytest.raises(GaltonError) as err:
+            tool(svc, "logit_judge_run", rubric=RUBRIC, items=ITEMS, targets=[SERVER])
+        assert err.value.key == "lj_no_alternatives"
+        probe = tool(svc, "logit_judge_probe", targets=[SERVER])["servers"][0]
+        assert probe["supported"] is False and probe["problem"]["key"] == "lj_no_alternatives"
+    finally:
+        svc.db.close()
+
+
+def test_hf_worker_timeout_is_not_reported_as_a_cancel(tmp_path):
+    import sys
+    from galton_hoard.logitjudge.scorers import HFRunner
+    slow = tmp_path / "slow.py"
+    slow.write_text("import time\ntime.sleep(30)\n", encoding="utf-8")
+    runner = HFRunner(sys.executable, work_dir=tmp_path / "w", gpus=[], timeout_s=1.0, worker=slow)
+    with pytest.raises(GaltonError) as err:
+        runner.run({"requests": []})
+    assert err.value.key == "lj_worker_timeout"
+
+
+def test_a_logit_run_is_not_resumed_as_a_suite_run(lsvc):
+    out = tool(lsvc, "logit_judge_run", rubric=RUBRIC, items=ITEMS, targets=[SERVER])
+    lsvc.store.update_run(out["run"], state="failed")
+    with pytest.raises(GaltonError) as err:
+        tool(lsvc, "run_resume", run=out["run"])
+    assert err.value.key == "lj_not_resumable"
+    assert len(lsvc.store.runs(limit=10)) == 1
+
+
+def test_cancel_between_sets_stops_before_the_hf_worker(tmp_path):
+    holder: dict = {}
+
+    def handler(request):
+        holder["svc"].logit.cancel()
+        return json_response(reply(top(A=0.7, B=0.2, C=0.1)))
+
+    svc = build_services(tmp_path, clock=Clock(), client_factory=mock_client_factory(handler))
+    holder["svc"] = svc
+    base = tmp_path / "base"
+    base.mkdir()
+    (base / "config.json").write_text("{}")
+    calls = []
+    svc.logit.hf_runner = lambda args: calls.append(args) or {}
+    try:
+        with pytest.raises(GaltonError) as err:
+            tool(svc, "logit_judge_run", rubric=RUBRIC[:1], items=ITEMS[:1], targets=[SERVER, {"kind": "hf", "base_path": str(base)}])
+        assert err.value.key == "lj_cancelled" and calls == []
+        assert svc.store.runs(source="logit_judge")[0]["state"] == "cancelled"
+    finally:
+        svc.db.close()
+
+
+def test_result_finds_an_older_run_by_id(lsvc):
+    out = tool(lsvc, "logit_judge_run", rubric=RUBRIC, items=ITEMS, targets=[SERVER])
+    for n in range(501):
+        lsvc.store.create_run(id=f"lj_filler{n:04d}", label="x", state="done", suites=[], contestants=[], source="logit_judge", caller="t",
+                              settings={}, started_ts=2_000_000_000 + n)
+    assert tool(lsvc, "logit_judge_result", run=out["run"])["run"]["id"] == out["run"]
+
+
+class NoSystemTokenizer(FakeTokenizer):
+    """A chat template that refuses the system role (as some model families do)."""
+
+    def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True, **kw):
+        if any(m["role"] == "system" for m in messages):
+            raise ValueError("System role not supported")
+        return "|".join(f"{m['role']}:{m['content']}" for m in messages)
+
+
+def test_worker_prompt_folds_the_system_message_when_the_template_refuses_it():
+    w = load_worker()
+    text = w.prompt_text(NoSystemTokenizer(), [{"role": "system", "content": "SYS"}, {"role": "user", "content": "USER"}])
+    assert text.startswith("user:") and "SYS" in text and "USER" in text and text.index("SYS") < text.index("USER")
+
+
+def test_worker_prompt_without_template_keeps_the_bos_token():
+    w = load_worker()
+
+    class Plain:
+        chat_template = None
+        bos_token = "<s>"
+        add_bos_token = True
+
+    assert w.prompt_text(Plain(), [{"role": "user", "content": "hi"}]).startswith("<s>")
+    Plain.add_bos_token = False
+    assert not w.prompt_text(Plain(), [{"role": "user", "content": "hi"}]).startswith("<s>")
+
+
+def test_worker_reads_bare_and_word_start_label_tokens_from_the_vocabulary():
+    w = load_worker()
+
+    class SentencePiece:
+        """encode() adds the word-start mark, so the bare 'A' token is only found in the vocabulary."""
+        def encode(self, text, add_special_tokens=False):
+            return {"A": [10], " A": [5, 10]}.get(text, [90, 91])
+
+        def get_vocab(self):
+            return {"▁A": 10, "A": 11, "▁": 5}
+
+    assert sorted(w.candidate_ids(SentencePiece(), ["A"])["A"]) == [10, 11]
+
+
+def test_worker_forward_asks_only_for_the_last_position():
+    w = load_worker()
+    seen = []
+
+    class NewModel:
+        def __call__(self, input_ids=None, attention_mask=None, logits_to_keep=None):
+            seen.append(logits_to_keep)
+            return "out"
+
+    class OldModel:
+        def __call__(self, input_ids=None, attention_mask=None):
+            seen.append("plain")
+            return "old"
+
+    enc = {"input_ids": [[1]], "attention_mask": [[1]]}
+    assert w.forward_last(NewModel(), enc) == "out" and seen == [1]
+    assert w.forward_last(OldModel(), enc) == "old" and seen[-1] == "plain"
+
+
+# ------------------------------------------------------------------ deleting a run
+def test_delete_removes_a_logit_run_everywhere(lsvc):
+    out = tool(lsvc, "logit_judge_run", rubric=RUBRIC, items=ITEMS, targets=[SERVER])
+    with pytest.raises(GaltonError) as err:
+        tool(lsvc, "logit_judge_delete", run=out["run"])
+    assert err.value.code == "confirm_required"
+    gone = tool(lsvc, "logit_judge_delete", run=out["run"], confirm=True)
+    assert gone["deleted"] == out["run"]
+    assert lsvc.store.find_run(out["run"]) is None
+    assert all(r["id"] != out["run"] for r in tool(lsvc, "runs_list")["runs"])
+    assert tool(lsvc, "logit_judge_list")["count"] == 0
+    with pytest.raises(GaltonError) as err:
+        tool(lsvc, "logit_judge_result", run=out["run"])
+    assert err.value.key == "lj_no_run"
+
+
+def test_delete_refuses_a_running_run_and_other_kinds_of_run(lsvc):
+    lsvc.store.create_run(id="lj_live", label="x", state="running", suites=[], contestants=[], source="logit_judge", caller="t", settings={}, started_ts=1.0)
+    with pytest.raises(GaltonError) as err:
+        tool(lsvc, "logit_judge_delete", run="lj_live", confirm=True)
+    assert err.value.key == "lj_delete_running" and lsvc.store.find_run("lj_live") is not None
+    lsvc.store.create_run(id="r_suite", label="x", state="done", suites=[], contestants=[], source="ui", caller="t", settings={}, started_ts=1.0)
+    with pytest.raises(GaltonError) as err:
+        tool(lsvc, "logit_judge_delete", run="r_suite", confirm=True)
+    assert err.value.key == "lj_no_run" and lsvc.store.find_run("r_suite") is not None

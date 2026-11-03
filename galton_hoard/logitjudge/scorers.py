@@ -70,8 +70,8 @@ def top_of_reply(data: Any) -> Optional[list[dict[str, Any]]]:
         top = first.get("top_logprobs")
         if isinstance(top, list) and top:
             return top
-        if isinstance(first.get("logprob"), (int, float)):                       # the sampled token only, no alternatives
-            return [{"token": first.get("token", ""), "logprob": first["logprob"]}]
+        if isinstance(first.get("logprob"), (int, float)):                       # the sampled token only, no alternatives: marked, never read as a distribution
+            return [{"token": first.get("token", ""), "logprob": first["logprob"], "sampled_only": True}]
     legacy = lp.get("top_logprobs")
     if isinstance(legacy, list) and legacy and isinstance(legacy[0], dict):
         return [{"token": k, "logprob": v} for k, v in legacy[0].items()]
@@ -111,6 +111,8 @@ class ServerScorer:
         top = top_of_reply(data)
         if top is None:
             raise GaltonError("unsupported", "lj_no_logprobs", name=self.contestant.get("name", self.url))
+        if len(top) == 1 and top[0].get("sampled_only"):                       # one token at probability 1 would fake a certain answer
+            raise GaltonError("unsupported", "lj_no_alternatives", name=self.contestant.get("name", self.url))
         out = labels_from_top(top, labels)
         if all(v is None for v in out.values()):
             raise GaltonError("invalid", "lj_labels_not_in_top", name=self.contestant.get("name", self.url), top=len(top), labels=" ".join(labels))
@@ -136,9 +138,17 @@ class HFRunner:
         self.python, self.work_dir, self.gpus, self.timeout, self.worker = python, Path(work_dir), gpus, timeout_s, Path(worker or WORKER)
         self.proc: Optional[subprocess.Popen] = None
         self.cancelled = threading.Event()
+        self.timed_out = threading.Event()
 
     def kill(self) -> None:
         self.cancelled.set()
+        self._stop()
+
+    def _timeout(self) -> None:
+        self.timed_out.set()
+        self._stop()
+
+    def _stop(self) -> None:
         proc = self.proc
         if proc is not None and proc.poll() is None:
             proc.kill()
@@ -158,8 +168,10 @@ class HFRunner:
         try:
             self.proc = subprocess.Popen([self.python, str(self.worker), "--args", str(args_path)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                          encoding="utf-8", errors="replace", env=env, creationflags=flags)
-            timer = threading.Timer(self.timeout, self.kill)
+            timer = threading.Timer(self.timeout, self._timeout)
             timer.start()
+            if self.cancelled.is_set():                                         # cancelled while the process was being started
+                self._stop()
             for line in self.proc.stdout or []:
                 line = line.strip()
                 if not line.startswith("{"):
@@ -185,6 +197,8 @@ class HFRunner:
                 pass
         if self.cancelled.is_set():
             raise GaltonError("conflict", "lj_cancelled")
+        if self.timed_out.is_set():
+            raise GaltonError("unavailable", "lj_worker_timeout", seconds=int(self.timeout))
         if error:
             raise GaltonError("unavailable", "lj_worker_failed", detail=str(error.get("msg", ""))[:300], hint_text=str(error.get("hint", ""))[:200])
         if code != 0 or not result:

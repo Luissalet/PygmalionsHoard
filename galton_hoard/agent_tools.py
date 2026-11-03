@@ -1218,6 +1218,11 @@ class LogitListArgs(BaseModel):
     limit: int = Field(15, ge=1, le=100)
 
 
+class LogitDeleteArgs(BaseModel):
+    run: str = Field(..., min_length=1, max_length=60, description="Run id (lj_…) of a logit-judge run that has finished, failed or been cancelled.")
+    confirm: bool = False
+
+
 def _logit_slim(payload: dict[str, Any], detail: bool) -> dict[str, Any]:
     if detail:
         return payload
@@ -1247,6 +1252,12 @@ def run_logit_judge_probe(svc: Services, a: LogitProbeArgs) -> dict[str, Any]:
 
 def run_logit_judge_cancel(svc: Services, a: LogitCancelArgs) -> dict[str, Any]:
     return svc.logit.cancel(a.run)
+
+
+def run_logit_judge_delete(svc: Services, a: LogitDeleteArgs) -> dict[str, Any]:
+    card = svc.logit.result(a.run)["run"]                     # lj_no_run for an unknown id or a run of another kind
+    _confirm(a.confirm, f"the logit-judge run {card['id']} ({card['label']})")
+    return svc.logit.delete(card["id"])
 
 
 # ---------------------------------------------------------------------------- suit evaluation (suits of Darwin's Hoard)
@@ -1530,6 +1541,11 @@ TOOLS: list[Tool] = [
                                  "comprobar logprobs, llama-server, vLLM, Ollama, top_logprobs"), LogitProbeArgs, ann(True, open_world=True), run_logit_judge_probe),
     Tool("logit_judge_cancel", _d("Stop a running logit-judge run (kills the model worker). Cancelar el juez por logits.", synonyms="parar, detener"),
          LogitCancelArgs, ann(False, idempotent=True), run_logit_judge_cancel),
+    Tool("logit_judge_delete", _d("Delete a logit-judge run for good (confirm=true). Borrar una ejecución del juez por logits.",
+                                  "Removes the run and its stored distributions from the history, runs_list and comparisons; a run still working is refused (cancel it first). "
+                                  "run_discard only hides a suite run's results from the statistics; this removes a logit-judge run entirely.",
+                                  "borrar, eliminar, quitar ejecución del juez logit"),
+         LogitDeleteArgs, ann(False, destructive=True), run_logit_judge_delete),
     Tool("agentbench_catalog", _d("Agent bench: benchmarks, their task subsets and the configured agent harnesses. Catálogo del banco de agentes.",
                                   "Published agentic benchmarks (terminal work, repository fixes, multi-language edits, dialogues with tools, algorithmic problems), the fixed "
                                   "subset Galton uses of each with its dev and test split, and the harness lines of the setting agentbench.harnesses.",

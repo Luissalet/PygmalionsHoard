@@ -244,6 +244,8 @@ class Runner:
     @staticmethod
     def ensure_resumable(run: dict[str, Any]) -> None:
         """Only a run that failed or was cancelled, and was not discarded, can be continued."""
+        if run.get("source") == "logit_judge":                # no suites to continue: it is started again with logit_judge_run
+            raise GaltonError("conflict", "lj_not_resumable", id=run["id"])
         if run["discarded"]:
             raise GaltonError("conflict", "run_discarded_not_resumable", id=run["id"])
         if run["state"] not in RESUMABLE:

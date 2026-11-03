@@ -130,15 +130,33 @@ export function LogitResult({ data }) {
   );
 }
 
+// A logit-judge run is deleted for good (its whole result lives in the run row); a run still working is refused by the server.
+export function useLogitDelete(onDone) {
+  const { t, confirm, notify, changed, toastError } = useApp();
+  return async (run) => {
+    if (!(await confirm({ title: t("logit_delete"), message: t("logit_delete_msg", { label: run.label || run.id }), confirmLabel: t("logit_delete") }))) return;
+    try {
+      await api.call("logit_judge_delete", { run: run.id, confirm: true });
+      notify(t("logit_deleted"));
+      changed();
+      if (onDone) onDone();
+    } catch (e) {
+      toastError(e);
+    }
+  };
+}
+
 export function LogitRunDetail({ id }) {
   const { t } = useApp();
   const { data, error, loading } = useLoad(() => api.call("logit_judge_result", { run: id, detail: true }), [id]);
+  const remove = useLogitDelete(() => { window.location.hash = "#/ejecutar?judge=logit"; });
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <a href="#/ejecutar?judge=logit" className="btn btn-sm"><Icon d={ICONS.back} size={14} />{t("logit_title")}</a>
         <h1 className="mr-auto" style={{ overflowWrap: "anywhere" }}>{data?.run?.label || id}</h1>
         {data?.run && <Chip className={data.run.state === "done" ? "chip-ok" : "chip-danger"}>{data.run.state}</Chip>}
+        {data?.run && data.run.state !== "running" && <button type="button" className="btn btn-danger" data-testid="logit-delete" onClick={() => remove(data.run)}>{t("logit_delete")}</button>}
       </div>
       <ErrorBox error={error} />
       {loading && !data && <Spinner />}
@@ -152,7 +170,7 @@ export function LogitRunDetail({ id }) {
 const blankQuestion = (n) => ({ id: `q${n}`, type: "choice", instructions: "", options: "", min: 0, max: 9 });
 const EXAMPLE = {
   rubric: [
-    { id: "tono", type: "choice", instructions: "¿Qué tono tiene el texto?", options: "formal\ncoloquial\ngroseros", min: 0, max: 9 },
+    { id: "tono", type: "choice", instructions: "¿Qué tono tiene el texto?", options: "formal\ncoloquial\ngrosero", min: 0, max: 9 },
     { id: "calidad", type: "score", instructions: "¿Qué calidad tiene la redacción?", options: "", min: 0, max: 9 },
   ],
   items: "Estimado señor: lamentamos comunicarle que su solicitud no ha sido aprobada.\n---\nque pasa tio, no me ha llegado nada, a ver si te mueves",
@@ -187,9 +205,11 @@ function RubricEditor({ rubric, setRubric }) {
   );
 }
 
-function TargetEditor({ targets, setTargets, servers, probes, probe, busy }) {
+function TargetEditor({ targets, setTargets, servers, probes, setProbes, probe, busy }) {
   const { t } = useApp();
-  const update = (i, patch) => setTargets((r) => r.map((x, k) => (k === i ? { ...x, ...patch } : x)));
+  // a probe answer belongs to the target as it was probed: editing or removing a target drops the answers that no longer match
+  const update = (i, patch) => { setTargets((r) => r.map((x, k) => (k === i ? { ...x, ...patch } : x))); setProbes((p) => { const { [i]: _gone, ...rest } = p; return rest; }); };
+  const removeAt = (i) => { setTargets((r) => r.filter((_, k) => k !== i)); setProbes({}); };
   return (
     <div className="space-y-2">
       {targets.map((x, i) => (
@@ -227,7 +247,7 @@ function TargetEditor({ targets, setTargets, servers, probes, probe, busy }) {
             {probes[i] && (probes[i].supported
               ? <Chip className="chip-ok">{t("logit_probe_ok")}</Chip>
               : <span className="banner banner-warn">{probes[i].problem ? t.msg(probes[i].problem) : t("logit_probe_bad")}{probes[i].problem && t.hint(probes[i].problem) ? <span className="help block">{t("hint")}: {t.hint(probes[i].problem)}</span> : null}</span>)}
-            <button type="button" className="btn btn-sm" onClick={() => setTargets((r) => r.filter((_, k) => k !== i))} disabled={targets.length < 2}>{t("logit_remove")}</button>
+            <button type="button" className="btn btn-sm" onClick={() => removeAt(i)} disabled={targets.length < 2}>{t("logit_remove")}</button>
           </div>
         </div>
       ))}
@@ -270,6 +290,8 @@ export function LogitForm() {
     notify(t("logit_done"));
     changed();
   });
+  // the run call answers when the run ends; the cancel stops every logit-judge run in flight (the form runs one at a time)
+  const cancel = () => act("cancel", async () => { await api.call("logit_judge_cancel", {}); notify(t("logit_cancelled")); });
   const ready = args.items.length > 0 && args.rubric.every((q) => q.instructions) && args.targets.every((x) => (typeof x === "string" ? x : x.base_path || x.url));
 
   return (
@@ -282,11 +304,12 @@ export function LogitForm() {
         <Field label={t("logit_items_hint")}><textarea className="field" rows={6} value={items} onChange={(e) => setItems(e.target.value)} /></Field>
       </Section>
       <Section title={t("logit_targets")} count={targets.length}>
-        <TargetEditor targets={targets} setTargets={setTargets} servers={servers} probes={probes} probe={probe} busy={busy} />
+        <TargetEditor targets={targets} setTargets={setTargets} servers={servers} probes={probes} setProbes={setProbes} probe={probe} busy={busy} />
         <p className="help">{t("logit_targets_help")}</p>
       </Section>
       <div className="flex flex-wrap items-center gap-3">
         <Busy className="btn btn-primary" busy={busy.run} disabled={!ready} onClick={run}><Icon d={ICONS.run} size={14} />{busy.run ? t("logit_running") : t("logit_run")}</Busy>
+        {busy.run && <Busy className="btn btn-danger" busy={busy.cancel} onClick={cancel} data-testid="logit-cancel"><Icon d={ICONS.stop} size={14} />{t("logit_cancel")}</Busy>}
       </div>
       {result && <><div className="help">{result.label}</div><LogitResult data={result} /></>}
     </div>

@@ -146,6 +146,8 @@ class LogitJudge:
             hf_cache: dict[tuple[str, str], dict[str, Any]] = {}
             for s in sets:
                 raw: dict[str, Any]
+                if cancel.is_set() or self.stopping:                     # a cancel between sets must not start the next model
+                    raise GaltonError("conflict", "lj_cancelled")
                 if s["kind"] == "server":
                     raw, _ = self._score_server(s, requests, cancel)
                 else:
@@ -188,8 +190,13 @@ class LogitJudge:
 
     # ------------------------------------------------------------------ reading and probing
     def result(self, ref: str = "") -> dict[str, Any]:
-        runs = self.store.runs(source=SOURCE, limit=1 if not ref else 500)
-        run = next((r for r in runs if r["id"] == ref), None) if ref else (runs[0] if runs else None)
+        if ref:
+            run = self.store.find_run(ref)
+            if run is not None and run.get("source") != SOURCE:
+                run = None
+        else:
+            runs = self.store.runs(source=SOURCE, limit=1)
+            run = runs[0] if runs else None
         if run is None:
             raise GaltonError("not_found", "lj_no_run", id=ref or "(latest)")
         logit = (run.get("summary") or {}).get("logit")
@@ -219,6 +226,18 @@ class LogitJudge:
             return {"kind": "server", **scorer.probe(client)}
         finally:
             client.close()
+
+    def delete(self, ref: str) -> dict[str, Any]:
+        """Remove a finished, failed or cancelled logit-judge run for good: its row (with the whole result in ``summary``) leaves the history,
+        runs_list and every comparison. A run still working is refused; cancel it first."""
+        run = self.store.find_run(ref)
+        if run is None or run.get("source") != SOURCE:
+            raise GaltonError("not_found", "lj_no_run", id=ref)
+        if run["id"] in self.active or run["state"] in ("running", "queued", "waiting_gpu", "waiting_server"):
+            raise GaltonError("conflict", "lj_delete_running", id=run["id"])
+        self.store.delete_run(run["id"])
+        self.emit("logit_judge.deleted", {"run": run["id"]})
+        return {"deleted": run["id"], "label": run["label"], "state": run["state"]}
 
     def cancel(self, ref: str = "") -> dict[str, Any]:
         entries = [(k, v) for k, v in list(self.active.items()) if not ref or k == ref or k.startswith(ref + ":")]

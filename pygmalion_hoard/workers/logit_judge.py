@@ -23,12 +23,21 @@ import _common as C  # noqa: E402
 def candidate_ids(tokenizer: Any, labels: list[str]) -> dict[str, list[int]]:
     """For each label the ids of its single-token spellings. A label that is never one token cannot be read with one forward pass."""
     out: dict[str, list[int]] = {}
+    try:
+        vocab = tokenizer.get_vocab() if hasattr(tokenizer, "get_vocab") else {}
+    except Exception:  # noqa: BLE001 — a tokenizer without a readable vocabulary is read through encode() only
+        vocab = {}
     for label in labels:
         ids: list[int] = []
         for spelling in (label, " " + label):
             encoded = tokenizer.encode(spelling, add_special_tokens=False)
-            if len(encoded) == 1 and encoded[0] not in ids:
+            if len(encoded) == 1 and int(encoded[0]) not in ids:
                 ids.append(int(encoded[0]))
+        # sentencepiece encode() adds the word-start mark, so the bare token (and the byte-level spellings) are looked up in the vocabulary
+        for piece in (label, "▁" + label, "Ġ" + label):
+            token_id = vocab.get(piece) if isinstance(vocab, dict) else None
+            if token_id is not None and int(token_id) not in ids:
+                ids.append(int(token_id))
         if not ids:
             raise C.WorkerError(f"The label '{label}' is not a single token for this tokenizer.", "Use another model or fewer options.")
         out[label] = ids
@@ -48,13 +57,47 @@ def fold(ids_by_label: dict[str, list[int]], logprob_by_id: dict[int, float]) ->
     return out
 
 
+def _templated(tokenizer: Any, messages: list[dict[str, str]]) -> str:
+    try:
+        return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True, enable_thinking=False)
+    except TypeError:
+        return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+
+def _without_system(messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    """The system text folded into the first user message, for chat templates that refuse a system role."""
+    system = "\n\n".join(m["content"] for m in messages if m["role"] == "system")
+    rest = [dict(m) for m in messages if m["role"] != "system"]
+    if system and rest and rest[0]["role"] == "user":
+        rest[0]["content"] = f"{system}\n\n{rest[0]['content']}"
+    elif system:
+        rest.insert(0, {"role": "user", "content": system})
+    return rest
+
+
 def prompt_text(tokenizer: Any, messages: list[dict[str, str]]) -> str:
     if getattr(tokenizer, "chat_template", None):
         try:
-            return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True, enable_thinking=False)
-        except TypeError:
-            return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    return "\n\n".join(m["content"] for m in messages) + "\n\nAnswer:"
+            return _templated(tokenizer, messages)
+        except Exception:  # noqa: BLE001 — e.g. a template that raises on the system role
+            if not any(m["role"] == "system" for m in messages):
+                raise
+            return _templated(tokenizer, _without_system(messages))
+    # no template: the text is tokenised without special tokens, so the BOS a model expects is written here
+    bos = getattr(tokenizer, "bos_token", None) if getattr(tokenizer, "add_bos_token", False) else None
+    return (bos or "") + "\n\n".join(m["content"] for m in messages) + "\n\nAnswer:"
+
+
+def forward_last(model: Any, enc: Any) -> Any:
+    """The forward pass asking only for the logits of the last position (a [batch, length, vocabulary] tensor of a long prompt does not fit);
+    older transformers versions that do not know the argument get the plain call."""
+    for kwargs in ({"logits_to_keep": 1}, {"num_logits_to_keep": 1}):
+        try:
+            return model(**enc, **kwargs)
+        except TypeError as exc:
+            if next(iter(kwargs)) not in str(exc):
+                raise
+    return model(**enc)
 
 
 def run_requests(engine: Any, args: dict[str, Any]) -> dict[str, Any]:
@@ -116,7 +159,7 @@ class TorchEngine:
         torch = self.torch
         enc = self.tokenizer(texts, return_tensors="pt", padding=True, add_special_tokens=False).to(self.device)
         with torch.inference_mode():
-            logits = self.model(**enc).logits[:, -1, :].float()
+            logits = forward_last(self.model, enc).logits[:, -1, :].float()
             lse = torch.logsumexp(logits, dim=-1)
             picked = logits[:, ids] - lse[:, None]
         return [dict(zip(ids, row)) for row in picked.cpu().tolist()]

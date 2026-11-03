@@ -6726,6 +6726,38 @@
     "module": "evaluation"
   },
   {
+    "name": "logit_judge_delete",
+    "description": "Delete a logit-judge run for good (confirm=true). Borrar una ejecución del juez por logits.\nRemoves the run and its stored distributions from the history, runs_list and comparisons; a run still working is refused (cancel it first). run_discard only hides a suite run's results from the statistics; this removes a logit-judge run entirely.\nSinónimos: borrar, eliminar, quitar ejecución del juez logit",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "description": "Run id (lj_…) of a logit-judge run that has finished, failed or been cancelled.",
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Run",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "run"
+      ],
+      "title": "LogitDeleteArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
     "name": "agentbench_catalog",
     "description": "Agent bench: benchmarks, their task subsets and the configured agent harnesses. Catálogo del banco de agentes.\nPublished agentic benchmarks (terminal work, repository fixes, multi-language edits, dialogues with tools, algorithmic problems), the fixed subset Galton uses of each with its dev and test split, and the harness lines of the setting agentbench.harnesses.\nSinónimos: benchmarks de agentes, arneses reales, terminal, swe, polyglot, tau, livecodebench",
     "annotations": {

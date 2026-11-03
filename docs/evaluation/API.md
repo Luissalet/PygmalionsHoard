@@ -1028,6 +1028,20 @@ Annotations: idempotentHint.
 |---|---|---|
 | `run` (string) | no | Run id (lj_…). Empty: every running logit-judge run. |
 
+## `logit_judge_delete`
+
+Delete a logit-judge run for good (confirm=true). Borrar una ejecución del juez por logits.
+
+Removes the run and its stored distributions from the history, runs_list and comparisons; a run still working is refused (cancel it first). run_discard only hides a suite run's results from the statistics; this removes a logit-judge run entirely.
+Sinónimos: borrar, eliminar, quitar ejecución del juez logit
+
+Annotations: destructiveHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | yes | Run id (lj_…) of a logit-judge run that has finished, failed or been cancelled. |
+| `confirm` (boolean) | no |  |
+
 ## `agentbench_catalog`
 
 Agent bench: benchmarks, their task subsets and the configured agent harnesses. Catálogo del banco de agentes.

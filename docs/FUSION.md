@@ -19,9 +19,9 @@ OFF is saved before waiting. Native API requests share a lifetime and tracked st
 - `/`: Functions; `/api/modules`, `/api/modules/{id}`, `/api/modules/stop-all`.
 - `/training/`: native training SPA/API; `/evaluation/`: native evaluation SPA/API. Same origin, one ASGI process, no iframes. Source clients are compiled with explicit bases and API prefixes.
 - `/capture/...`: compatibility route into training, OFF when training is disabled.
-- Root `/api/agent/tools` and `/api/agent/call`: 140 tools, including independent-module controls.
+- Root `/api/agent/tools` and `/api/agent/call`: 141 tools, including independent-module controls.
 - The three conflicting evaluation tool names gain `evaluation_`: settings_get, settings_set, gpu_status. Their schemas and native names are unchanged inside `/evaluation/api/agent/`.
-- Existing native source API documentation: `API.md` (50 training tools), `evaluation/API.md` (88 evaluation tools). The committed combined schema lives in `pygmalion_hoard/fusion/catalog.json`; tests compare every entry to both original catalogues.
+- Existing native source API documentation: `API.md` (50 training tools), `evaluation/API.md` (89 evaluation tools). The committed combined schema lives in `pygmalion_hoard/fusion/catalog.json`; tests compare every entry to both original catalogues.
 
 ## Verification
 
