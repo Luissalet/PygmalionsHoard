@@ -84,6 +84,8 @@ class ServerScorer:
         self.contestant, self.top, self.timeout, self.no_thinking, self.api_key = contestant, max(1, min(int(top_logprobs), 50)), timeout_s, no_thinking, api_key
         self.client_factory = client_factory or (lambda: httpx.Client(timeout=timeout_s))
         self.url = str(contestant.get("url") or "").rstrip("/")
+        if self.url.endswith("/v1"):                                              # registered servers keep the OpenAI base (…/v1)
+            self.url = self.url[:-3]
         self.model = str(contestant.get("model") or contestant.get("name") or "")
 
     def _post(self, client: httpx.Client, messages: list[dict[str, str]], *, thinking_flag: bool) -> httpx.Response:

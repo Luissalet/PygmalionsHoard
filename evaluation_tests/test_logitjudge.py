@@ -163,6 +163,17 @@ def test_remote_server_needs_permission_and_labels_must_appear(lsvc):
     assert err.value.key == "lj_labels_not_in_top"
 
 
+def test_server_url_with_openai_base_is_not_doubled():
+    from galton_hoard.logitjudge.scorers import ServerScorer
+    seen = []
+    def handler(request):
+        seen.append(str(request.url))
+        return json_response(reply(top(A=0.8, B=0.2)))
+    client = mock_client_factory(handler)()
+    ServerScorer({"name": "n", "url": "http://127.0.0.1:1/v1/", "model": "m"}).score(client, [{"role": "user", "content": "?"}], ["A", "B"])
+    assert seen and seen[0].endswith("/v1/chat/completions") and "/v1/v1/" not in seen[0]
+
+
 # ------------------------------------------------------------------ the Hugging Face backend
 def test_hf_base_vs_adapter_deltas(lsvc, tmp_path):
     base, adapter = tmp_path / "base", tmp_path / "lora"
