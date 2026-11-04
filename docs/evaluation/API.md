@@ -1290,6 +1290,15 @@ Annotations: idempotentHint.
 | `candidate` (null) | no |  |
 | `notes` (string) | no |  |
 
+## `pygmalion_suit_library`
+
+Suit library: Darwin's suits with their evaluations and decision. Biblioteca de trajes.
+
+One suit per kind of engagement, read from Darwin's Hoard (suiteval.darwin_url); each with the evaluations kept here and the decision of the latest: adopt, keep, tradeoff or insufficient. Without Darwin, the suits known from local evaluations.
+Sinónimos: biblioteca de trajes, qué encargos sabes resolver, trajes por tipo de encargo, adoptar mejora
+
+Annotations: readOnlyHint, idempotentHint, openWorldHint.
+
 ## `pygmalion_suit_eval_list`
 
 List suit evaluations with cases, scored cases and export state. Evaluaciones de trajes.
@@ -1359,7 +1368,7 @@ Annotations: readOnlyHint, idempotentHint.
 
 Score a suit evaluation per arm, with spread; build cases excluded. Puntuar evaluación.
 
-Cases used to build the candidate are excluded and listed; paired comparisons give wins, losses and an exact sign test.
+Cases used to build the candidate are excluded and listed; paired comparisons give wins, losses and an exact sign test. verdict answers candidate_vs_current and current_vs_generic with adopt, keep, tradeoff or insufficient: accepted deliverables first, then correction minutes, defects and time; tokens are reported but never decide.
 Sinónimos: agregado por brazo, dispersión, candidato frente a actual, casos excluidos
 
 Annotations: readOnlyHint, idempotentHint.

@@ -738,6 +738,8 @@ def test_suit_evaluation_tools(svc, tmp_path):
     assert call(svc, "pygmalion_suit_eval_score", id=made["id"])["cases_scored"] == 1
     assert call(svc, "pygmalion_suit_eval_get", id=made["id"])["evaluation"]["suit"] == "repository-intake"
     assert call(svc, "pygmalion_suit_eval_list")["count"] == 1
+    svc.suiteval.get_fn = lambda url: (200, {"suits": [{"slug": "repository-intake", "name": "Repository intake"}]})
+    assert call(svc, "pygmalion_suit_library")["suits"][0]["latest"]["id"] == made["id"]
     svc.suiteval.post_fn = lambda url, payload: (200, {})
     assert call(svc, "pygmalion_suit_eval_export", id=made["id"])["exported"]["delivered"] is True
     assert call(svc, "pygmalion_suit_eval_delete", id=made["id"], confirm=True)["deleted"] == made["id"]

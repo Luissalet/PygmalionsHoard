@@ -48,7 +48,7 @@ To try the whole app without a GPU, run it with `PYGMALION_WORKERS_DIR=tests/fak
 | Galton verdicts | `evaluate.py` |
 | What a result is compared with, the base file to prepare | `reference.py`, `Operations.evaluate_start` |
 | Publishing | `publish.py` |
-| Evaluation of suits from Darwin's Hoard (executable checks, three arms, build cases excluded, export) | `galton_hoard/suiteval/`, `galton_hoard/api/suiteval.py`, `evaluation-client/src/pages/Trajes.jsx`, `evaluation_tests/test_suiteval.py`, `docs/evaluation/SUITEVAL.md` |
+| Evaluation of suits from Darwin's Hoard (executable checks, three arms, build cases excluded, decision where tokens never decide, suit library, export) | `galton_hoard/suiteval/`, `galton_hoard/api/suiteval.py`, `evaluation-client/src/pages/Trajes.jsx`, `evaluation_tests/test_suiteval.py`, `evaluation_tests/test_suit_verdict.py`, `docs/evaluation/SUITEVAL.md` |
 | The UI | `client/src/pages/*.jsx`, `client/src/components/*`, `client/src/i18n.js` |
 | Logit judge (next-token probabilities of option labels, base vs adapter) | `galton_hoard/logitjudge/` (rubric, scoring, scorers, service), `pygmalion_hoard/workers/logit_judge.py`, `evaluation-client/src/components/LogitJudge.jsx`, `evaluation_tests/test_logitjudge.py` |
 

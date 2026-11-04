@@ -22,7 +22,7 @@ from .. import messages as msgs
 from ..errors import GaltonError
 from ..hoard_link.atomic import write_json_atomic
 from ..util import new_id
-from . import checks as C, stats as S
+from . import checks as C, stats as S, verdict as V
 from .store import SuitEvalStore
 
 FORMAT = "pygmalion-suit-eval/1"
@@ -42,11 +42,22 @@ def _post(url: str, payload: dict[str, Any]) -> tuple[int, Any]:
         return r.status_code, body
 
 
+def _get(url: str) -> tuple[int, Any]:
+    with httpx.Client(trust_env=False, timeout=5.0) as client:
+        r = client.get(url)
+        try:
+            return r.status_code, r.json()
+        except ValueError:
+            return r.status_code, r.text[:300]
+
+
 class SuitEvals:
     def __init__(self, store: SuitEvalStore, settings: Any, *, data_dir: Path, clock: Callable[[], float] = time.time,
-                 post_fn: Optional[Callable[[str, dict[str, Any]], tuple[int, Any]]] = None):
+                 post_fn: Optional[Callable[[str, dict[str, Any]], tuple[int, Any]]] = None,
+                 get_fn: Optional[Callable[[str], tuple[int, Any]]] = None):
         self.store, self.settings, self.data_dir, self.clock = store, settings, Path(data_dir), clock
         self.post_fn = post_fn or _post
+        self.get_fn = get_fn or _get
 
     # ------------------------------------------------------------------ definition
     def _clean(self, spec: dict[str, Any]) -> dict[str, Any]:
@@ -172,14 +183,48 @@ class SuitEvals:
         for ev in self.store.evals(suit.strip().lower()):
             recs = self.store.records(ev["id"])
             sc = S.aggregate(ev["definition"], recs)
+            vd = V.verdicts(sc)
             rows.append({"id": ev["id"], "suit": ev["suit"], "name": ev["name"], "cases": sc["cases_total"], "cases_scored": sc["cases_scored"],
+                         "decisions": {k: v["decision"] for k, v in vd.items()},
                          "records": len(recs), "excluded": [e["case"] for e in sc["excluded"]], "exported": ev["exported"], "updated_ts": ev["updated_ts"]})
         return {"evaluations": rows, "count": len(rows)}
 
     def score(self, eval_id: str) -> dict[str, Any]:
         ev = self._eval(eval_id)
         agg = S.aggregate(ev["definition"], self.store.records(eval_id))
-        return {"id": ev["id"], "suit": ev["suit"], "name": ev["name"], "arms": list(S.ARMS), "candidate": ev["definition"]["candidate"], **agg}
+        return {"id": ev["id"], "suit": ev["suit"], "name": ev["name"], "arms": list(S.ARMS), "candidate": ev["definition"]["candidate"], **agg,
+                "verdict": V.verdicts(agg)}
+
+    def library(self) -> dict[str, Any]:
+        """The suit library of Darwin's Hoard (one suit per kind of engagement) next to the evaluations kept here and their decisions.
+
+        Darwin owns the suits; this only reads them. When Darwin does not answer, the suits known from local evaluations are listed."""
+        base = str(self.settings.get("suiteval.darwin_url") or "").strip().rstrip("/")
+        darwin: dict[str, Any] = {"url": base, "reachable": False, "reason": ""}
+        suits: list[dict[str, Any]] = []
+        try:
+            status, body = self.get_fn(f"{base}/api/suits")
+            if 200 <= status < 300 and isinstance(body, dict):
+                darwin["reachable"] = True
+                suits = [s for s in body.get("suits") or [] if isinstance(s, dict) and s.get("slug")]
+            else:
+                darwin["reason"] = f"HTTP {status}"
+        except Exception as exc:  # noqa: BLE001 - Darwin not running is normal
+            darwin["reason"] = f"{type(exc).__name__}: {str(exc)[:160]}"
+        local = self.list()["evaluations"]
+        by_suit: dict[str, list[dict[str, Any]]] = {}
+        for ev in local:
+            by_suit.setdefault(ev["suit"], []).append(ev)
+        items = []
+        for s in suits:
+            evs = by_suit.pop(s["slug"], [])
+            items.append({"slug": s["slug"], "name": s.get("name") or s["slug"], "objective": s.get("objective") or "", "status": s.get("status") or "",
+                          "backing": s.get("backing") or "", "missing": s.get("missing") or [], "unproven": s.get("unproven") or [],
+                          "in_darwin": True, "evaluations": evs, "latest": evs[0] if evs else None})
+        for slug, evs in sorted(by_suit.items()):
+            items.append({"slug": slug, "name": slug, "objective": "", "status": "", "backing": "", "missing": [], "unproven": [],
+                          "in_darwin": False, "evaluations": evs, "latest": evs[0] if evs else None})
+        return {"darwin": darwin, "suits": items, "count": len(items), "evaluated_here": sum(1 for i in items if i["evaluations"])}
 
     def delete(self, eval_id: str) -> dict[str, Any]:
         self._eval(eval_id)
@@ -192,7 +237,8 @@ class SuitEvals:
         return {"format": FORMAT, "suit": sc["suit"], "evaluation_id": sc["id"], "name": sc["name"], "generated_at": self.clock(), "source": "pygmalion-hoard",
                 "arms": sc["arms"], "candidate": sc["candidate"], "cases_total": sc["cases_total"], "cases_scored": sc["cases_scored"], "excluded": sc["excluded"],
                 "aggregate": sc["aggregate"], "paired": sc["paired"], "per_case": sc["per_case"],
-                "warnings": [{"key": w.key, "text": str(w)} for w in sc["warnings"]]}
+                "warnings": [{"key": w.key, "text": str(w)} for w in sc["warnings"]],
+                "verdict": {k: {**v, "reasons": [{"key": r.key, "text": str(r)} for r in v["reasons"]]} for k, v in sc["verdict"].items()}}
 
     def _folder(self) -> Path:
         configured = str(self.settings.get("suiteval.export_folder") or "").strip()

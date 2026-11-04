@@ -372,6 +372,25 @@ TEXTS: dict[str, str] = {
     "se_warn_no_scored": "No case outside the building set has a result yet.",
     "se_warn_low_n": "Arm {arm} has only {n} scored case(s); its rates are weak.",
     "se_warn_pending": "Arm {arm} has {n} case(s) waiting for a judge verdict; they are not counted.",
+    # suit evaluation: the decision between two arms
+    "arm_generic": "the generic tools",
+    "arm_current": "the current suit",
+    "arm_candidate": "the candidate improvement",
+    "sv_insufficient": "Only {n} case(s) compare {a} with {b}; at least {min} are needed to decide.",
+    "sv_success_better": "More accepted deliverables with {a} than with {b}: better in {wins}, worse in {losses} of {n} cases.",
+    "sv_success_worse": "Fewer accepted deliverables with {a} than with {b}: better in {wins}, worse in {losses} of {n} cases.",
+    "sv_success_same": "The same accepted deliverables with {a} and with {b} ({n} cases); the human measures decide.",
+    "sv_better_correction_minutes": "Correction: {diff} fewer minutes per case with {a} than with {b} ({n} cases).",
+    "sv_worse_correction_minutes": "Correction: {diff} more minutes per case with {a} than with {b} ({n} cases).",
+    "sv_better_defects": "Defects: {diff} fewer per case with {a} than with {b} ({n} cases).",
+    "sv_worse_defects": "Defects: {diff} more per case with {a} than with {b} ({n} cases).",
+    "sv_better_time_s": "Time: {diff} s less per case with {a} than with {b} ({n} cases).",
+    "sv_worse_time_s": "Time: {diff} s more per case with {a} than with {b} ({n} cases).",
+    "sv_tradeoff": "Better in one human measure and worse in another: a person has to weigh it.",
+    "sv_no_difference": "No difference a person would notice in deliverables, correction minutes, defects or time.",
+    "sv_tokens_only": "Only the tokens differ ({diff} per case); tokens alone never decide.",
+    "sv_tokens_note": "Tokens: {diff} per case; reported, not used to decide.",
+    "sv_weak": "With {n} cases the sign test gives p = {p}; treat the decision as provisional.",
 }
 
 # ------------------------------------------------------------------------------------------------- notices: kind -> (title, body)

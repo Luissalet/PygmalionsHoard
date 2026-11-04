@@ -7575,6 +7575,23 @@
     "module": "evaluation"
   },
   {
+    "name": "pygmalion_suit_library",
+    "description": "Suit library: Darwin's suits with their evaluations and decision. Biblioteca de trajes.\nOne suit per kind of engagement, read from Darwin's Hoard (suiteval.darwin_url); each with the evaluations kept here and the decision of the latest: adopt, keep, tradeoff or insufficient. Without Darwin, the suits known from local evaluations.\nSinónimos: biblioteca de trajes, qué encargos sabes resolver, trajes por tipo de encargo, adoptar mejora",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "description": "No arguments: Darwin's address is the setting suiteval.darwin_url.",
+      "properties": {},
+      "title": "SuitLibraryArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
     "name": "pygmalion_suit_eval_list",
     "description": "List suit evaluations with cases, scored cases and export state. Evaluaciones de trajes.\nSinónimos: evaluaciones de un traje, historial",
     "annotations": {
@@ -7880,7 +7897,7 @@
   },
   {
     "name": "pygmalion_suit_eval_score",
-    "description": "Score a suit evaluation per arm, with spread; build cases excluded. Puntuar evaluación.\nCases used to build the candidate are excluded and listed; paired comparisons give wins, losses and an exact sign test.\nSinónimos: agregado por brazo, dispersión, candidato frente a actual, casos excluidos",
+    "description": "Score a suit evaluation per arm, with spread; build cases excluded. Puntuar evaluación.\nCases used to build the candidate are excluded and listed; paired comparisons give wins, losses and an exact sign test. verdict answers candidate_vs_current and current_vs_generic with adopt, keep, tradeoff or insufficient: accepted deliverables first, then correction minutes, defects and time; tokens are reported but never decide.\nSinónimos: agregado por brazo, dispersión, candidato frente a actual, casos excluidos",
     "annotations": {
       "readOnlyHint": true,
       "destructiveHint": false,

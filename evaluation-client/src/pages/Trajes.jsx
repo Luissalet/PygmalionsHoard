@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../context.js";
 import { Busy, Chip, Empty, ErrorBox, Field, Icon, ICONS, Rel, Section, Spinner, useBusy, useLoad } from "../components/ui.jsx";
@@ -15,6 +15,70 @@ const TEMPLATE = JSON.stringify({
   candidate: { description: "", built_from_cases: ["k1"] },
 }, null, 2);
 
+const QUESTIONS = ["candidate_vs_current", "current_vs_generic"];
+const DEC_CHIP = { adopt: "chip-ok", keep: "", tradeoff: "chip-amber", insufficient: "" };
+const decLabel = (t, q, d) => (d === "adopt" || d === "keep" ? t(`suit_dec_${q}_${d}`) : t(`suit_dec_${d}`));
+
+function Verdict({ verdict }) {
+  const { t } = useApp();
+  if (!verdict) return null;
+  return (
+    <Section title={t("suit_verdict")}>
+      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+        {QUESTIONS.map((q) => {
+          const v = verdict[q];
+          if (!v) return null;
+          return (
+            <div key={q} className="panel space-y-2" data-question={q}>
+              <div className="flex flex-wrap items-center gap-2">
+                <b className="mr-auto">{t(`suit_q_${q}`)}</b>
+                <Chip className={DEC_CHIP[v.decision]} data-decision={v.decision}>{decLabel(t, q, v.decision)}</Chip>
+              </div>
+              <ul className="help" style={{ margin: 0, paddingLeft: 18 }}>
+                {v.reasons.map((r, i) => <li key={i}>{t.msg(r)}</li>)}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+      <p className="help">{t("suit_verdict_help")}</p>
+    </Section>
+  );
+}
+
+function Library({ onOpen, onEvaluate, version }) {
+  const { t } = useApp();
+  const lib = useLoad(() => api.call("pygmalion_suit_library", {}), [version]);
+  const d = lib.data;
+  return (
+    <Section title={t("suit_library")} count={d?.count}>
+      <ErrorBox error={lib.error} />
+      {lib.loading && !d && <Spinner />}
+      {d && !d.darwin.reachable && <div className="banner banner-warn">{t("suit_lib_no_darwin", { url: d.darwin.url, reason: d.darwin.reason })}</div>}
+      {d && !d.suits.length && <Empty>{t("suit_lib_none")}</Empty>}
+      <p className="help">{t("suit_lib_help")}</p>
+      <div className="space-y-2">
+        {(d?.suits || []).map((s) => {
+          const last = s.latest;
+          const dec = last?.decisions?.candidate_vs_current;
+          return (
+            <div key={s.slug} className="panel flex flex-wrap items-center gap-2" data-suit={s.slug}>
+              <div className="mr-auto" style={{ minWidth: 220, flex: "1 1 320px" }}>
+                <b>{s.name}</b> <span className="help mono">{s.slug}</span>
+                {s.objective ? <div className="help">{s.objective}</div> : null}
+              </div>
+              {s.in_darwin ? <Chip title={(s.missing || []).concat(s.unproven || []).join(" · ")}>{t(`suit_lib_status_${s.status}`)}</Chip> : <Chip className="chip-amber">{t("suit_lib_local")}</Chip>}
+              {last ? <Chip className={DEC_CHIP[dec]} title={last.name}>{decLabel(t, "candidate_vs_current", dec)}</Chip> : <Chip>{t("suit_lib_unevaluated")}</Chip>}
+              {last ? <button type="button" className="btn" onClick={() => onOpen(last.id)}>{t("suit_lib_open", { n: s.evaluations.length })}</button> : null}
+              <button type="button" className="btn btn-primary" onClick={() => onEvaluate(s.slug)}><Icon d={ICONS.plus} size={14} />{t("suit_lib_evaluate")}</button>
+            </div>
+          );
+        })}
+      </div>
+    </Section>
+  );
+}
+
 const mean = (s, lang, digits = 1) => (s && s.n ? `${num(s.mean, digits, lang)}${s.sd != null ? ` ± ${num(s.sd, digits, lang)}` : ""} (${s.n})` : "—");
 
 function Score({ score }) {
@@ -22,6 +86,7 @@ function Score({ score }) {
   return (
     <div className="space-y-4">
       {score.warnings.map((w, i) => <div key={i} className="banner banner-warn">{t.msg(w)}</div>)}
+      <Verdict verdict={score.verdict} />
       <Section title={t("suit_arms")}>
         <div className="panel" style={{ overflowX: "auto" }}>
           <table className="tbl">
@@ -157,6 +222,11 @@ export default function Trajes() {
     list.reload();
   });
   const rows = list.data?.evaluations || [];
+  const defineRef = useRef(null);
+  const evaluate = (slug) => {
+    try { setDraft(JSON.stringify({ ...JSON.parse(TEMPLATE), suit: slug }, null, 2)); } catch { /* the template is valid JSON */ }
+    defineRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -165,6 +235,7 @@ export default function Trajes() {
       </div>
       <p className="help">{t("suit_help")}</p>
       <ErrorBox error={list.error} />
+      <Library version={`${version}-${rows.length}`} onOpen={setSel} onEvaluate={evaluate} />
       <Section title={t("suit_list")} count={rows.length}>
         {list.loading && !list.data && <Spinner />}
         {!list.loading && !rows.length && <Empty>{t("suit_none")}</Empty>}
@@ -174,6 +245,7 @@ export default function Trajes() {
               <b>{r.name}</b> <span className="help mono">{r.suit}</span>
               <span className="help"> · {t("suit_scored", { n: r.cases_scored, total: r.cases })}</span>
               {r.excluded.length ? <Chip className="chip-amber">{t("suit_excluded")}: {r.excluded.join(", ")}</Chip> : null}
+              {r.decisions ? <Chip className={DEC_CHIP[r.decisions.candidate_vs_current]}>{decLabel(t, "candidate_vs_current", r.decisions.candidate_vs_current)}</Chip> : null}
               {r.exported?.delivered ? <Chip className="chip-ok">{t("suit_exported_api")}</Chip> : r.exported?.file ? <Chip className="chip-amber">{t("suit_exported_file")}</Chip> : null}
             </button>
           ))}
@@ -181,7 +253,7 @@ export default function Trajes() {
       </Section>
       {sel && <Detail key={sel} id={sel} onGone={() => { setSel(null); list.reload(); }} />}
       <Section title={t("suit_define")}>
-        <div className="panel space-y-2">
+        <div className="panel space-y-2" ref={defineRef}>
           <p className="help">{t("suit_define_help")}</p>
           <textarea className="field mono" rows={14} value={draft} onChange={(e) => setDraft(e.target.value)} spellCheck={false} aria-label={t("suit_define")} />
           <Busy className="btn btn-primary" busy={busy.create} onClick={create}><Icon d={ICONS.plus} size={14} />{t("suit_define_go")}</Busy>

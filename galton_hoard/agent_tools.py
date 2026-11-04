@@ -1399,6 +1399,10 @@ class SuitEvalExportArgs(BaseModel):
     url: str = Field("", max_length=300, description="Darwin's base URL; default the setting suiteval.darwin_url.")
 
 
+class SuitLibraryArgs(BaseModel):
+    """No arguments: Darwin's address is the setting suiteval.darwin_url."""
+
+
 class SuitEvalDeleteArgs(BaseModel):
     id: str = Field(..., min_length=1, max_length=80)
     confirm: bool = False
@@ -1679,6 +1683,11 @@ TOOLS: list[Tool] = [
                                           "(used_for_building, candidate.built_from_cases) are excluded from the score.",
                                           "evaluar un traje, casos de aceptación, brazos, mejora candidata, comprobaciones ejecutables"),
          SuitEvalDefineArgs, ann(False, idempotent=True), run_suit_eval_define),
+    Tool("pygmalion_suit_library", _d("Suit library: Darwin's suits with their evaluations and decision. Biblioteca de trajes.",
+                                      "One suit per kind of engagement, read from Darwin's Hoard (suiteval.darwin_url); each with the evaluations kept here and "
+                                      "the decision of the latest: adopt, keep, tradeoff or insufficient. Without Darwin, the suits known from local evaluations.",
+                                      synonyms="biblioteca de trajes, qué encargos sabes resolver, trajes por tipo de encargo, adoptar mejora"),
+         SuitLibraryArgs, ann(True, open_world=True), lambda s, a: s.suiteval.library()),
     Tool("pygmalion_suit_eval_list", _d("List suit evaluations with cases, scored cases and export state. Evaluaciones de trajes.", synonyms="evaluaciones de un traje, historial"),
          SuitEvalListArgs, ann(True), lambda s, a: s.suiteval.list(a.suit)),
     Tool("pygmalion_suit_eval_get", _d("One suit evaluation: definition, records and score per arm with warnings. Detalle de una evaluación.",
@@ -1692,7 +1701,9 @@ TOOLS: list[Tool] = [
                                          synonyms="probar un criterio de aceptación, esquema JSON, tolerancia numérica, expresión regular"),
          SuitEvalCheckArgs, ann(True), lambda s, a: s.suiteval.check(**a.model_dump())),
     Tool("pygmalion_suit_eval_score", _d("Score a suit evaluation per arm, with spread; build cases excluded. Puntuar evaluación.",
-                                         "Cases used to build the candidate are excluded and listed; paired comparisons give wins, losses and an exact sign test.",
+                                         "Cases used to build the candidate are excluded and listed; paired comparisons give wins, losses and an exact sign test. "
+                                         "verdict answers candidate_vs_current and current_vs_generic with adopt, keep, tradeoff or insufficient: accepted "
+                                         "deliverables first, then correction minutes, defects and time; tokens are reported but never decide.",
                                          "agregado por brazo, dispersión, candidato frente a actual, casos excluidos"), SuitEvalRef, ann(True), lambda s, a: s.suiteval.score(a.id)),
     Tool("pygmalion_suit_eval_export", _d("Send a suit evaluation to Darwin's Hoard or write a JSON file. Exportar a Darwin.",
                                           "Refused while no case outside the building set has a result. In Darwin the suit becomes evaluated.",

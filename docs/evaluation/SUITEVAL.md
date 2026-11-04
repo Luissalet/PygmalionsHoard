@@ -30,6 +30,23 @@ Judging an improvement on the case it was tuned on measures memory. A case is **
 
 `pygmalion_suit_eval_score`: per arm, the cases scored, the share of deliverables that passed with a Wilson 95 % interval, and for total time, correction minutes, defects and tokens: n, mean, standard deviation, min, max, median and sum over the cases that have a value. Paired comparisons (current/generic, candidate/current, candidate/generic) give better, worse and same cases and an exact two-sided sign test. Few cases (under 3 per arm) are flagged as weak.
 
+## Decision
+
+The score also carries `verdict` with two questions, `candidate_vs_current` (adopt the improvement?) and `current_vs_generic` (does the suit beat plain tools?). Each has a `decision`, the `reasons` as sentences, the `basis` per measure and the `tokens`:
+
+| Decision | When |
+|---|---|
+| `insufficient` | fewer than 3 cases compare both arms (build cases never count) |
+| `adopt` | more cases with an accepted deliverable; on a tie, better in a human measure and worse in none |
+| `keep` | fewer accepted deliverables; on a tie, worse in a human measure and better in none, or no difference that matters |
+| `tradeoff` | same deliverables, better in one human measure and worse in another: a person weighs it |
+
+The order is fixed: accepted deliverables (paired by case), then correction minutes (a difference matters from 1 minute or 10 % of the incumbent's mean, whichever is larger), defects (0.5 per case) and total time (1 s or 10 %). Tokens are reported with their difference and `decides: false`: when only the tokens differ the decision is `keep`. With a sign test p above 0.05 the reasons say the decision is provisional. The list of evaluations carries `decisions` and the export to Darwin carries `verdict`.
+
+## Suit library
+
+`pygmalion_suit_library` (`GET /evaluation/api/suit-evals/library`) reads the suits of Darwin's Hoard (`<suiteval.darwin_url>/api/suits`; one suit per kind of engagement, with its backing state) and puts next to each the evaluations kept here and the decisions of the latest. Suits evaluated here but not in Darwin are listed as *only here*; when Darwin does not answer, only those are listed and the reason is given. Darwin stays the owner of the suits: this reads them, it never writes them. The **Trajes** page shows the library above the evaluations, with *Open evaluation* and *Evaluate this suit* (fills the definition with the suit's id).
+
 ## Export to Darwin's Hoard
 
 `pygmalion_suit_eval_export` (`mode: auto|api|file`) builds the document `pygmalion-suit-eval/1`:

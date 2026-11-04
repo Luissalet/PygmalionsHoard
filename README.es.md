@@ -16,7 +16,7 @@ Esta fusión no cambia las leases de GPU ni el servicio global de modelos. Las p
 
 ### Evaluación de trajes
 
-Evalúa los trajes de Darwin's Hoard (configuraciones de trabajo reutilizables para un tipo de encargo): casos con comprobaciones de aceptación ejecutables (el fichero existe, esquema JSON, tolerancia numérica, expresión regular o una rúbrica de juez), tres brazos (herramientas genéricas, traje actual, mejora candidata) y, por caso y brazo, si el entregable es correcto, los minutos que una persona tardó en corregirlo (opcional, los introduce una persona), el tiempo total, los defectos y los tokens. Los agregados llevan su dispersión, y un caso con el que se construyó la mejora queda marcado y fuera de la puntuación. Los resultados van a Darwin's Hoard (`/api/evaluations`) o a un JSON que él importa; allí el traje pasa a «evaluado». Página **Trajes**, herramientas `pygmalion_suit_eval_*`, detalle en [docs/evaluation/SUITEVAL.md](docs/evaluation/SUITEVAL.md).
+Evalúa los trajes de Darwin's Hoard (configuraciones de trabajo reutilizables para un tipo de encargo): casos con comprobaciones de aceptación ejecutables (el fichero existe, esquema JSON, tolerancia numérica, expresión regular o una rúbrica de juez), tres brazos (herramientas genéricas, traje actual, mejora candidata) y, por caso y brazo, si el entregable es correcto, los minutos que una persona tardó en corregirlo (opcional, los introduce una persona), el tiempo total, los defectos y los tokens. Los agregados llevan su dispersión, y un caso con el que se construyó la mejora queda marcado y fuera de la puntuación. Los resultados van a Darwin's Hoard (`/api/evaluations`) o a un JSON que él importa; allí el traje pasa a «evaluado». Cada evaluación responde dos preguntas, *¿adoptar la mejora?* y *¿el traje mejora a las herramientas genéricas?*, con adoptar, quedarse, compromiso o faltan casos: deciden primero los entregables aceptados y después los minutos de corrección, los defectos y el tiempo; los tokens se muestran pero nunca deciden. La página muestra también la biblioteca de trajes, uno por tipo de encargo tal como lo guarda Darwin, con la decisión de su última evaluación (`pygmalion_suit_library`, `GET /evaluation/api/suit-evals/library`). Página **Trajes**, herramientas `pygmalion_suit_eval_*`, detalle en [docs/evaluation/SUITEVAL.md](docs/evaluation/SUITEVAL.md).
 
 ### Herramientas de evaluación (96):
 
@@ -106,6 +106,7 @@ Evalúa los trajes de Darwin's Hoard (configuraciones de trabajo reutilizables p
 - `agentbench_cancel` — Cancel an agent-bench campaign: trials already finished are kept. Cancelar campaña de agentes.
 - `agentbench_list` — Recent agent-bench campaigns. Historial de campañas de agentes.
 - `pygmalion_suit_eval_define` — Define a suit evaluation: cases with executable checks and a candidate. Definir evaluación de traje.
+- `pygmalion_suit_library` — Suit library: Darwin's suits with their evaluations and decision. Biblioteca de trajes.
 - `pygmalion_suit_eval_list` — List suit evaluations with cases, scored cases and export state. Evaluaciones de trajes.
 - `pygmalion_suit_eval_get` — One suit evaluation: definition, records and score per arm with warnings. Detalle de una evaluación.
 - `pygmalion_suit_eval_record` — Record what an arm produced for a case; checks run on it. Registrar resultado de un caso.

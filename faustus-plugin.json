@@ -42,6 +42,8 @@
     "independent-modules",
     "logit-judge",
     "suit-evaluation",
+    "suit-library",
+    "suit-decision",
     "speech-to-text-bench",
     "logprobs"
   ],

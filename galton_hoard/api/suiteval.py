@@ -17,6 +17,11 @@ def evals(request: Request, suit: str = ""):
     return wire(tool(request, "pygmalion_suit_eval_list", {"suit": suit}))
 
 
+@router.get("/api/suit-evals/library")
+def library(request: Request):
+    return wire(tool(request, "pygmalion_suit_library", {}))
+
+
 @router.post("/api/suit-evals")
 def define(request: Request, body: dict[str, Any]):
     return wire(tool(request, "pygmalion_suit_eval_define", body))

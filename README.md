@@ -16,7 +16,7 @@ GPU leases and the family's configured global model service remain in force. Pro
 
 ### Suit evaluation
 
-Evaluation of the suits kept in Darwin's Hoard (reusable work configurations for a kind of engagement): cases with executable acceptance checks (file exists, JSON schema, numeric tolerance, regular expression or a judge rubric), three arms (generic tools, current suit, candidate improvement), and per case and arm the success of the deliverable, the minutes a person spent correcting it (optional, entered by a person), total time, defects and tokens. Aggregates come with their spread, and a case the candidate was built from is marked and left out of the score. Results go to Darwin's Hoard (`/api/evaluations`) or to a JSON file it imports; the suit then reads *evaluated* there. Page **Trajes**, tools `pygmalion_suit_eval_*`, details in [docs/evaluation/SUITEVAL.md](docs/evaluation/SUITEVAL.md).
+Evaluation of the suits kept in Darwin's Hoard (reusable work configurations for a kind of engagement): cases with executable acceptance checks (file exists, JSON schema, numeric tolerance, regular expression or a judge rubric), three arms (generic tools, current suit, candidate improvement), and per case and arm the success of the deliverable, the minutes a person spent correcting it (optional, entered by a person), total time, defects and tokens. Aggregates come with their spread, and a case the candidate was built from is marked and left out of the score. Results go to Darwin's Hoard (`/api/evaluations`) or to a JSON file it imports; the suit then reads *evaluated* there. Each evaluation answers two questions, *adopt the candidate?* and *does the suit beat plain tools?*, with adopt, keep, trade-off or not enough cases: accepted deliverables decide first, then correction minutes, defects and time; tokens are shown but never decide. The page also shows the suit library, one suit per kind of engagement as Darwin keeps it, with the decision of its latest evaluation (`pygmalion_suit_library`, `GET /evaluation/api/suit-evals/library`). Page **Trajes**, tools `pygmalion_suit_eval_*`, details in [docs/evaluation/SUITEVAL.md](docs/evaluation/SUITEVAL.md).
 
 ### Evaluation tools (96):
 
@@ -106,6 +106,7 @@ Evaluation of the suits kept in Darwin's Hoard (reusable work configurations for
 - `agentbench_cancel` — Cancel an agent-bench campaign: trials already finished are kept. Cancelar campaña de agentes.
 - `agentbench_list` — Recent agent-bench campaigns. Historial de campañas de agentes.
 - `pygmalion_suit_eval_define` — Define a suit evaluation: cases with executable checks and a candidate. Definir evaluación de traje.
+- `pygmalion_suit_library` — Suit library: Darwin's suits with their evaluations and decision. Biblioteca de trajes.
 - `pygmalion_suit_eval_list` — List suit evaluations with cases, scored cases and export state. Evaluaciones de trajes.
 - `pygmalion_suit_eval_get` — One suit evaluation: definition, records and score per arm with warnings. Detalle de una evaluación.
 - `pygmalion_suit_eval_record` — Record what an arm produced for a case; checks run on it. Registrar resultado de un caso.
