@@ -15,6 +15,7 @@ import Agentes from "./pages/Agentes.jsx";
 import Rutas from "./pages/Rutas.jsx";
 import Videos from "./pages/Videos.jsx";
 import Trajes from "./pages/Trajes.jsx";
+import Voz from "./pages/Voz.jsx";
 import Ajustes from "./pages/Ajustes.jsx";
 
 export { useApp } from "./context.js";
@@ -29,6 +30,7 @@ const PAGES = [
   { path: "arneses", key: "nav_harness", icon: ICONS.harness, component: Arneses },
   { path: "videos", key: "nav_videos", icon: ICONS.video, component: Videos },
   { path: "trajes", key: "nav_suits", icon: ICONS.tests, component: Trajes },
+  { path: "voz", key: "nav_speech", icon: ICONS.video, component: Voz },
   { path: "agentes", key: "nav_agents", icon: ICONS.agents, component: Agentes, badge: "agents" },
   { path: "rutas", key: "nav_routes", icon: ICONS.routes, component: Rutas },
   { path: "ajustes", key: "nav_settings", icon: ICONS.settings, component: Ajustes },

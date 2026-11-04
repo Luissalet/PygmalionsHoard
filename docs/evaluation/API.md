@@ -960,6 +960,100 @@ Annotations: readOnlyHint, idempotentHint.
 |---|---|---|
 | `limit` (integer) | no |  |
 
+## `speechbench_engines`
+
+Speech-to-text engines for the speech bench; add command engines. Motores de voz a texto.
+
+faster-whisper:<size> runs in a Python that has faster-whisper (found among this app and the family's venvs, or set with whisper_python), CPU int8 by default, one warm model per run. A command engine (name + command with {audio}, {language}) covers any other recogniser, e.g. a streaming model's CLI; it prints text or JSON {text, first_text_s}. Without arguments it only lists.
+Sinónimos: motores de reconocimiento de voz, añadir motor, faster-whisper, R2T2, transcriptor, STT
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `name` (string) | no | Command engine name (lower case); with command, saved as cmd:<name>. |
+| `command` (array/null) | no | Program and arguments; {audio} is the file, {language} the language code. It prints plain text or JSON {text, first_text_s}. |
+| `timeout_s` (number) | no |  |
+| `cwd` (string) | no |  |
+| `note` (string) | no |  |
+| `delete` (boolean) | no | Remove the command engine called name. |
+| `whisper_python` (string/null) | no | Python with faster-whisper for the faster-whisper engines ('' = find one). |
+
+## `speechbench_corpus`
+
+Check a speech corpus: audio files with their reference text. Comprobar un corpus de voz.
+
+Pairs clip.wav + clip.txt (subfolders too) or corpus.jsonl {audio, text}. Returns files, total audio, problems (no or empty reference) and a preview. References must be written by a person, not by a recogniser.
+Sinónimos: corpus de audio, referencias, transcripciones de referencia, grabaciones
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `folder` (string) | yes | Folder with audio files and a .txt reference of the same name each, or a corpus.jsonl. |
+
+## `speechbench_start`
+
+Speech bench: transcribe a corpus with engines; WER, CER and latency. Lanzar banco de voz a texto.
+
+Every engine transcribes every file; each hypothesis is scored against its reference (corpus WER/CER = total errors over total reference words, with substitutions, deletions, insertions), and timed: model load, time to the first text, decode time and real-time factor. Runs in the background on the CPU; dry_run shows the plan.
+Sinónimos: comparar reconocedores, tasa de error de palabras, latencia de transcripción, Whisper contra otro
+
+Annotations: none.
+
+| Argument | Required | Description |
+|---|---|---|
+| `folder` (string) | yes | The corpus folder (see speechbench_corpus). |
+| `engines` (array) | yes | faster-whisper:<tiny\|base\|small\|medium\|large-v3\|large-v3-turbo> and/or cmd:<name>. |
+| `language` (string/null) | no | Language code (es, en...); omit to let each engine detect it. |
+| `accents` (boolean) | no | false folds accents before comparing (canción = cancion). |
+| `device` (string) | no | For faster-whisper; cpu keeps the GPUs free. |
+| `compute` (string) | no |  |
+| `limit` (integer) | no | At most this many files of the corpus. |
+| `name` (string) | no |  |
+| `dry_run` (boolean) | no | Only check the corpus and engines and show the plan. |
+
+## `speechbench_result`
+
+A speech-bench run: state and per-engine WER, CER, latency, RTF. Resultado del banco de voz.
+
+items=true adds every file with its reference, hypothesis, WER, CER, times and errors (engine filters).
+Sinónimos: cómo va, resultado, errores por archivo, qué motor transcribe mejor
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | yes |  |
+| `items` (boolean) | no | Include every file: reference, hypothesis, WER, CER, times, errors. |
+| `engine` (string/null) | no | With items: only this engine. |
+
+## `speechbench_list`
+
+Recent speech-bench runs. Historial del banco de voz a texto.
+
+Sinónimos: ejecuciones anteriores de voz
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `limit` (integer) | no |  |
+
+## `speechbench_cancel`
+
+Cancel a speech-bench run: files already scored are kept. Cancelar banco de voz.
+
+Sinónimos: parar, detener
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | yes |  |
+| `items` (boolean) | no | Include every file: reference, hypothesis, WER, CER, times, errors. |
+| `engine` (string/null) | no | With items: only this engine. |
+
 ## `logit_judge_run`
 
 Logit judge: rubric answered from next-token probabilities, base vs adapter. Juez por logits.

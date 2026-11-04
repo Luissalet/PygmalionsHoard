@@ -743,6 +743,30 @@ def test_suit_evaluation_tools(svc, tmp_path):
     assert call(svc, "pygmalion_suit_eval_delete", id=made["id"], confirm=True)["deleted"] == made["id"]
 
 
+def test_speechbench_tools(svc, tmp_path):
+    import sys
+    import time
+    import wave
+
+    folder = tmp_path / "voz"
+    folder.mkdir()
+    with wave.open(str(folder / "uno.wav"), "wb") as fh:
+        fh.setnchannels(1), fh.setsampwidth(2), fh.setframerate(16000), fh.writeframes(b"\x00\x00" * 16000)
+    (folder / "uno.txt").write_text("hola mundo", encoding="utf-8")
+    script = tmp_path / "stt.py"
+    script.write_text("print('hola mundo')\n", encoding="utf-8")
+    assert "cmd:eco" in call(svc, "speechbench_engines", name="eco", command=[sys.executable, str(script), "{audio}"])["available"]
+    assert call(svc, "speechbench_corpus", folder=str(folder))["files"] == 1
+    run = call(svc, "speechbench_start", folder=str(folder), engines=["cmd:eco"])["id"]
+    for _ in range(300):
+        if call(svc, "speechbench_result", run=run)["run"]["state"] == "done":
+            break
+        time.sleep(0.02)
+    assert call(svc, "speechbench_result", run=run)["run"]["summary"]["cmd:eco"]["wer"] == 0.0
+    assert call(svc, "speechbench_list")["count"] == 1
+    assert call(svc, "speechbench_cancel", run=run)["cancelling"] is False
+
+
 def test_every_tool_was_called():
     missing = sorted(set(TOOLS_BY_NAME) - CALLED)
     assert not missing, f"tools never called in this module: {missing}"

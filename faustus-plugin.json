@@ -42,6 +42,7 @@
     "independent-modules",
     "logit-judge",
     "suit-evaluation",
+    "speech-to-text-bench",
     "logprobs"
   ],
   "placeholders": [
