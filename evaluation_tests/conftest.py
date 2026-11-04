@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import site
 import sys
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from evaluation_tests.helpers import Clock, add_gguf, build_services  # noqa: E4
 
 # Environment variables that change what the app finds on the machine: a test that wants one sets it itself.
 HOST_ENV_PREFIXES = ("GALTON_", "HOARD_", "OLLAMA_", "HF_", "FAUSTUS_", "CUDA_")
+_USER_BASE = site.getuserbase()                                  # read before the fixture redirects APPDATA
 HOST_ENV_NAMES = ("PORT", "PORT_STRICT", "LOCALAPPDATA", "APPDATA", "PROGRAMFILES", "PROGRAMFILES(X86)", "PROGRAMDATA")
 
 
@@ -33,6 +35,8 @@ def hermetic_host(tmp_path_factory, monkeypatch):
     monkeypatch.setenv("USERPROFILE", str(home))
     for name in ("LOCALAPPDATA", "APPDATA", "ProgramFiles", "ProgramFiles(x86)", "ProgramData"):
         monkeypatch.setenv(name, str(nowhere / name))
+    # APPDATA/HOME point nowhere, so a child process could not find packages installed in the user site (pytest, fastapi...): keep them reachable by pinning the real user base
+    monkeypatch.setenv("PYTHONUSERBASE", _USER_BASE)
     monkeypatch.setenv("HOARD_HUB_AUTOSTART", "0")                     # never start a real hub
     monkeypatch.setattr(settings_module, "DEFAULT_GGUF_FOLDER", str(nowhere / "models"))
     monkeypatch.setattr(settings_module, "DEFAULT_LLAMA_SERVER", str(nowhere / "llama.cpp" / "llama-server.exe"))

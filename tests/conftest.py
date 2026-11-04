@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import site
 import sys
 import threading
 import time
@@ -28,6 +29,7 @@ needs_posix = pytest.mark.skipif(not helpers.EXECUTABLE_TOOLS, reason=helpers.PO
 
 # Environment variables that change what the app finds on the machine: a test that wants one sets it itself.
 HOST_ENV_PREFIXES = ("PYGMALION_", "GALTON_", "HOARD_", "OLLAMA_", "HF_", "HUGGING", "TRANSFORMERS_", "CUDA_")
+_USER_BASE = site.getuserbase()                                  # read before the fixture redirects APPDATA
 HOST_ENV_NAMES = ("LOCALAPPDATA", "APPDATA", "PROGRAMFILES", "PROGRAMFILES(X86)", "PROGRAMDATA", "PORT", "PORT_STRICT")
 
 
@@ -42,6 +44,8 @@ def hermetic_host(tmp_path_factory, monkeypatch):
             monkeypatch.delenv(name)
     for name in ("LOCALAPPDATA", "APPDATA", "ProgramFiles", "ProgramFiles(x86)", "ProgramData"):
         monkeypatch.setenv(name, str(nowhere / name))
+    # APPDATA/HOME point nowhere, so a child process could not find packages installed in the user site (pytest, fastapi...): keep them reachable by pinning the real user base
+    monkeypatch.setenv("PYTHONUSERBASE", _USER_BASE)
     monkeypatch.setenv("HOARD_HUB_AUTOSTART", "0")                     # never start a real hub
     monkeypatch.setattr(settings_module, "WIN_WORK", str(nowhere / "pygmalion"))
     monkeypatch.setattr(settings_module, "WIN_PYTHON", str(nowhere / "pygmalion" / "venv" / "Scripts" / "python.exe"))

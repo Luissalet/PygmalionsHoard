@@ -21,6 +21,22 @@ from pygmalion_hoard.hoard_link import net
 ROOT = Path(__file__).resolve().parent.parent
 
 
+START_TIMEOUT_S = float(os.environ.get("PYGMALION_TEST_START_TIMEOUT", "150"))     # a loaded machine needs far more than the usual few seconds
+
+
+def wait_for_app(child, base: str, log: Path) -> None:
+    """Wait until the child answers its health route; stop at once if it exits, and say how long it waited and what it printed."""
+    import time
+    started = time.monotonic()
+    while time.monotonic() - started < START_TIMEOUT_S:
+        if child.poll() is not None:
+            pytest.fail(f"the app exited with code {child.returncode} before answering; its output:\n{log.read_text(errors='replace')[-1500:]}")
+        if net.wait_healthy(base, "pygmalion-hoard", timeout=5):
+            return
+    pytest.fail(f"the app did not answer {base} within {START_TIMEOUT_S:.0f} s (machine busy? raise PYGMALION_TEST_START_TIMEOUT); its output:\n"
+                f"{log.read_text(errors='replace')[-1500:]}")
+
+
 @pytest.fixture
 def running_app(tmp_path):
     """The real app (``python -m pygmalion_hoard``) in a child process on a free port."""
@@ -28,9 +44,11 @@ def running_app(tmp_path):
     env = {**os.environ, "PYGMALION_DATA_DIR": str(tmp_path / "data"), "PYGMALION_PORT": str(port), "PYGMALION_OFFLINE": "1", "PYGMALION_SCHEDULER": "0",
            "HOARD_NO_BROWSER": "1", "HOARD_HUB_AUTOSTART": "0", "PYTHONPATH": str(ROOT)}
     command = [sys.executable, "-m", "pygmalion_hoard"]
-    child = subprocess.Popen(command, cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    log = tmp_path / "child.log"
+    with log.open("wb") as sink:
+        child = subprocess.Popen(command, cwd=ROOT, env=env, stdout=sink, stderr=subprocess.STDOUT)
     try:
-        assert net.wait_healthy(f"http://127.0.0.1:{port}", "pygmalion-hoard", timeout=40), "the app did not start"
+        wait_for_app(child, f"http://127.0.0.1:{port}", log)
         assert httpx.put(f"http://127.0.0.1:{port}/api/modules/training",json={"enabled":True},trust_env=False).status_code == 200
         yield {"port": port, "env": env, "command": command, "data": tmp_path / "data"}
     finally:
@@ -44,7 +62,7 @@ def running_app(tmp_path):
 def test_second_start_exits_cleanly_and_keeps_the_token(running_app):
     token_file = running_app["data"] / "mcp-token"
     token = token_file.read_text(encoding="utf-8")
-    second = subprocess.run(running_app["command"], cwd=ROOT, env=running_app["env"], capture_output=True, text=True, timeout=40)
+    second = subprocess.run(running_app["command"], cwd=ROOT, env=running_app["env"], capture_output=True, text=True, timeout=START_TIMEOUT_S)
     assert second.returncode == 0 and "already running" in second.stdout
     assert token_file.read_text(encoding="utf-8") == token and len(token) >= 32
     health = httpx.get(f"http://127.0.0.1:{running_app['port']}/api/health", trust_env=False).json()
