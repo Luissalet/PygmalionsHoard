@@ -141,3 +141,14 @@ def test_rest_library_and_score_verdict(client):
     eid = lib["suits"][0]["latest"]["id"]
     v = client.get(f"/api/suit-evals/{eid}/score").json()["verdict"]["candidate_vs_current"]
     assert v["decision"] == "adopt" and v["reasons"][0]["key"] == "sv_success_same" and v["reasons"][0]["params"]["a"]["key"] == "arm_candidate"
+
+
+def test_one_case_better_and_one_worse_is_a_tradeoff_not_equal_deliverables():
+    # k1 regresses, k2 improves, k3/k4 equal: saving correction minutes must not hide a regression behind Â«same deliverablesÂ»
+    recs = []
+    for i, (cur, cand) in enumerate([(True, False), (False, True), (True, True), (True, True)], 1):
+        recs += [rec(f"k{i}", "current", cur, minutes=20), rec(f"k{i}", "candidate", cand, minutes=5)]
+    d = decide(cases(4), recs)
+    assert d["decision"] == "tradeoff" and keys(d)[0] == "sv_success_mixed" and "sv_success_same" not in keys(d)
+    assert d["success"]["better"] == 1 and d["success"]["worse"] == 1
+

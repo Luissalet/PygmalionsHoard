@@ -379,6 +379,7 @@ TEXTS: dict[str, str] = {
     "sv_insufficient": "Only {n} case(s) compare {a} with {b}; at least {min} are needed to decide.",
     "sv_success_better": "More accepted deliverables with {a} than with {b}: better in {wins}, worse in {losses} of {n} cases.",
     "sv_success_worse": "Fewer accepted deliverables with {a} than with {b}: better in {wins}, worse in {losses} of {n} cases.",
+    "sv_success_mixed": "Accepted deliverables improve in {wins} and regress in {losses} of {n} cases with {a} against {b}; it is not an equal result.",
     "sv_success_same": "The same accepted deliverables with {a} and with {b} ({n} cases); the human measures decide.",
     "sv_better_correction_minutes": "Correction: {diff} fewer minutes per case with {a} than with {b} ({n} cases).",
     "sv_worse_correction_minutes": "Correction: {diff} more minutes per case with {a} than with {b} ({n} cases).",

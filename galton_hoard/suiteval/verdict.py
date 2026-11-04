@@ -67,6 +67,10 @@ def decide(score: dict[str, Any], challenger: str, incumbent: str) -> dict[str, 
         p = pair.get("sign_test_p")
         if p is not None and p > 0.05:
             reasons.append(msgs.text("sv_weak", n=n, p=p))
+    elif wins:
+        # the same number of cases improved and regressed: the arms are not equal, so human measures cannot settle it
+        reasons.insert(0, msgs.text("sv_success_mixed", a=an, b=bn, wins=wins, losses=losses, n=n))
+        decision = "tradeoff"
     else:
         reasons.insert(0, msgs.text("sv_success_same", a=an, b=bn, n=n))
         if better and not worse:

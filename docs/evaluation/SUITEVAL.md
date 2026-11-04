@@ -39,7 +39,7 @@ The score also carries `verdict` with two questions, `candidate_vs_current` (ado
 | `insufficient` | fewer than 3 cases compare both arms (build cases never count) |
 | `adopt` | more cases with an accepted deliverable; on a tie, better in a human measure and worse in none |
 | `keep` | fewer accepted deliverables; on a tie, worse in a human measure and better in none, or no difference that matters |
-| `tradeoff` | same deliverables, better in one human measure and worse in another: a person weighs it |
+| `tradeoff` | the same number of cases improved and regressed in accepted deliverables, or same deliverables but better in one human measure and worse in another: a person weighs it |
 
 The order is fixed: accepted deliverables (paired by case), then correction minutes (a difference matters from 1 minute or 10 % of the incumbent's mean, whichever is larger), defects (0.5 per case) and total time (1 s or 10 %). Tokens are reported with their difference and `decides: false`: when only the tokens differ the decision is `keep`. With a sign test p above 0.05 the reasons say the decision is provisional. The list of evaluations carries `decisions` and the export to Darwin carries `verdict`.
 

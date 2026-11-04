@@ -353,6 +353,7 @@ export const MESSAGES = {
   msg_sv_insufficient: ["Solo {n} caso(s) comparan {a} con {b}; hacen falta al menos {min} para decidir.", "Only {n} case(s) compare {a} with {b}; at least {min} are needed to decide."],
   msg_sv_success_better: ["Más entregables aceptados con {a} que con {b}: mejor en {wins}, peor en {losses} de {n} casos.", "More accepted deliverables with {a} than with {b}: better in {wins}, worse in {losses} of {n} cases."],
   msg_sv_success_worse: ["Menos entregables aceptados con {a} que con {b}: mejor en {wins}, peor en {losses} de {n} casos.", "Fewer accepted deliverables with {a} than with {b}: better in {wins}, worse in {losses} of {n} cases."],
+  msg_sv_success_mixed: ["Los entregables aceptados mejoran en {wins} y empeoran en {losses} de {n} casos con {a} frente a {b}; no es un resultado igual.", "Accepted deliverables improve in {wins} and regress in {losses} of {n} cases with {a} against {b}; it is not an equal result."],
   msg_sv_success_same: ["Los mismos entregables aceptados con {a} y con {b} ({n} casos); deciden las medidas humanas.", "The same accepted deliverables with {a} and with {b} ({n} cases); the human measures decide."],
   msg_sv_better_correction_minutes: ["Corrección: {diff} minutos menos por caso con {a} que con {b} ({n} casos).", "Correction: {diff} fewer minutes per case with {a} than with {b} ({n} cases)."],
   msg_sv_worse_correction_minutes: ["Corrección: {diff} minutos más por caso con {a} que con {b} ({n} casos).", "Correction: {diff} more minutes per case with {a} than with {b} ({n} cases)."],
