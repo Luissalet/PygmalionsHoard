@@ -11,7 +11,7 @@ from typing import Any, Callable, Optional
 from .errors import PygmalionError
 
 IS_WIN = sys.platform.startswith("win")
-WIN_WORK = r"D:\LocalAI\pygmalion"
+WIN_WORK = r"E:\Development\AI Models\pygmalion"
 WIN_PYTHON = WIN_WORK + r"\venv\Scripts\python.exe"
 WIN_LLAMA = r"D:\LocalAI\llama.cpp"
 RESERVED_DEFAULT = (0, 1)
