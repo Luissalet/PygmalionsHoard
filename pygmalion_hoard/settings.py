@@ -13,7 +13,7 @@ from .errors import PygmalionError
 IS_WIN = sys.platform.startswith("win")
 WIN_WORK = r"E:\Development\AI Models\pygmalion"
 WIN_PYTHON = WIN_WORK + r"\venv\Scripts\python.exe"
-WIN_LLAMA = r"D:\LocalAI\llama.cpp"
+WIN_LLAMA = r"E:\Development\Tools\llama.cpp"
 RESERVED_DEFAULT = (0, 1)
 ALLOWED_DEFAULT = (2, 3)
 
@@ -41,7 +41,7 @@ SPECS: dict[str, Spec] = {
     "gpus.reserved": _s("intlist", "0,1", "gpus", "GPUs that belong to the owner of the computer. Allowing one needs a confirmation."),
     "env.python": _s("path", "", "paths", "Python of the trainer environment (torch, transformers, peft, bitsandbytes, trl)."),
     "paths.work": _s("path", "", "paths", "Work folder: hf/, outputs/, jobs/, calib/."),
-    "llama.bin_dir": _s("path", "", "paths", "Folder with llama-quantize, llama-imatrix, llama-perplexity and llama-server (empty: the PATH; on Windows D:\\LocalAI\\llama.cpp first)."),
+    "llama.bin_dir": _s("path", "", "paths", "Folder with llama-quantize, llama-imatrix, llama-perplexity and llama-server (empty: the PATH; on Windows E:\\Development\\Tools\\llama.cpp first)."),
     "llama.src_dir": _s("path", "", "paths", "llama.cpp sources: convert_hf_to_gguf.py and convert_lora_to_gguf.py."),
     "merge.device": _s("choice", "cpu", "paths", "Where adapters are merged into a base model.", ("cpu", "cuda")),
     "train.method": _s("choice", "qlora", "defaults", choices=("qlora", "lora")),

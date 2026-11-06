@@ -13,7 +13,7 @@ DEFAULT_HOST = "registry.ollama.ai"
 DEFAULT_NAMESPACE = "library"
 MODEL_LAYER = "application/vnd.ollama.image.model"
 PROJECTOR_LAYER = "application/vnd.ollama.image.projector"
-CANDIDATES_WINDOWS = (r"D:\LocalAI\ollama-models",)
+CANDIDATES_WINDOWS = (r"E:\Development\AI Models\ollama",)
 
 
 IS_WINDOWS = sys.platform.startswith("win")

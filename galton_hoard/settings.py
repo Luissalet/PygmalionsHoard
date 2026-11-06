@@ -26,7 +26,7 @@ ROUTES_POLICY_BOUNDS: dict[str, tuple[float, float]] = {
 #: the one command-line harness that ships, commented out (a line that starts with # is switched off): see harnessbench/external.py
 EXTERNAL_EXAMPLE = "# example = terminal-agent --base-url {base_url} --model {model} --prompt-file {prompt_file} --workdir {workdir}"
 DEFAULT_GGUF_FOLDER = "E:\\Development\\AI Models"
-DEFAULT_LLAMA_SERVER = "D:\\LocalAI\\llama.cpp\\llama-server.exe"
+DEFAULT_LLAMA_SERVER = "E:\\Development\\Tools\\llama.cpp\\llama-server.exe"
 
 
 @dataclass(frozen=True)

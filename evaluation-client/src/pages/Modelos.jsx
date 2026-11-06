@@ -89,7 +89,7 @@ function AddModal({ onClose, onDone }) {
           </>
         ) : (
           <>
-            <Field label={t("gguf_path")} hint={t("gguf_path_hint")}><input className="field mono" value={form.path} onChange={set("path")} placeholder="D:\LocalAI\models\modelo.gguf" required /></Field>
+            <Field label={t("gguf_path")} hint={t("gguf_path_hint")}><input className="field mono" value={form.path} onChange={set("path")} placeholder="E:\Development\AI Models\modelo.gguf" required /></Field>
             <Field label={t("mmproj_path")} hint={t("mmproj_hint")}><input className="field mono" value={form.mmproj} onChange={set("mmproj")} /></Field>
           </>
         )}
