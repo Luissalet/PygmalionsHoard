@@ -32,7 +32,7 @@ def test_the_catalogue_has_unique_names_and_valid_schemas():
 
 def test_destructive_tools_are_annotated_and_need_confirm():
     destructive = {t.name for t in TOOLS if t.annotations["destructiveHint"]}
-    assert destructive == {"model_remove", "suite_remove", "case_remove", "pygmalion_suit_eval_delete", "logit_judge_delete"}
+    assert destructive == {"model_remove", "suite_remove", "case_remove", "pygmalion_suit_eval_delete", "logit_judge_delete", "rag_set_delete", "rag_case_remove", "rag_run_delete"}
     discard = TOOLS_BY_NAME["run_discard"]
     assert not discard.annotations["destructiveHint"] and "confirm" in discard.input_model.model_fields and "reason" in discard.input_model.model_fields, "reversible, but it asks for confirm"
     for t in TOOLS:
@@ -837,6 +837,44 @@ def test_checkers_list_and_answer_check(svc):
     with pytest.raises(GaltonError):
         call(svc, "answer_check", answer="x", checker={"type": "nope"})
     assert svc.store.counts()["results"] == 0
+
+
+def test_rag_pipeline_bench_from_a_corpus_to_a_comparison(svc):
+    docs = [{"name": "faro.md", "text": "El faro de Punta Brava se encendió por primera vez en 1887. Su torre mide 42 metros y la luz alcanza 23 millas náuticas.\n\n"
+                                        "El último farero, Anselmo Rivas, se jubiló en 1994, cuando la linterna se automatizó."},
+            {"name": "puente.md", "text": "El puente de hierro de Riosa tiene 96 metros de largo y fue diseñado por la ingeniera Clara Montes. Se inauguró en 1931.\n\n"
+                                          "El puente de Riosa soporta un máximo de 12 toneladas por vehículo y se pinta cada ocho años."}]
+    first = {"question": "¿En qué año se encendió por primera vez el faro de Punta Brava?", "expected": "En 1887.",
+             "passages": [{"text": "El faro de Punta Brava se encendió por primera vez en 1887."}]}
+    sid = call(svc, "rag_set_save", name="obras", documents=docs, cases=[first])["set"]["id"]
+    assert call(svc, "rag_sets")["count"] == 1 and call(svc, "rag_set_get", set=sid)["set"]["name"] == "obras"
+    made = call(svc, "rag_case_save", set=sid, question="¿Quién diseñó el puente de hierro de Riosa?", expected="La ingeniera Clara Montes.",
+                passages=[{"text": "fue diseñado por la ingeniera Clara Montes"}], status="proposed")
+    extra = call(svc, "rag_case_save", set=sid, question="¿Cuántos visitantes recibe el faro?", answerable=False, status="proposed")
+    assert call(svc, "rag_cases_review", set=sid, status="accepted", ids=[made["id"]])["changed"] == 1
+    assert call(svc, "rag_case_remove", id=extra["id"], confirm=True)["deleted"] == extra["id"]
+
+    def writer(req):
+        text = next((str(m.get("content", "")) for m in reversed(req.messages) if m.get("role") == "user"), "")
+        if "faro" in text:
+            return json.dumps({"cases": [{"question": "¿Cuántos metros mide la torre del faro?", "answer": "42 metros", "quote": "Su torre mide 42 metros y la luz alcanza 23 millas náuticas."}]})
+        return json.dumps({"cases": [{"question": "¿En qué año se inauguró el puente de Riosa?", "answer": "En 1931", "quote": "Se inauguró en 1931."}]})
+    svc.fake_world.register("redactor", writer)
+    svc.store.create_contestant(key="server:test:redactor", kind="server", name="redactor", url="http://fake.invalid:9000", api="openai", model="redactor",
+                                provider="openai_compat", aliases=["redactor"], remote=False, remote_ok=False, enabled=True, source="manual")
+    generated = call(svc, "rag_cases_generate", set=sid, model="redactor", n=1, chunk_chars=400)
+    assert generated["proposed"] == 1, generated
+
+    good = {"kind": "builtin", "generator": "extractive", "chunk_chars": 130, "chunk_overlap": 0, "depth": 6}
+    assert call(svc, "rag_probe", pipeline=good, question=first["question"], set=sid)["retrieved"]
+    a = call(svc, "rag_run_start", set=sid, pipeline=good, judge_mode="lexical", wait_s=20)["run"]["id"]
+    b = call(svc, "rag_run_start", set=sid, pipeline={**good, "retriever": "random", "top_k": 1}, judge_mode="lexical", wait_s=20)["run"]["id"]
+    assert call(svc, "rag_run_status", run=a)["run"]["state"] == "done" and call(svc, "rag_run_list", set=sid)["count"] == 2
+    assert call(svc, "rag_run_result", run=a)["summary"]["cases"] == 2
+    assert call(svc, "rag_compare", a=a, b=b)["shared"] == 2
+    assert call(svc, "rag_run_cancel", run=b)["cancelled"] is False
+    assert call(svc, "rag_run_delete", run=b, confirm=True)["deleted"] == b
+    assert call(svc, "rag_set_delete", set=sid, confirm=True)["deleted"] == sid and call(svc, "rag_sets")["count"] == 0
 
 
 def test_every_tool_was_called():

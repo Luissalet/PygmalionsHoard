@@ -1431,6 +1431,248 @@ Annotations: destructiveHint.
 | `id` (string) | yes |  |
 | `confirm` (boolean) | no |  |
 
+## `rag_sets`
+
+RAG bench: case sets with their documents, cases by state and runs. Conjuntos de casos RAG.
+
+A case set is a small corpus plus cases: a question, the passages that answer it and the expected answer. Start here to evaluate a RAG pipeline piece by piece (retriever, reranker, generator).
+Sinónimos: evaluar un RAG, tubería RAG, recuperador, reordenador, generador, conjuntos de preguntas
+
+Annotations: readOnlyHint, idempotentHint.
+
+## `rag_set_save`
+
+Create a RAG case set from documents, or add documents and cases to one. Crear conjunto de casos RAG.
+
+Documents come as texts or as absolute paths of text files and folders. Cases can be written by hand here, or proposed by a model with rag_cases_generate.
+Sinónimos: corpus de prueba, documentos, añadir casos, conjunto de evaluación RAG
+
+Annotations: none.
+
+| Argument | Required | Description |
+|---|---|---|
+| `id` (string) | no | Empty: a new set. An existing id (or name): documents and cases are added to it. |
+| `name` (string) | no |  |
+| `description` (string) | no |  |
+| `documents` (array) | no | The corpus: texts or {name, text}. |
+| `paths` (array) | no | Absolute paths of text files or folders (txt, md, csv, json, html...) to read as documents. |
+| `cases` (array) | no |  |
+| `replace_documents` (boolean) | no | Replace the documents of an existing set instead of adding to them. |
+
+## `rag_set_get`
+
+One RAG case set: documents, cases with their passages and its runs. Detalle de un conjunto RAG.
+
+Sinónimos: ver casos, casos propuestos, pasajes de referencia
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `set` (string) | yes | Set id (rs_…) or name. |
+| `status` ( \| proposed \| accepted \| rejected) | no | Only the cases in this state. |
+| `with_text` (boolean) | no | Include the full text of the documents. |
+
+## `rag_set_delete`
+
+Delete a RAG case set with its cases and runs (confirm=true). Borrar conjunto de casos RAG.
+
+Sinónimos: quitar conjunto, borrar corpus de prueba
+
+Annotations: destructiveHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `set` (string) | yes |  |
+| `confirm` (boolean) | no |  |
+
+## `rag_cases_generate`
+
+A model proposes RAG cases from the set's documents, for a person to review. Generar casos RAG.
+
+For fragments spread over the documents the model writes a question, the short answer and the sentence that supports it; the quote is checked against the fragment and becomes the reference passage. Cases stay proposed until accepted (rag_cases_review).
+Sinónimos: generar preguntas del corpus, casos sintéticos, no escribir el conjunto a mano, preguntas con su pasaje de origen
+
+Annotations: openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `set` (string) | yes |  |
+| `model` (string/object) | yes | The model that writes the cases: a running server model (id or name) or {kind: server, url, model}. |
+| `n` (integer) | no | Answerable cases to propose. |
+| `per_fragment` (integer) | no | Questions asked per document fragment. |
+| `unanswerable` (integer) | no | Also propose this many questions the passage does not answer (to measure abstention). A person must check that no other document answers them. |
+| `chunk_chars` (integer) | no | Size of the fragments the model reads. |
+| `seed` (integer) | no | Which fragments are picked. |
+
+## `rag_case_save`
+
+Add a RAG case by hand or edit one: question, passages, expected answer, state. Guardar caso RAG.
+
+With id, only the fields given change; status accepts or rejects it.
+Sinónimos: editar caso, corregir pregunta, aceptar caso, pregunta sin respuesta
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `set` (string) | no | The set a new case goes into. |
+| `id` (string) | no | Case id (rk_…) to change; empty adds a case. |
+| `question` (string/null) | no |  |
+| `expected` (string/null) | no |  |
+| `passages` (array/null) | no |  |
+| `answerable` (boolean/null) | no |  |
+| `require` (string/null) | no |  |
+| `status` (string/null) | no | Review state: only accepted cases are evaluated. |
+| `notes` (string/null) | no |  |
+
+## `rag_cases_review`
+
+Accept or reject proposed RAG cases, some or all. Revisar casos RAG propuestos.
+
+Sinónimos: aceptar todos, rechazar casos, revisión de casos generados
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `set` (string) | yes |  |
+| `status` (proposed \| accepted \| rejected) | yes |  |
+| `ids` (array) | no |  |
+| `all_proposed` (boolean) | no | Apply to every proposed case of the set. |
+
+## `rag_case_remove`
+
+Delete one RAG case (confirm=true). Borrar un caso RAG.
+
+Sinónimos: quitar caso
+
+Annotations: destructiveHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `id` (string) | yes |  |
+| `confirm` (boolean) | no |  |
+
+## `rag_probe`
+
+Ask a RAG pipeline one question and see its passages and answer; nothing stored. Probar tubería RAG.
+
+To check an adapter (faustus, http) or a configuration before a run: what was retrieved, the order after the reranker, what the generator got and what it answered.
+Sinónimos: probar adaptador, ver qué recupera, depurar tubería, una pregunta de prueba
+
+Annotations: readOnlyHint, idempotentHint, openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `pipeline` (object) | yes | The pipeline to evaluate. {kind: builtin}: this bench's own plain pipeline over the documents of the case set: retriever (bm25 \| random \| none), chunk_chars and chunk_overlap (fragment size), depth (passages retrieved, default 10), reranker (none \| overlap \| model \| reverse \| random), top_k (passages given to the generator, default 3), generator (model \| extractive \| no_context) and model (a running server model). random, none, reverse and no_context are broken pieces, to check the attribution. {kind: faustus}: the document RAG of a running Faustus: url (default the setting faustus.url), source (documents \| brain), depth, answer (faustus: its own model answers; model: the generator given here). {kind: http}: any pipeline behind one request: url, method, headers, body (with {question} and {k}), passages_path, answer_path and optionally ranked_path, context_path, text_field, id_field, doc_field, score_field, top_k; give model to write the answer here when the pipeline only retrieves. |
+| `question` (string) | yes |  |
+| `set` (string) | no | The case set whose documents a builtin pipeline uses. |
+
+## `rag_run_start`
+
+Evaluate a RAG pipeline on a case set, piece by piece. Evaluar una tubería RAG.
+
+Every accepted case is asked; per piece it measures retrieval (recall@k, MRR, nDCG), reranking (the same before and after) and generation (faithfulness to the passages, coverage of the expected answer, abstention), and attributes each failure to the piece that caused it. Runs in the background: follow it with rag_run_status and read rag_run_result.
+Sinónimos: qué pieza falla, evaluar RAG de Faustus, evaluar por HTTP, recall, fidelidad, alucinación, atribución de fallos
+
+Annotations: openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `set` (string) | yes |  |
+| `pipeline` (object) | yes | The pipeline to evaluate. {kind: builtin}: this bench's own plain pipeline over the documents of the case set: retriever (bm25 \| random \| none), chunk_chars and chunk_overlap (fragment size), depth (passages retrieved, default 10), reranker (none \| overlap \| model \| reverse \| random), top_k (passages given to the generator, default 3), generator (model \| extractive \| no_context) and model (a running server model). random, none, reverse and no_context are broken pieces, to check the attribution. {kind: faustus}: the document RAG of a running Faustus: url (default the setting faustus.url), source (documents \| brain), depth, answer (faustus: its own model answers; model: the generator given here). {kind: http}: any pipeline behind one request: url, method, headers, body (with {question} and {k}), passages_path, answer_path and optionally ranked_path, context_path, text_field, id_field, doc_field, score_field, top_k; give model to write the answer here when the pipeline only retrieves. |
+| `judge` (string/object) | no | The model that judges the answers (a running server). Empty: the setting judge.contestant; without one, word overlap. |
+| `judge_mode` (auto \| logit \| model \| lexical) | no | logit: the logit judge (scores read from next-token probabilities; the server must return logprobs). model: a generated JSON verdict. lexical: word overlap, no model. auto: the first that works, in that order. |
+| `ks` (array/null) | no | Cut-offs for recall@k and nDCG@k. Default 1, 3, 5, 10. |
+| `match_threshold` (number/null) | no | Share of a reference passage's content words a retrieved passage must hold to count as it. Default 0.7. |
+| `faithful_min` (number/null) | no | Faithfulness below this is an invented answer. Default 0.6. |
+| `coverage_min` (number/null) | no | Coverage of the expected answer below this is an incomplete answer. Default 0.6. |
+| `parallel` (integer/null) | no | Cases asked at the same time. Default 4. |
+| `label` (string) | no |  |
+| `include_proposed` (boolean) | no | Also run the cases nobody has reviewed yet. |
+| `limit` (integer) | no | Only the first N cases (0: all). |
+| `wait_s` (number) | no | Wait this long for the run to finish before answering; it keeps going afterwards. |
+
+## `rag_run_status`
+
+Progress of a RAG pipeline run. Estado de una evaluación RAG.
+
+Sinónimos: cómo va, progreso de la evaluación RAG
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | yes | Run id (rr_…). |
+
+## `rag_run_result`
+
+A RAG run by piece: retrieval, reranking, generation and what each failure is due to. Resultado RAG.
+
+summary.attribution says how many failures belong to the retriever (the passage never arrived), to the ranking (it arrived but was left outside the cut) and to the generator (it had the passage and abstained, invented or answered something else), with the share of each. With case, the whole trace of one case.
+Sinónimos: el N % de los fallos son del recuperador, por qué falla, traza de un caso, pasajes recuperados
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | yes |  |
+| `case` (string) | no | A case id: its whole trace (retrieved passages with the reference ones marked, order after the reranker, passages given to the generator, answer, scores). |
+| `only_failed` (boolean) | no | List only the failed cases. |
+
+## `rag_run_list`
+
+Recent RAG pipeline runs with pass rate and main failing piece. Historial de evaluaciones RAG.
+
+Sinónimos: evaluaciones RAG anteriores
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `set` (string) | no |  |
+| `limit` (integer) | no |  |
+
+## `rag_run_cancel`
+
+Cancel a RAG pipeline run: finished cases are kept. Cancelar evaluación RAG.
+
+Sinónimos: parar evaluación RAG
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | yes | Run id (rr_…). |
+
+## `rag_run_delete`
+
+Delete a RAG pipeline run and its results (confirm=true). Borrar evaluación RAG.
+
+Sinónimos: quitar ejecución RAG
+
+Annotations: destructiveHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | yes |  |
+| `confirm` (boolean) | no |  |
+
+## `rag_compare`
+
+Compare two RAG runs case by case: fixed, broken, and in which piece. Comparar dos tuberías RAG.
+
+For two configurations over the same case set (two fragment sizes, with and without reranker, two models): cases improved and regressed with an exact sign test, the change of every piece's measures, where the failures moved, and what differs between the two pipelines.
+Sinónimos: comparar configuraciones, tamaño de fragmento, con y sin reordenador, antes y después
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `a` (string) | yes | The baseline run. |
+| `b` (string) | yes | The run compared with it (another fragment size, with a reranker, another model...). |
+
 ## REST routes for the UI
 
 - `GET /api/health`, `GET /api/status`

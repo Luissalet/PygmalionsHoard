@@ -1439,6 +1439,169 @@ def run_suit_eval_delete(s: Services, a: SuitEvalDeleteArgs) -> dict[str, Any]:
     return s.suiteval.delete(a.id)
 
 
+# ---------------------------------------------------------------------------- RAG pipeline bench (a pipeline measured piece by piece)
+RAG_PIPELINE_HELP = (
+    "The pipeline to evaluate. {kind: builtin}: this bench's own plain pipeline over the documents of the case set: retriever (bm25 | random | none), "
+    "chunk_chars and chunk_overlap (fragment size), depth (passages retrieved, default 10), reranker (none | overlap | model | reverse | random), top_k "
+    "(passages given to the generator, default 3), generator (model | extractive | no_context) and model (a running server model). random, none, reverse "
+    "and no_context are broken pieces, to check the attribution. {kind: faustus}: the document RAG of a running Faustus: url (default the setting "
+    "faustus.url), source (documents | brain), depth, answer (faustus: its own model answers; model: the generator given here). {kind: http}: any pipeline "
+    "behind one request: url, method, headers, body (with {question} and {k}), passages_path, answer_path and optionally ranked_path, context_path, "
+    "text_field, id_field, doc_field, score_field, top_k; give model to write the answer here when the pipeline only retrieves.")
+
+
+class RagDocArg(BaseModel):
+    name: str = Field("", max_length=200, description="File or document name; reference passages can name it.")
+    text: str = Field(..., min_length=1, max_length=400_000)
+
+
+class RagPassageArg(BaseModel):
+    text: str = Field("", max_length=4000, description="The text that answers the question (best: one or two sentences, copied from the document).")
+    doc: str = Field("", max_length=300, description="Name of its document; alone it matches any passage of that document.")
+    id: str = Field("", max_length=200, description="Passage id, when the pipeline reports the same ids.")
+
+
+class RagCaseArg(BaseModel):
+    question: str = Field(..., min_length=1, max_length=2000)
+    expected: str = Field("", max_length=4000, description="The expected answer.")
+    passages: list[RagPassageArg] = Field(default_factory=list, max_length=20, description="Reference passages: what must be retrieved to answer.")
+    answerable: bool = Field(True, description="False: the documents cannot answer it, so the right answer is to say so.")
+    require: Literal["all", "any"] = Field("all", description="all: every reference passage is needed. any: one is enough.")
+    status: Literal["proposed", "accepted", "rejected"] = "accepted"
+    notes: str = Field("", max_length=1000)
+
+
+class RagSetSaveArgs(BaseModel):
+    id: str = Field("", max_length=80, description="Empty: a new set. An existing id (or name): documents and cases are added to it.")
+    name: str = Field("", max_length=120)
+    description: str = Field("", max_length=1000)
+    documents: list[Union[str, RagDocArg]] = Field(default_factory=list, max_length=300, description="The corpus: texts or {name, text}.")
+    paths: list[str] = Field(default_factory=list, max_length=50, description="Absolute paths of text files or folders (txt, md, csv, json, html...) to read as documents.")
+    cases: list[RagCaseArg] = Field(default_factory=list, max_length=500)
+    replace_documents: bool = Field(False, description="Replace the documents of an existing set instead of adding to them.")
+
+
+class RagSetGetArgs(BaseModel):
+    set: str = Field(..., min_length=1, max_length=120, description="Set id (rs_…) or name.")
+    status: Literal["", "proposed", "accepted", "rejected"] = Field("", description="Only the cases in this state.")
+    with_text: bool = Field(False, description="Include the full text of the documents.")
+
+
+class RagSetDeleteArgs(BaseModel):
+    set: str = Field(..., min_length=1, max_length=120)
+    confirm: bool = False
+
+
+class RagCaseSaveArgs(BaseModel):
+    set: str = Field("", max_length=120, description="The set a new case goes into.")
+    id: str = Field("", max_length=80, description="Case id (rk_…) to change; empty adds a case.")
+    question: Optional[str] = Field(None, max_length=2000)
+    expected: Optional[str] = Field(None, max_length=4000)
+    passages: Optional[list[RagPassageArg]] = Field(None, max_length=20)
+    answerable: Optional[bool] = None
+    require: Optional[Literal["all", "any"]] = None
+    status: Optional[Literal["proposed", "accepted", "rejected"]] = Field(None, description="Review state: only accepted cases are evaluated.")
+    notes: Optional[str] = Field(None, max_length=1000)
+
+
+class RagCasesReviewArgs(BaseModel):
+    set: str = Field(..., min_length=1, max_length=120)
+    status: Literal["proposed", "accepted", "rejected"]
+    ids: list[str] = Field(default_factory=list, max_length=500)
+    all_proposed: bool = Field(False, description="Apply to every proposed case of the set.")
+
+
+class RagCaseRemoveArgs(BaseModel):
+    id: str = Field(..., min_length=1, max_length=80)
+    confirm: bool = False
+
+
+class RagCasesGenerateArgs(BaseModel):
+    set: str = Field(..., min_length=1, max_length=120)
+    model: Union[str, dict[str, Any]] = Field(..., description="The model that writes the cases: a running server model (id or name) or {kind: server, url, model}.")
+    n: int = Field(10, ge=1, le=100, description="Answerable cases to propose.")
+    per_fragment: int = Field(1, ge=1, le=3, description="Questions asked per document fragment.")
+    unanswerable: int = Field(0, ge=0, le=30, description="Also propose this many questions the passage does not answer (to measure abstention). A person must check that no other document answers them.")
+    chunk_chars: int = Field(900, ge=300, le=4000, description="Size of the fragments the model reads.")
+    seed: int = Field(0, ge=0, le=1_000_000, description="Which fragments are picked.")
+
+
+class RagProbeArgs(BaseModel):
+    pipeline: dict[str, Any] = Field(..., description=RAG_PIPELINE_HELP)
+    question: str = Field(..., min_length=1, max_length=2000)
+    set: str = Field("", max_length=120, description="The case set whose documents a builtin pipeline uses.")
+
+
+class RagRunStartArgs(BaseModel):
+    set: str = Field(..., min_length=1, max_length=120)
+    pipeline: dict[str, Any] = Field(..., description=RAG_PIPELINE_HELP)
+    judge: Union[str, dict[str, Any]] = Field("", description="The model that judges the answers (a running server). Empty: the setting judge.contestant; without one, word overlap.")
+    judge_mode: Literal["auto", "logit", "model", "lexical"] = Field("auto", description=(
+        "logit: the logit judge (scores read from next-token probabilities; the server must return logprobs). model: a generated JSON verdict. "
+        "lexical: word overlap, no model. auto: the first that works, in that order."))
+    ks: Optional[list[int]] = Field(None, max_length=6, description="Cut-offs for recall@k and nDCG@k. Default 1, 3, 5, 10.")
+    match_threshold: Optional[float] = Field(None, ge=0.3, le=1.0, description="Share of a reference passage's content words a retrieved passage must hold to count as it. Default 0.7.")
+    faithful_min: Optional[float] = Field(None, ge=0.0, le=1.0, description="Faithfulness below this is an invented answer. Default 0.6.")
+    coverage_min: Optional[float] = Field(None, ge=0.0, le=1.0, description="Coverage of the expected answer below this is an incomplete answer. Default 0.6.")
+    parallel: Optional[int] = Field(None, ge=1, le=8, description="Cases asked at the same time. Default 4.")
+    label: str = Field("", max_length=160)
+    include_proposed: bool = Field(False, description="Also run the cases nobody has reviewed yet.")
+    limit: int = Field(0, ge=0, le=500, description="Only the first N cases (0: all).")
+    wait_s: float = Field(0, ge=0, le=600, description="Wait this long for the run to finish before answering; it keeps going afterwards.")
+
+
+class RagRunRef(BaseModel):
+    run: str = Field(..., min_length=1, max_length=80, description="Run id (rr_…).")
+
+
+class RagRunResultArgs(BaseModel):
+    run: str = Field(..., min_length=1, max_length=80)
+    case: str = Field("", max_length=80, description="A case id: its whole trace (retrieved passages with the reference ones marked, order after the reranker, passages given to the generator, answer, scores).")
+    only_failed: bool = Field(False, description="List only the failed cases.")
+
+
+class RagRunListArgs(BaseModel):
+    set: str = Field("", max_length=120)
+    limit: int = Field(30, ge=1, le=200)
+
+
+class RagRunDeleteArgs(BaseModel):
+    run: str = Field(..., min_length=1, max_length=80)
+    confirm: bool = False
+
+
+class RagCompareArgs(BaseModel):
+    a: str = Field(..., min_length=1, max_length=80, description="The baseline run.")
+    b: str = Field(..., min_length=1, max_length=80, description="The run compared with it (another fragment size, with a reranker, another model...).")
+
+
+def run_rag_set_save(s: Services, a: RagSetSaveArgs) -> dict[str, Any]:
+    return cap_result(s.ragbench.set_save(**a.model_dump()))
+
+
+def run_rag_set_delete(s: Services, a: RagSetDeleteArgs) -> dict[str, Any]:
+    card = s.ragbench.set_get(a.set)["set"]
+    _confirm(a.confirm, f"the case set {card['name']} with its {sum(card['cases'].values())} case(s) and {card['runs']} run(s)")
+    return s.ragbench.set_delete(card["id"])
+
+
+def run_rag_case_remove(s: Services, a: RagCaseRemoveArgs) -> dict[str, Any]:
+    _confirm(a.confirm, f"the case {a.id}")
+    return s.ragbench.case_remove(a.id)
+
+
+def run_rag_run_start(s: Services, a: RagRunStartArgs) -> dict[str, Any]:
+    settings = {k: getattr(a, k) for k in ("judge_mode", "ks", "match_threshold", "faithful_min", "coverage_min", "parallel")}
+    return cap_result(s.ragbench.run_start(set=a.set, pipeline=a.pipeline, judge=a.judge, settings=settings, label=a.label, include_proposed=a.include_proposed,
+                                           limit=a.limit, source=_source(), caller=_CALLER.get(), wait_s=a.wait_s))
+
+
+def run_rag_run_delete(s: Services, a: RagRunDeleteArgs) -> dict[str, Any]:
+    card = s.ragbench.status(a.run)["run"]
+    _confirm(a.confirm, f"the RAG run {card['id']} ({card['label']})")
+    return s.ragbench.delete(card["id"])
+
+
 
 TOOLS: list[Tool] = [
     Tool("galton_overview", _d("Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.",
@@ -1742,6 +1905,58 @@ TOOLS: list[Tool] = [
          SuitEvalExportArgs, ann(False, idempotent=True, open_world=True), lambda s, a: s.suiteval.export(a.id, mode=a.mode, url=a.url)),
     Tool("pygmalion_suit_eval_delete", _d("Delete a suit evaluation and its results (confirm=true). Borrar evaluación de traje.", synonyms="quitar evaluación"),
          SuitEvalDeleteArgs, ann(False, destructive=True), run_suit_eval_delete),
+    Tool("rag_sets", _d("RAG bench: case sets with their documents, cases by state and runs. Conjuntos de casos RAG.",
+                        "A case set is a small corpus plus cases: a question, the passages that answer it and the expected answer. Start here to evaluate a RAG pipeline "
+                        "piece by piece (retriever, reranker, generator).",
+                        "evaluar un RAG, tubería RAG, recuperador, reordenador, generador, conjuntos de preguntas"), Empty, ann(True), lambda s, a: cap_result(s.ragbench.sets())),
+    Tool("rag_set_save", _d("Create a RAG case set from documents, or add documents and cases to one. Crear conjunto de casos RAG.",
+                            "Documents come as texts or as absolute paths of text files and folders. Cases can be written by hand here, or proposed by a model with "
+                            "rag_cases_generate.", "corpus de prueba, documentos, añadir casos, conjunto de evaluación RAG"),
+         RagSetSaveArgs, ann(False, idempotent=False), run_rag_set_save),
+    Tool("rag_set_get", _d("One RAG case set: documents, cases with their passages and its runs. Detalle de un conjunto RAG.", synonyms="ver casos, casos propuestos, pasajes de referencia"),
+         RagSetGetArgs, ann(True), lambda s, a: cap_result(s.ragbench.set_get(a.set, status=a.status, with_text=a.with_text))),
+    Tool("rag_set_delete", _d("Delete a RAG case set with its cases and runs (confirm=true). Borrar conjunto de casos RAG.", synonyms="quitar conjunto, borrar corpus de prueba"),
+         RagSetDeleteArgs, ann(False, destructive=True), run_rag_set_delete),
+    Tool("rag_cases_generate", _d("A model proposes RAG cases from the set's documents, for a person to review. Generar casos RAG.",
+                                  "For fragments spread over the documents the model writes a question, the short answer and the sentence that supports it; the quote is "
+                                  "checked against the fragment and becomes the reference passage. Cases stay proposed until accepted (rag_cases_review).",
+                                  "generar preguntas del corpus, casos sintéticos, no escribir el conjunto a mano, preguntas con su pasaje de origen"),
+         RagCasesGenerateArgs, ann(False, idempotent=False, open_world=True), lambda s, a: cap_result(s.ragbench.cases_generate(**a.model_dump())), timeout_s=BRIDGE_WAIT_S),
+    Tool("rag_case_save", _d("Add a RAG case by hand or edit one: question, passages, expected answer, state. Guardar caso RAG.",
+                             "With id, only the fields given change; status accepts or rejects it.", "editar caso, corregir pregunta, aceptar caso, pregunta sin respuesta"),
+         RagCaseSaveArgs, ann(False, idempotent=True), lambda s, a: s.ragbench.case_save(**a.model_dump())),
+    Tool("rag_cases_review", _d("Accept or reject proposed RAG cases, some or all. Revisar casos RAG propuestos.", synonyms="aceptar todos, rechazar casos, revisión de casos generados"),
+         RagCasesReviewArgs, ann(False, idempotent=True), lambda s, a: s.ragbench.cases_review(**a.model_dump())),
+    Tool("rag_case_remove", _d("Delete one RAG case (confirm=true). Borrar un caso RAG.", synonyms="quitar caso"), RagCaseRemoveArgs, ann(False, destructive=True), run_rag_case_remove),
+    Tool("rag_probe", _d("Ask a RAG pipeline one question and see its passages and answer; nothing stored. Probar tubería RAG.",
+                         "To check an adapter (faustus, http) or a configuration before a run: what was retrieved, the order after the reranker, what the generator got and what "
+                         "it answered.", "probar adaptador, ver qué recupera, depurar tubería, una pregunta de prueba"),
+         RagProbeArgs, ann(True, open_world=True), lambda s, a: cap_result(s.ragbench.probe(pipeline=a.pipeline, question=a.question, set=a.set)), timeout_s=BRIDGE_WAIT_S),
+    Tool("rag_run_start", _d("Evaluate a RAG pipeline on a case set, piece by piece. Evaluar una tubería RAG.",
+                             "Every accepted case is asked; per piece it measures retrieval (recall@k, MRR, nDCG), reranking (the same before and after) and generation "
+                             "(faithfulness to the passages, coverage of the expected answer, abstention), and attributes each failure to the piece that caused it. Runs in "
+                             "the background: follow it with rag_run_status and read rag_run_result.",
+                             "qué pieza falla, evaluar RAG de Faustus, evaluar por HTTP, recall, fidelidad, alucinación, atribución de fallos"),
+         RagRunStartArgs, ann(False, idempotent=False, open_world=True), run_rag_run_start, timeout_s=BRIDGE_WAIT_S),
+    Tool("rag_run_status", _d("Progress of a RAG pipeline run. Estado de una evaluación RAG.", synonyms="cómo va, progreso de la evaluación RAG"),
+         RagRunRef, ann(True), lambda s, a: s.ragbench.status(a.run)),
+    Tool("rag_run_result", _d("A RAG run by piece: retrieval, reranking, generation and what each failure is due to. Resultado RAG.",
+                              "summary.attribution says how many failures belong to the retriever (the passage never arrived), to the ranking (it arrived but was left "
+                              "outside the cut) and to the generator (it had the passage and abstained, invented or answered something else), with the share of each. "
+                              "With case, the whole trace of one case.",
+                              "el N % de los fallos son del recuperador, por qué falla, traza de un caso, pasajes recuperados"),
+         RagRunResultArgs, ann(True), lambda s, a: cap_result(s.ragbench.result(a.run, case=a.case, only_failed=a.only_failed))),
+    Tool("rag_run_list", _d("Recent RAG pipeline runs with pass rate and main failing piece. Historial de evaluaciones RAG.", synonyms="evaluaciones RAG anteriores"),
+         RagRunListArgs, ann(True), lambda s, a: cap_result(s.ragbench.list(set=a.set, limit=a.limit))),
+    Tool("rag_run_cancel", _d("Cancel a RAG pipeline run: finished cases are kept. Cancelar evaluación RAG.", synonyms="parar evaluación RAG"),
+         RagRunRef, ann(False, idempotent=True), lambda s, a: s.ragbench.cancel(a.run)),
+    Tool("rag_run_delete", _d("Delete a RAG pipeline run and its results (confirm=true). Borrar evaluación RAG.", synonyms="quitar ejecución RAG"),
+         RagRunDeleteArgs, ann(False, destructive=True), run_rag_run_delete),
+    Tool("rag_compare", _d("Compare two RAG runs case by case: fixed, broken, and in which piece. Comparar dos tuberías RAG.",
+                           "For two configurations over the same case set (two fragment sizes, with and without reranker, two models): cases improved and regressed with an "
+                           "exact sign test, the change of every piece's measures, where the failures moved, and what differs between the two pipelines.",
+                           "comparar configuraciones, tamaño de fragmento, con y sin reordenador, antes y después"),
+         RagCompareArgs, ann(True), lambda s, a: cap_result(s.ragbench.compare(a.a, a.b))),
 ]
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 assert len(TOOLS_BY_NAME) == len(TOOLS)

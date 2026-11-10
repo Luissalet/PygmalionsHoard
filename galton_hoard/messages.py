@@ -248,6 +248,38 @@ ERRORS: dict[str, tuple[str, str]] = {
     "se_nothing_scored": ("Nothing to export: no case outside the building set has a result.", "Run the cases that were not used to build the candidate, then export."),
     "se_export_url": ("'{url}' is not an http or https address.", "Set suiteval.darwin_url in the settings."),
     "se_export_failed": ("Darwin's Hoard did not accept the results: {reason}", "Export to a file instead and import it there with darwin_suit_import_eval."),
+    # RAG pipeline bench
+    "rb_no_set": ("No case set '{ref}'.", "List them with rag_sets."),
+    "rb_set_name": ("A case set needs a name.", ""),
+    "rb_doc_shape": ("Document {n} is not a text or an object with name and text.", "Pass documents as a list of objects with name and text, or give absolute paths."),
+    "rb_doc_unreadable": ("The file {path} could not be read ({error}).", "Give text files (txt, md, csv, json, html)."),
+    "rb_corpus_too_large": ("The documents are too many or too long (the limit is {docs} documents and {chars} characters).", "Use a smaller sample of the corpus."),
+    "rb_no_corpus": ("The case set {name} has no documents.", "Add documents with rag_set_save, or evaluate a pipeline that has its own (faustus, http)."),
+    "rb_no_case": ("No case {id}.", "Take the ids from rag_set_get."),
+    "rb_case_state": ("'{state}' is not a state of a case.", "Use proposed, accepted or rejected."),
+    "rb_case_question": ("A case needs a question.", ""),
+    "rb_case_empty": ("An answerable case needs its reference passages or the expected answer.", "Give passages, expected, or answerable=false for a question the documents cannot answer."),
+    "rb_passage_shape": ("Reference passage {n} needs a text, a document name or an id.", "Give its text (best), the name of its document or its id."),
+    "rb_too_many_cases": ("A case set holds at most {max} cases.", "Remove cases or make another set."),
+    "rb_no_cases": ("The case set {name} has no accepted case.", "Accept the proposed cases (rag_cases_review) or run with include_proposed."),
+    "rb_setting": ("The value of {setting} is not valid.", "ks: up to 6 cut-offs between 1 and 50. Thresholds: between 0 and 1. parallel: 1 to 8."),
+    "rb_judge_mode": ("Unknown way of judging '{mode}'.", "Use auto, logit, model or lexical."),
+    "rb_judge_needs_model": ("Judging by {mode} needs a judge model.", "Pass judge, set judge.contestant, or use judge_mode lexical."),
+    "rb_judge_unreadable": ("The judge {name} answered without scores.", "Try another judge model or judge_mode lexical."),
+    "rb_model_server": ("{name} is not a running server.", "The bench does not load models: use a server model (models_list) or a spec with kind server, url and model."),
+    "rb_model_failed": ("{name} did not answer: {error}", "Check that the server is running."),
+    "rb_pipeline_shape": ("The pipeline must be an object.", "For example kind builtin, retriever bm25, top_k 3 and model set to a server model."),
+    "rb_pipeline_option": ("'{value}' is not a valid {field}.", "Use one of: {options}."),
+    "rb_pipeline_field": ("The pipeline field {field} is not valid.", ""),
+    "rb_pipeline_needs_model": ("The {what} of this pipeline needs a model.", "Pass model (a running server), or use generator extractive."),
+    "rb_pipeline_url": ("'{url}' is not an http or https address.", "Give the address of the pipeline."),
+    "rb_pipeline_unreachable": ("The pipeline {name} did not answer ({error}).", "Check that it is running and the address is right."),
+    "rb_pipeline_error": ("The pipeline {name} answered HTTP {http}: {detail}", "Try one question with rag_probe to see its reply."),
+    "rb_pipeline_no_answer": ("The reply of {name} has no answer text.", "Set answer_path to where the answer is, or pass model to write the answer here from its passages."),
+    "rb_no_run": ("No RAG run {id}.", "List them with rag_run_list."),
+    "rb_no_result": ("Run {run} has no result for case {id}.", "Take the case ids from rag_run_result."),
+    "rb_run_active": ("The run {id} is still working.", "Cancel it first (rag_run_cancel), then delete it."),
+    "rb_run_not_finished": ("The run {id} has not finished.", "Wait for it (rag_run_status) before comparing."),
 }
 
 # ------------------------------------------------------------------------------------------------- texts: key -> sentence
@@ -392,6 +424,12 @@ TEXTS: dict[str, str] = {
     "sv_tokens_only": "Only the tokens differ ({diff} per case); tokens alone never decide.",
     "sv_tokens_note": "Tokens: {diff} per case; reported, not used to decide.",
     "sv_weak": "With {n} cases the sign test gives p = {p}; treat the decision as provisional.",
+    # RAG pipeline bench
+    "rb_warn_judge_fallback": "The judge server could not be read the first way asked; the rest of the run was judged by {mode}.",
+    "rb_warn_lexical": "{n} answer(s) were judged by word overlap, without a model: it does not see paraphrases, so faithfulness and coverage are rough.",
+    "rb_warn_self_judged": "{name} wrote the answers and judged them: its scores of its own answers deserve less trust.",
+    "rb_warn_untraced": "{n} case(s) came back without passages: their failures cannot be split by piece.",
+    "rb_warn_few_cases": "Only {n} case(s): the rates are weak.",
 }
 
 # ------------------------------------------------------------------------------------------------- notices: kind -> (title, body)

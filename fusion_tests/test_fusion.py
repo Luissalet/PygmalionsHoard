@@ -41,8 +41,8 @@ def test_catalog_complete_and_static_without_engines(client, app):
     from pygmalion_hoard.agent_tools import tool_catalog as training
     from galton_hoard.agent_tools import tool_catalog as evaluation
     tools=client.get('/api/agent/tools').json()['tools']
-    assert len(tools)==len(training())+len(evaluation())+2==151
-    assert len({t['name'] for t in tools})==151
+    assert len(tools)==len(training())+len(evaluation())+2==167
+    assert len({t['name'] for t in tools})==167
     by_name={t['name']:t for t in tools}
     for original in training(): assert by_name[original['name']]==original
     for original in evaluation():
@@ -143,7 +143,7 @@ def test_stdio_catalog_has_no_engine_import_side_effects(tmp_path):
     code='import mcp_server,sys; print(len(mcp_server.catalog())); assert "galton_hoard.services" not in sys.modules; assert "pygmalion_hoard.services" not in sys.modules'
     result=subprocess.run([sys.executable,'-c',code],cwd=ROOT,capture_output=True,text=True,timeout=30,env={**os.environ,'PYGMALION_DATA_DIR':str(tmp_path)})
     assert result.returncode==0,result.stderr
-    assert result.stdout.strip()=='151'
+    assert result.stdout.strip()=='167'
     assert list(tmp_path.iterdir())==[]
 
 @pytest.mark.asyncio

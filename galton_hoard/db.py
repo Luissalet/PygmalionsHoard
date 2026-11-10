@@ -436,6 +436,69 @@ MIGRATIONS: list[str] = [
     );
     CREATE INDEX se_records_eval ON se_records(eval_id);
     """,
+    # 13: RAG pipeline bench: case sets with their documents, cases, runs of a pipeline over a set and what every piece did on each case
+    """
+    CREATE TABLE rb_sets (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      corpus TEXT NOT NULL DEFAULT '[]',
+      created_ts REAL NOT NULL,
+      updated_ts REAL NOT NULL
+    );
+    CREATE TABLE rb_cases (
+      id TEXT PRIMARY KEY,
+      set_id TEXT NOT NULL REFERENCES rb_sets(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL DEFAULT 0,
+      question TEXT NOT NULL,
+      expected TEXT NOT NULL DEFAULT '',
+      passages TEXT NOT NULL DEFAULT '[]',
+      answerable INTEGER NOT NULL DEFAULT 1,
+      require TEXT NOT NULL DEFAULT 'all',
+      status TEXT NOT NULL DEFAULT 'accepted',
+      origin TEXT NOT NULL DEFAULT 'manual',
+      notes TEXT NOT NULL DEFAULT '',
+      created_ts REAL NOT NULL,
+      updated_ts REAL NOT NULL
+    );
+    CREATE INDEX rb_cases_set ON rb_cases(set_id);
+    CREATE TABLE rb_runs (
+      id TEXT PRIMARY KEY,
+      set_id TEXT NOT NULL,
+      set_name TEXT NOT NULL DEFAULT '',
+      label TEXT NOT NULL DEFAULT '',
+      state TEXT NOT NULL DEFAULT 'queued',
+      pipeline TEXT NOT NULL DEFAULT '{}',
+      settings TEXT NOT NULL DEFAULT '{}',
+      summary TEXT NOT NULL DEFAULT '{}',
+      total INTEGER NOT NULL DEFAULT 0,
+      done INTEGER NOT NULL DEFAULT 0,
+      error TEXT NOT NULL DEFAULT '',
+      cancel INTEGER NOT NULL DEFAULT 0,
+      source TEXT NOT NULL DEFAULT '',
+      caller TEXT NOT NULL DEFAULT '',
+      created_ts REAL NOT NULL,
+      started_ts REAL,
+      finished_ts REAL
+    );
+    CREATE INDEX rb_runs_set ON rb_runs(set_id);
+    CREATE TABLE rb_results (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id TEXT NOT NULL REFERENCES rb_runs(id) ON DELETE CASCADE,
+      case_id TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      question TEXT NOT NULL DEFAULT '',
+      trace TEXT NOT NULL DEFAULT '{}',
+      metrics TEXT NOT NULL DEFAULT '{}',
+      verdict TEXT NOT NULL DEFAULT '{}',
+      ok INTEGER,
+      piece TEXT NOT NULL DEFAULT '',
+      error TEXT NOT NULL DEFAULT '',
+      ts REAL NOT NULL,
+      UNIQUE(run_id, case_id)
+    );
+    CREATE INDEX rb_results_run ON rb_results(run_id);
+    """,
 ]
 
 

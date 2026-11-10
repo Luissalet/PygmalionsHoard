@@ -30,6 +30,7 @@ from .videobench.service import VideoBench
 from .logitjudge import LogitJudge
 from .suiteval.service import SuitEvals
 from .suiteval.store import SuitEvalStore
+from .ragbench import RagBench, RagStore
 from .speechbench.service import SpeechBench
 from .videobench.store import VideoStore
 from .hoard_link import family
@@ -113,6 +114,8 @@ class Services:
                                      base_url=lambda: f"http://127.0.0.1:{config.port}{config.url_prefix}")
         self.logit = LogitJudge(self.store, self.settings, data_dir=config.data_dir, clock=clock_fn, emit=self.emit, client_factory=client_factory, meta_reader=meta_reader, digest_fn=digest_fn)
         self.suiteval = SuitEvals(SuitEvalStore(self.db, clock_fn), self.settings, data_dir=config.data_dir, clock=clock_fn)
+        self.ragbench = RagBench(RagStore(self.db, clock_fn), self.runner, self.settings, backend_factory=self.backend_factory, client_factory=client_factory, clock=clock_fn,
+                                 emit=self.emit, faustus_token=lambda: config.secret("FAUSTUS_TOKEN"))
         self.speechbench = SpeechBench(config.data_dir, hub_apps=None if (config.offline or self.fake) else _hub_apps, clock=clock_fn, emit=self.emit)
         self.arena = Arena(self.store, self.settings)
         self.routes = Routes(self.store, self.settings, config.routes_path, clock=clock_fn, emit=self.emit)
@@ -139,6 +142,7 @@ class Services:
         self._abandon_stale_runs()
         self._abandon_stale_matrices()
         self.videobench.abandon_stale()
+        self.ragbench.abandon_stale()
         self.scheduler.start()
         if self.config.resume_pending:
             self._requeue_queued_runs()
@@ -184,16 +188,17 @@ class Services:
             cancel.set()
         self.logit.stop()
         video_threads = self.videobench.stop_all(0)
+        rag_threads = self.ragbench.stop_all(0)
         self.speechbench.stop_all(5.0)
         self.scheduler.stop(timeout)
         deadline = time.monotonic() + timeout
         for thread, cancel in campaigns:
             thread.join(max(0, deadline - time.monotonic()))
-        for thread in video_threads:
+        for thread in [*video_threads, *rag_threads]:
             thread.join(max(0, deadline - time.monotonic()))
         pending = [t for t in self.scheduler._lane._threads if t.is_alive()]
         pending += [t for t, _ in campaigns if t.is_alive()]
-        pending += [t for t in video_threads if t.is_alive()]
+        pending += [t for t in [*video_threads, *rag_threads] if t.is_alive()]
         if pending:
             raise RuntimeError("Workers are still stopping; database remains open: " + ", ".join(t.name for t in pending))
         self.db.close()

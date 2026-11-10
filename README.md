@@ -6,7 +6,7 @@ Pygmalion incorporates every Galton capability natively in one ASGI process on p
 
 Training retains datasets, LoRA/QLoRA, merges, context extension, conversion, quantization, capture, lineage and publishing. Evaluation retains model discovery, suites and benchmark imports, runs/resume/results, statistics/comparison, arena, routing, rule testing, simulated users, harness matrices (also along a Spanish/English language axis), a code-made video bank and agent campaigns. Training evaluations call the incorporated evaluator directly in process. Periodic discovery, watch and housekeeping additionally require the Automatic evaluation switch; saved settings remain unchanged. Opening a module never resumes historical queued jobs or campaigns. Resume them explicitly when wanted.
 
-Native pages live at `/training/` and `/evaluation/`, without frames. Existing `/capture/...` endpoints remain available. The combined MCP catalogue has **151 tools**: 50 training, 99 evaluation and `pygmalion_modules` / `pygmalion_set_module`. Three collisions use `evaluation_settings_get`, `evaluation_settings_set` and `evaluation_gpu_status`.
+Native pages live at `/training/` and `/evaluation/`, without frames. Existing `/capture/...` endpoints remain available. The combined MCP catalogue has **167 tools**: 50 training, 115 evaluation and `pygmalion_modules` / `pygmalion_set_module`. Three collisions use `evaluation_settings_get`, `evaluation_settings_set` and `evaluation_gpu_status`.
 
 On a saved evaluation's Results section, Prepare download collects every row matching the model and Only failed filters, including rows beyond the table's last600. CSV and JSON download the same prepared native texts, preserving integer digits; no answers, reasoning or tool calls are exported. Reading a live run covers the stated interval rather than an atomic/final snapshot. CSV null is an empty cell; JSON retains types. API/MCP expose the same readonly `run_results_export`; the assistant's existing context cap can truncate a large response, while the UI downloads the complete texts.
 
@@ -22,7 +22,11 @@ Evaluation of the suits kept in Darwin's Hoard (reusable work configurations for
 
 Three checker types judge the quality of an answer, also outside a run: `faithfulness` (the judge splits the answer into its factual claims and marks each one supported or not by the context; score = share of supported claims, the unsupported ones are listed: a hallucination check), `answer_relevance` (does it address what was asked, not whether it is true) and `similar` (closeness to a reference without a model: ROUGE-L, word-overlap F1 or a character ratio). `answer_check` checks an answer you already have (from another app, a log or a person) with any checker and stores nothing; `checkers_list` lists every checker. On the **Pruebas** page, *Comprobar una respuesta*. Without a reachable judge the judged checkers say so and never count as a failure.
 
-### Evaluation tools (99):
+### RAG pipeline evaluation
+
+When a RAG pipeline answers badly, the evaluation module says which piece failed. A case set holds some documents and cases (question, reference passages, expected answer); a model proposes cases from the documents and a person reviews them on the page. A run measures the retriever (recall@k, MRR, nDCG), the order and the cut (before and after the reranker) and the generator (faithfulness, coverage, abstention; judged by the logit judge, a written verdict or word overlap), attributes every failed case to the piece that lost it and gives the share of the failures each piece has. It evaluates a plain built-in pipeline, the document RAG of a running Faustus and any pipeline behind one HTTP request, and compares two runs case by case. It loads no model and its own retriever is lexical. Page **Tuberías RAG**, tools `rag_*`, details in [docs/evaluation/RAGBENCH.md](docs/evaluation/RAGBENCH.md).
+
+### Evaluation tools (115):
 
 - `galton_overview` — Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.
 - `galton_status` — Health: scheduler, watch, llama-server, GPUs, settings. Estado de Galton.
@@ -120,6 +124,22 @@ Three checker types judge the quality of an answer, also outside a run: `faithfu
 - `pygmalion_suit_eval_score` — Score a suit evaluation per arm, with spread; build cases excluded. Puntuar evaluación.
 - `pygmalion_suit_eval_export` — Send a suit evaluation to Darwin's Hoard or write a JSON file. Exportar a Darwin.
 - `pygmalion_suit_eval_delete` — Delete a suit evaluation and its results (confirm=true). Borrar evaluación de traje.
+- `rag_sets` — RAG bench: case sets with their documents, cases by state and runs. Conjuntos de casos RAG.
+- `rag_set_save` — Create a RAG case set from documents, or add documents and cases to one. Crear conjunto de casos RAG.
+- `rag_set_get` — One RAG case set: documents, cases with their passages and its runs. Detalle de un conjunto RAG.
+- `rag_set_delete` — Delete a RAG case set with its cases and runs (confirm=true). Borrar conjunto de casos RAG.
+- `rag_cases_generate` — A model proposes RAG cases from the set's documents, for a person to review. Generar casos RAG.
+- `rag_case_save` — Add a RAG case by hand or edit one: question, passages, expected answer, state. Guardar caso RAG.
+- `rag_cases_review` — Accept or reject proposed RAG cases, some or all. Revisar casos RAG propuestos.
+- `rag_case_remove` — Delete one RAG case (confirm=true). Borrar un caso RAG.
+- `rag_probe` — Ask a RAG pipeline one question and see its passages and answer; nothing stored. Probar tubería RAG.
+- `rag_run_start` — Evaluate a RAG pipeline on a case set, piece by piece. Evaluar una tubería RAG.
+- `rag_run_status` — Progress of a RAG pipeline run. Estado de una evaluación RAG.
+- `rag_run_result` — A RAG run by piece: retrieval, reranking, generation and what each failure is due to. Resultado RAG.
+- `rag_run_list` — Recent RAG pipeline runs with pass rate and main failing piece. Historial de evaluaciones RAG.
+- `rag_run_cancel` — Cancel a RAG pipeline run: finished cases are kept. Cancelar evaluación RAG.
+- `rag_run_delete` — Delete a RAG pipeline run and its results (confirm=true). Borrar evaluación RAG.
+- `rag_compare` — Compare two RAG runs case by case: fixed, broken, and in which piece. Comparar dos tuberías RAG.
 
 A local studio to adapt language models. It prepares datasets, trains LoRA and QLoRA adapters, merges adapters and whole models, extends the context window, converts to GGUF, quantizes with an importance matrix computed on your own text, measures the result against its parent and publishes the winner to Ollama or as a llama.cpp server. Every file it produces keeps its lineage, and the recipe that made it can be exported and replayed.
 

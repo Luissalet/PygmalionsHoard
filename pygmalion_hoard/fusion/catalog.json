@@ -8087,5 +8087,1005 @@
       "type": "object"
     },
     "module": "evaluation"
+  },
+  {
+    "name": "rag_sets",
+    "description": "RAG bench: case sets with their documents, cases by state and runs. Conjuntos de casos RAG.\nA case set is a small corpus plus cases: a question, the passages that answer it and the expected answer. Start here to evaluate a RAG pipeline piece by piece (retriever, reranker, generator).\nSinónimos: evaluar un RAG, tubería RAG, recuperador, reordenador, generador, conjuntos de preguntas",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_set_save",
+    "description": "Create a RAG case set from documents, or add documents and cases to one. Crear conjunto de casos RAG.\nDocuments come as texts or as absolute paths of text files and folders. Cases can be written by hand here, or proposed by a model with rag_cases_generate.\nSinónimos: corpus de prueba, documentos, añadir casos, conjunto de evaluación RAG",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "$defs": {
+        "RagCaseArg": {
+          "properties": {
+            "question": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "title": "Question",
+              "type": "string"
+            },
+            "expected": {
+              "default": "",
+              "description": "The expected answer.",
+              "maxLength": 4000,
+              "title": "Expected",
+              "type": "string"
+            },
+            "passages": {
+              "description": "Reference passages: what must be retrieved to answer.",
+              "items": {
+                "$ref": "#/$defs/RagPassageArg"
+              },
+              "maxItems": 20,
+              "title": "Passages",
+              "type": "array"
+            },
+            "answerable": {
+              "default": true,
+              "description": "False: the documents cannot answer it, so the right answer is to say so.",
+              "title": "Answerable",
+              "type": "boolean"
+            },
+            "require": {
+              "default": "all",
+              "description": "all: every reference passage is needed. any: one is enough.",
+              "enum": [
+                "all",
+                "any"
+              ],
+              "title": "Require",
+              "type": "string"
+            },
+            "status": {
+              "default": "accepted",
+              "enum": [
+                "proposed",
+                "accepted",
+                "rejected"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "notes": {
+              "default": "",
+              "maxLength": 1000,
+              "title": "Notes",
+              "type": "string"
+            }
+          },
+          "required": [
+            "question"
+          ],
+          "title": "RagCaseArg",
+          "type": "object"
+        },
+        "RagDocArg": {
+          "properties": {
+            "name": {
+              "default": "",
+              "description": "File or document name; reference passages can name it.",
+              "maxLength": 200,
+              "title": "Name",
+              "type": "string"
+            },
+            "text": {
+              "maxLength": 400000,
+              "minLength": 1,
+              "title": "Text",
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "title": "RagDocArg",
+          "type": "object"
+        },
+        "RagPassageArg": {
+          "properties": {
+            "text": {
+              "default": "",
+              "description": "The text that answers the question (best: one or two sentences, copied from the document).",
+              "maxLength": 4000,
+              "title": "Text",
+              "type": "string"
+            },
+            "doc": {
+              "default": "",
+              "description": "Name of its document; alone it matches any passage of that document.",
+              "maxLength": 300,
+              "title": "Doc",
+              "type": "string"
+            },
+            "id": {
+              "default": "",
+              "description": "Passage id, when the pipeline reports the same ids.",
+              "maxLength": 200,
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          "title": "RagPassageArg",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "id": {
+          "default": "",
+          "description": "Empty: a new set. An existing id (or name): documents and cases are added to it.",
+          "maxLength": 80,
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Description",
+          "type": "string"
+        },
+        "documents": {
+          "description": "The corpus: texts or {name, text}.",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/RagDocArg"
+              }
+            ]
+          },
+          "maxItems": 300,
+          "title": "Documents",
+          "type": "array"
+        },
+        "paths": {
+          "description": "Absolute paths of text files or folders (txt, md, csv, json, html...) to read as documents.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Paths",
+          "type": "array"
+        },
+        "cases": {
+          "items": {
+            "$ref": "#/$defs/RagCaseArg"
+          },
+          "maxItems": 500,
+          "title": "Cases",
+          "type": "array"
+        },
+        "replace_documents": {
+          "default": false,
+          "description": "Replace the documents of an existing set instead of adding to them.",
+          "title": "Replace Documents",
+          "type": "boolean"
+        }
+      },
+      "title": "RagSetSaveArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_set_get",
+    "description": "One RAG case set: documents, cases with their passages and its runs. Detalle de un conjunto RAG.\nSinónimos: ver casos, casos propuestos, pasajes de referencia",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "set": {
+          "description": "Set id (rs_…) or name.",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Set",
+          "type": "string"
+        },
+        "status": {
+          "default": "",
+          "description": "Only the cases in this state.",
+          "enum": [
+            "",
+            "proposed",
+            "accepted",
+            "rejected"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "with_text": {
+          "default": false,
+          "description": "Include the full text of the documents.",
+          "title": "With Text",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "set"
+      ],
+      "title": "RagSetGetArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_set_delete",
+    "description": "Delete a RAG case set with its cases and runs (confirm=true). Borrar conjunto de casos RAG.\nSinónimos: quitar conjunto, borrar corpus de prueba",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "set": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Set",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "set"
+      ],
+      "title": "RagSetDeleteArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_cases_generate",
+    "description": "A model proposes RAG cases from the set's documents, for a person to review. Generar casos RAG.\nFor fragments spread over the documents the model writes a question, the short answer and the sentence that supports it; the quote is checked against the fragment and becomes the reference passage. Cases stay proposed until accepted (rag_cases_review).\nSinónimos: generar preguntas del corpus, casos sintéticos, no escribir el conjunto a mano, preguntas con su pasaje de origen",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "set": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Set",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
+          "description": "The model that writes the cases: a running server model (id or name) or {kind: server, url, model}.",
+          "title": "Model"
+        },
+        "n": {
+          "default": 10,
+          "description": "Answerable cases to propose.",
+          "maximum": 100,
+          "minimum": 1,
+          "title": "N",
+          "type": "integer"
+        },
+        "per_fragment": {
+          "default": 1,
+          "description": "Questions asked per document fragment.",
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Per Fragment",
+          "type": "integer"
+        },
+        "unanswerable": {
+          "default": 0,
+          "description": "Also propose this many questions the passage does not answer (to measure abstention). A person must check that no other document answers them.",
+          "maximum": 30,
+          "minimum": 0,
+          "title": "Unanswerable",
+          "type": "integer"
+        },
+        "chunk_chars": {
+          "default": 900,
+          "description": "Size of the fragments the model reads.",
+          "maximum": 4000,
+          "minimum": 300,
+          "title": "Chunk Chars",
+          "type": "integer"
+        },
+        "seed": {
+          "default": 0,
+          "description": "Which fragments are picked.",
+          "maximum": 1000000,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "set",
+        "model"
+      ],
+      "title": "RagCasesGenerateArgs",
+      "type": "object"
+    },
+    "x-timeout-s": 660.0,
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_case_save",
+    "description": "Add a RAG case by hand or edit one: question, passages, expected answer, state. Guardar caso RAG.\nWith id, only the fields given change; status accepts or rejects it.\nSinónimos: editar caso, corregir pregunta, aceptar caso, pregunta sin respuesta",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "$defs": {
+        "RagPassageArg": {
+          "properties": {
+            "text": {
+              "default": "",
+              "description": "The text that answers the question (best: one or two sentences, copied from the document).",
+              "maxLength": 4000,
+              "title": "Text",
+              "type": "string"
+            },
+            "doc": {
+              "default": "",
+              "description": "Name of its document; alone it matches any passage of that document.",
+              "maxLength": 300,
+              "title": "Doc",
+              "type": "string"
+            },
+            "id": {
+              "default": "",
+              "description": "Passage id, when the pipeline reports the same ids.",
+              "maxLength": 200,
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          "title": "RagPassageArg",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "set": {
+          "default": "",
+          "description": "The set a new case goes into.",
+          "maxLength": 120,
+          "title": "Set",
+          "type": "string"
+        },
+        "id": {
+          "default": "",
+          "description": "Case id (rk_…) to change; empty adds a case.",
+          "maxLength": 80,
+          "title": "Id",
+          "type": "string"
+        },
+        "question": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Question"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected"
+        },
+        "passages": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/RagPassageArg"
+              },
+              "maxItems": 20,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Passages"
+        },
+        "answerable": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Answerable"
+        },
+        "require": {
+          "anyOf": [
+            {
+              "enum": [
+                "all",
+                "any"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Require"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "proposed",
+                "accepted",
+                "rejected"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Review state: only accepted cases are evaluated.",
+          "title": "Status"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "title": "RagCaseSaveArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_cases_review",
+    "description": "Accept or reject proposed RAG cases, some or all. Revisar casos RAG propuestos.\nSinónimos: aceptar todos, rechazar casos, revisión de casos generados",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "set": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Set",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "proposed",
+            "accepted",
+            "rejected"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 500,
+          "title": "Ids",
+          "type": "array"
+        },
+        "all_proposed": {
+          "default": false,
+          "description": "Apply to every proposed case of the set.",
+          "title": "All Proposed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "set",
+        "status"
+      ],
+      "title": "RagCasesReviewArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_case_remove",
+    "description": "Delete one RAG case (confirm=true). Borrar un caso RAG.\nSinónimos: quitar caso",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "RagCaseRemoveArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_probe",
+    "description": "Ask a RAG pipeline one question and see its passages and answer; nothing stored. Probar tubería RAG.\nTo check an adapter (faustus, http) or a configuration before a run: what was retrieved, the order after the reranker, what the generator got and what it answered.\nSinónimos: probar adaptador, ver qué recupera, depurar tubería, una pregunta de prueba",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "pipeline": {
+          "additionalProperties": true,
+          "description": "The pipeline to evaluate. {kind: builtin}: this bench's own plain pipeline over the documents of the case set: retriever (bm25 | random | none), chunk_chars and chunk_overlap (fragment size), depth (passages retrieved, default 10), reranker (none | overlap | model | reverse | random), top_k (passages given to the generator, default 3), generator (model | extractive | no_context) and model (a running server model). random, none, reverse and no_context are broken pieces, to check the attribution. {kind: faustus}: the document RAG of a running Faustus: url (default the setting faustus.url), source (documents | brain), depth, answer (faustus: its own model answers; model: the generator given here). {kind: http}: any pipeline behind one request: url, method, headers, body (with {question} and {k}), passages_path, answer_path and optionally ranked_path, context_path, text_field, id_field, doc_field, score_field, top_k; give model to write the answer here when the pipeline only retrieves.",
+          "title": "Pipeline",
+          "type": "object"
+        },
+        "question": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "set": {
+          "default": "",
+          "description": "The case set whose documents a builtin pipeline uses.",
+          "maxLength": 120,
+          "title": "Set",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pipeline",
+        "question"
+      ],
+      "title": "RagProbeArgs",
+      "type": "object"
+    },
+    "x-timeout-s": 660.0,
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_run_start",
+    "description": "Evaluate a RAG pipeline on a case set, piece by piece. Evaluar una tubería RAG.\nEvery accepted case is asked; per piece it measures retrieval (recall@k, MRR, nDCG), reranking (the same before and after) and generation (faithfulness to the passages, coverage of the expected answer, abstention), and attributes each failure to the piece that caused it. Runs in the background: follow it with rag_run_status and read rag_run_result.\nSinónimos: qué pieza falla, evaluar RAG de Faustus, evaluar por HTTP, recall, fidelidad, alucinación, atribución de fallos",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "set": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Set",
+          "type": "string"
+        },
+        "pipeline": {
+          "additionalProperties": true,
+          "description": "The pipeline to evaluate. {kind: builtin}: this bench's own plain pipeline over the documents of the case set: retriever (bm25 | random | none), chunk_chars and chunk_overlap (fragment size), depth (passages retrieved, default 10), reranker (none | overlap | model | reverse | random), top_k (passages given to the generator, default 3), generator (model | extractive | no_context) and model (a running server model). random, none, reverse and no_context are broken pieces, to check the attribution. {kind: faustus}: the document RAG of a running Faustus: url (default the setting faustus.url), source (documents | brain), depth, answer (faustus: its own model answers; model: the generator given here). {kind: http}: any pipeline behind one request: url, method, headers, body (with {question} and {k}), passages_path, answer_path and optionally ranked_path, context_path, text_field, id_field, doc_field, score_field, top_k; give model to write the answer here when the pipeline only retrieves.",
+          "title": "Pipeline",
+          "type": "object"
+        },
+        "judge": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
+          "default": "",
+          "description": "The model that judges the answers (a running server). Empty: the setting judge.contestant; without one, word overlap.",
+          "title": "Judge"
+        },
+        "judge_mode": {
+          "default": "auto",
+          "description": "logit: the logit judge (scores read from next-token probabilities; the server must return logprobs). model: a generated JSON verdict. lexical: word overlap, no model. auto: the first that works, in that order.",
+          "enum": [
+            "auto",
+            "logit",
+            "model",
+            "lexical"
+          ],
+          "title": "Judge Mode",
+          "type": "string"
+        },
+        "ks": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "maxItems": 6,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Cut-offs for recall@k and nDCG@k. Default 1, 3, 5, 10.",
+          "title": "Ks"
+        },
+        "match_threshold": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.3,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Share of a reference passage's content words a retrieved passage must hold to count as it. Default 0.7.",
+          "title": "Match Threshold"
+        },
+        "faithful_min": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Faithfulness below this is an invented answer. Default 0.6.",
+          "title": "Faithful Min"
+        },
+        "coverage_min": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Coverage of the expected answer below this is an incomplete answer. Default 0.6.",
+          "title": "Coverage Min"
+        },
+        "parallel": {
+          "anyOf": [
+            {
+              "maximum": 8,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Cases asked at the same time. Default 4.",
+          "title": "Parallel"
+        },
+        "label": {
+          "default": "",
+          "maxLength": 160,
+          "title": "Label",
+          "type": "string"
+        },
+        "include_proposed": {
+          "default": false,
+          "description": "Also run the cases nobody has reviewed yet.",
+          "title": "Include Proposed",
+          "type": "boolean"
+        },
+        "limit": {
+          "default": 0,
+          "description": "Only the first N cases (0: all).",
+          "maximum": 500,
+          "minimum": 0,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Wait this long for the run to finish before answering; it keeps going afterwards.",
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "set",
+        "pipeline"
+      ],
+      "title": "RagRunStartArgs",
+      "type": "object"
+    },
+    "x-timeout-s": 660.0,
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_run_status",
+    "description": "Progress of a RAG pipeline run. Estado de una evaluación RAG.\nSinónimos: cómo va, progreso de la evaluación RAG",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "description": "Run id (rr_…).",
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run"
+      ],
+      "title": "RagRunRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_run_result",
+    "description": "A RAG run by piece: retrieval, reranking, generation and what each failure is due to. Resultado RAG.\nsummary.attribution says how many failures belong to the retriever (the passage never arrived), to the ranking (it arrived but was left outside the cut) and to the generator (it had the passage and abstained, invented or answered something else), with the share of each. With case, the whole trace of one case.\nSinónimos: el N % de los fallos son del recuperador, por qué falla, traza de un caso, pasajes recuperados",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Run",
+          "type": "string"
+        },
+        "case": {
+          "default": "",
+          "description": "A case id: its whole trace (retrieved passages with the reference ones marked, order after the reranker, passages given to the generator, answer, scores).",
+          "maxLength": 80,
+          "title": "Case",
+          "type": "string"
+        },
+        "only_failed": {
+          "default": false,
+          "description": "List only the failed cases.",
+          "title": "Only Failed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "run"
+      ],
+      "title": "RagRunResultArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_run_list",
+    "description": "Recent RAG pipeline runs with pass rate and main failing piece. Historial de evaluaciones RAG.\nSinónimos: evaluaciones RAG anteriores",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "set": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Set",
+          "type": "string"
+        },
+        "limit": {
+          "default": 30,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "RagRunListArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_run_cancel",
+    "description": "Cancel a RAG pipeline run: finished cases are kept. Cancelar evaluación RAG.\nSinónimos: parar evaluación RAG",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "description": "Run id (rr_…).",
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run"
+      ],
+      "title": "RagRunRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_run_delete",
+    "description": "Delete a RAG pipeline run and its results (confirm=true). Borrar evaluación RAG.\nSinónimos: quitar ejecución RAG",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Run",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "run"
+      ],
+      "title": "RagRunDeleteArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "rag_compare",
+    "description": "Compare two RAG runs case by case: fixed, broken, and in which piece. Comparar dos tuberías RAG.\nFor two configurations over the same case set (two fragment sizes, with and without reranker, two models): cases improved and regressed with an exact sign test, the change of every piece's measures, where the failures moved, and what differs between the two pipelines.\nSinónimos: comparar configuraciones, tamaño de fragmento, con y sin reordenador, antes y después",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "a": {
+          "description": "The baseline run.",
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "A",
+          "type": "string"
+        },
+        "b": {
+          "description": "The run compared with it (another fragment size, with a reranker, another model...).",
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "B",
+          "type": "string"
+        }
+      },
+      "required": [
+        "a",
+        "b"
+      ],
+      "title": "RagCompareArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
   }
 ]
