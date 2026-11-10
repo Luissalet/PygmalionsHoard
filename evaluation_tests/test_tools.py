@@ -815,6 +815,30 @@ def test_results_export_all_selected_rows_and_native_precision(svc):
     assert list(csv.DictReader(io.StringIO(zero["csv_text"]))) == []
 
 
+def test_checkers_list_and_answer_check(svc):
+    listed = {c["type"]: c for c in call(svc, "checkers_list")["checkers"]}
+    assert {"faithfulness", "answer_relevance", "similar", "all", "any"} <= set(listed)
+    assert listed["faithfulness"]["needs_judge"] and not listed["faithfulness"]["deterministic"]
+    assert listed["similar"]["deterministic"] and not listed["similar"]["needs_judge"] and listed["similar"]["checks"]
+    near = call(svc, "answer_check", answer="La capital de Francia es París.", checker={"type": "similar", "threshold": 0.6},
+                reference="París es la capital de Francia.")
+    assert near["verdict"]["passed"] is True and near["judge"] is None and near["checker"] == "similar"
+    short = call(svc, "answer_check", answer="Madrid es grande", checker="contains:Madrid")
+    assert short["verdict"]["passed"] is True
+    judged = call(svc, "answer_check", answer="Se fundó en 1850.", checker={"type": "faithfulness"}, context="La ciudad se fundó en 1850.")
+    assert judged["verdict"]["unavailable"] is True and judged["reason"], "no judge configured: said, never failed"
+
+    def down(*_a, **_k):
+        raise GaltonError("unavailable", "server_no_answer", url="http://192.0.2.1:8002")
+    svc.runner._judge_row = lambda: {"id": "j", "name": "juez", "missing": False, "enabled": True}
+    svc.runner.session = down
+    owed = call(svc, "answer_check", answer="Se fundó en 1850.", checker={"type": "faithfulness"}, context="La ciudad se fundó en 1850.")
+    assert owed["verdict"]["unavailable"] is True and owed["judge_pending"] is True and owed["judge"] == "juez" and owed["reason"]
+    with pytest.raises(GaltonError):
+        call(svc, "answer_check", answer="x", checker={"type": "nope"})
+    assert svc.store.counts()["results"] == 0
+
+
 def test_every_tool_was_called():
     missing = sorted(set(TOOLS_BY_NAME) - CALLED)
     assert not missing, f"tools never called in this module: {missing}"

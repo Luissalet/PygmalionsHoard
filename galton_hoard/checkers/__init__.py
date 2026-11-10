@@ -17,7 +17,12 @@ from .jsoncheck import check_json, check_tool_call
 from .mathcheck import check_math
 from .numbers import check_number
 from .rag import check_citations, check_needle
+from .ifmt import REPLY_PARSERS
+from .ragtriad import check_answer_relevance, check_faithfulness, check_similar, parse_claims_reply
 from .types import CheckContext, ModelOutput, bad_spec, verdict
+
+#: The faithfulness checker sends its own messages to the judge and reads a claim list back.
+REPLY_PARSERS.setdefault("claims", parse_claims_reply)
 
 Checker = Callable[[dict[str, Any], ModelOutput, CheckContext], dict[str, Any]]
 
@@ -37,11 +42,41 @@ CHECKERS: dict[str, Checker] = {
     "judge": check_judge,
     "family": check_family,
     "ifmt": check_ifmt,
+    "faithfulness": check_faithfulness,
+    "answer_relevance": check_answer_relevance,
+    "similar": check_similar,
     "none": check_none,
 }
 COMBINATORS = ("all", "any")
 #: Checkers whose verdict depends on a model or another service, so the reference answer of a case cannot be verified offline.
-NON_DETERMINISTIC = frozenset({"judge", "family", "ifmt", "none"})
+NON_DETERMINISTIC = frozenset({"judge", "family", "ifmt", "faithfulness", "answer_relevance", "none"})
+#: Checkers that ask the judge model (see ``judging.has_judge``).
+JUDGED = frozenset({"judge", "faithfulness", "answer_relevance"})
+
+#: One line per checker type, for the catalogue (``checkers_list``) and the case editor.
+CHECKER_HELP: dict[str, str] = {
+    "exact": "the answer equals `expected` (normalised)",
+    "contains": "the answer contains `all` / `any` of the strings and none of `none`",
+    "regex": "the answer matches `pattern` / `patterns` (`forbid` to refuse a match)",
+    "choice": "the chosen option equals `answer` among `options`",
+    "number": "the number in the answer is `expected` within `tolerance` / `abs` / `rel`",
+    "math_equiv": "the expression is mathematically equal to `expected`",
+    "json": "the JSON in the answer matches `expected` or follows `schema` / `rules`",
+    "tool_call": "the model made the `expected` tool calls with matching arguments",
+    "python_tests": "the code passes the hidden `tests` (calling `entry`)",
+    "constraints": "format constraints (length, words, case, bullet count…)",
+    "needle": "a planted value (`needle`/`needles`) appears in the answer",
+    "citations": "the answer cites the `correct` passages ([p3])",
+    "judge": "the judge model grades the answer against `rubric` (0-10)",
+    "family": "another Hoard app verifies it (`app`, `tool`, `arguments`)",
+    "ifmt": "IFMTBench translation obeying glossary, style and format",
+    "faithfulness": "every claim of the answer is supported by `context` (judge, claim by claim; hallucination check)",
+    "answer_relevance": "the answer addresses the question (judge, 0-10), not whether it is true",
+    "similar": "close to `reference` without a model: `method` rouge_l | token_f1 | chars, `threshold`",
+    "none": "not scored (the answer is only stored)",
+    "all": "every check in `checks` passes (weighted score)",
+    "any": "at least one check in `checks` passes",
+}
 
 
 def checker_types() -> list[str]:
@@ -91,4 +126,4 @@ def is_deterministic(spec: dict[str, Any]) -> bool:
     return kind not in NON_DETERMINISTIC
 
 
-__all__ = ["CHECKERS", "COMBINATORS", "CheckContext", "ModelOutput", "checker_types", "is_deterministic", "run_checker"]
+__all__ = ["CHECKERS", "CHECKER_HELP", "COMBINATORS", "JUDGED", "CheckContext", "ModelOutput", "checker_types", "is_deterministic", "run_checker"]

@@ -1001,6 +1001,35 @@ class Runner:
                                      unavailable=unavailable, judge_pending=False, self_judged=self_judged, confidence=0.5 if self_judged else 1.0)
             yield row["id"]
 
+    # ------------------------------------------------------------------ one answer, no model asked ("comprobar una respuesta")
+    def check_answer(self, checker: dict[str, Any], answer: str, *, prompt: str = "", reference: str = "", context: Any = None) -> dict[str, Any]:
+        """Check an answer someone already has (from another app, a log, a person) with any checker, asking no contestant anything.
+        A checker that needs the judge uses the configured judge (started if it is a GGUF); without one it says so as ``unavailable``."""
+        case: dict[str, Any] = {"id": "answer", "prompt": {"text": prompt}, "checker": checker, "reference": reference}
+        if context is not None:
+            case["context"] = context
+        problems = suite_lib.validate_checker(checker)
+        if problems:
+            raise GaltonError("invalid", "case_invalid", problems="; ".join(problems), problem_items=list(problems))
+        completion = Completion(text=answer)
+        if not has_judge(checker):
+            verdict, _ = self.check(case, completion, "", None)
+            return {"verdict": verdict, "judge": None}
+        judge = self._judge_row()
+        if judge is None or judge["missing"] or not judge["enabled"]:
+            verdict, _ = self.check(case, completion, "", None)
+            return {"verdict": verdict, "judge": None, "reason": text("judge_none") if judge is None else text("judge_unavailable", name=judge["name"])}
+        event = threading.Event()
+        try:
+            with self.session(judge, normalise_settings({}), event.is_set) as s:
+                verdict, pending = self.check(case, completion, "", make_ask(self.store, s.backend, judge, "", cancel=event.is_set))
+        except (GaltonError, Cancelled) as exc:
+            # The judge could not be reached or started: the grade is owed, never a failure.
+            verdict, _ = self.check(case, completion, "", None)
+            return {"verdict": verdict, "judge": judge["name"], "judge_pending": True,
+                    "reason": text("judge_not_started", reason=getattr(exc, "message", "cancelled"))}
+        return {"verdict": verdict, "judge": judge["name"], "judge_pending": pending}
+
     # ------------------------------------------------------------------ one case, one model ("probar con...")
     def try_case(self, case: dict[str, Any], contestant_ref: Any, settings: Optional[dict[str, Any]] = None, suite: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """Run a single case (saved or a draft) against one model and return the answer and the check, saving nothing."""

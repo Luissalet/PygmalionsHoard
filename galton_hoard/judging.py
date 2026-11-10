@@ -23,7 +23,7 @@ def has_judge(spec: dict[str, Any]) -> bool:
     """Does this checker (or one inside a combinator) need the judge?"""
     if not isinstance(spec, dict):
         return False
-    if spec.get("type") == "judge":
+    if spec.get("type") in ("judge", "faithfulness", "answer_relevance"):
         return True
     if spec.get("type") == "ifmt":
         return needs_judge(spec)
@@ -39,7 +39,9 @@ def make_ask(store: Any, backend: Backend, judge: dict[str, Any], tested_id: str
         cached = store.judge_cached(key)
         if cached and "score" in cached:
             return {**cached, "cached": True, "self_judged": self_judged}
-        completion = backend.chat(ChatRequest(messages=build_judge_messages(request), temperature=0.0, max_tokens=500, effort="off", timeout_s=120.0), cancel)
+        # A claim list (faithfulness) is longer than a score with a reason.
+        budget = 1500 if request.get("parse") == "claims" else 500
+        completion = backend.chat(ChatRequest(messages=build_judge_messages(request), temperature=0.0, max_tokens=budget, effort="off", timeout_s=120.0), cancel)
         if completion.error:
             return {"error": completion.error}
         reply = parse_judge_reply(completion.text, request.get("parse", ""))

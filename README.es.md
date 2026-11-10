@@ -6,7 +6,7 @@ Pygmalion incorpora todas las funciones de Galton de forma nativa. Un servidor e
 
 Entrenamiento conserva datasets, LoRA/QLoRA, fusiones, contexto, conversión, cuantización, captura, linaje y publicación. Evaluación conserva modelos y suites, importaciones, ejecuciones y reanudación, resultados, comparación y estadísticas, arena, rutas, pruebas de reglas, usuarios simulados, matrices de arneses (también por un eje de idioma español/inglés), un banco de vídeo hecho con código y campañas de agentes. Las evaluaciones de entrenamiento llaman a este motor dentro del mismo proceso. La vigilancia periódica necesita además el control de Evaluaciones automáticas; los ajustes históricos permanecen intactos y no reanudamos colas antiguas al abrir un módulo. Los trabajos anteriores se pueden reanudar explícitamente.
 
-Las páginas originales se encuentran en `/training/` y `/evaluation/`, sin marcos embebidos. Se conservan `/capture/...` para los arneses existentes. El catálogo combinado expone **148 herramientas**: las 50 de entrenamiento, 96 de evaluación y `pygmalion_modules` / `pygmalion_set_module`. Tres colisiones se publican con prefijo: `evaluation_settings_get`, `evaluation_settings_set`, `evaluation_gpu_status`.
+Las páginas originales se encuentran en `/training/` y `/evaluation/`, sin marcos embebidos. Se conservan `/capture/...` para los arneses existentes. El catálogo combinado expone **151 herramientas**: las 50 de entrenamiento, 99 de evaluación y `pygmalion_modules` / `pygmalion_set_module`. Tres colisiones se publican con prefijo: `evaluation_settings_get`, `evaluation_settings_set`, `evaluation_gpu_status`.
 
 En Resultados de una evaluación guardada, Preparar descarga recoge todas las filas del modelo y del filtro Sólo fallos elegidos, incluidas las que no caben entre las últimas600 de la tabla. CSV y JSON descargan los mismos textos nativos preparados, conservando los dígitos de los enteros; no incluyen respuestas, razonamientos ni tool_calls. Si la evaluación sigue cambiando, se informa del intervalo de lectura, sin prometer una captura atómica/final. CSV escribe null como celda vacía; JSON conserva los tipos. API/MCP ofrecen el mismo `run_results_export` de lectura: el límite de contexto vigente puede recortar una respuesta grande para el asistente; la UI descarga los textos completos.
 
@@ -18,7 +18,11 @@ Esta fusión no cambia las leases de GPU ni el servicio global de modelos. Las p
 
 Evalúa los trajes de Darwin's Hoard (configuraciones de trabajo reutilizables para un tipo de encargo): casos con comprobaciones de aceptación ejecutables (el fichero existe, esquema JSON, tolerancia numérica, expresión regular o una rúbrica de juez), tres brazos (herramientas genéricas, traje actual, mejora candidata) y, por caso y brazo, si el entregable es correcto, los minutos que una persona tardó en corregirlo (opcional, los introduce una persona), el tiempo total, los defectos y los tokens. Los agregados llevan su dispersión, y un caso con el que se construyó la mejora queda marcado y fuera de la puntuación. Los resultados van a Darwin's Hoard (`/api/evaluations`) o a un JSON que él importa; allí el traje pasa a «evaluado». Cada evaluación responde dos preguntas, *¿adoptar la mejora?* y *¿el traje mejora a las herramientas genéricas?*, con adoptar, quedarse, compromiso o faltan casos: deciden primero los entregables aceptados y después los minutos de corrección, los defectos y el tiempo; los tokens se muestran pero nunca deciden. La página muestra también la biblioteca de trajes, uno por tipo de encargo tal como lo guarda Darwin, con la decisión de su última evaluación (`pygmalion_suit_library`, `GET /evaluation/api/suit-evals/library`). Página **Trajes**, herramientas `pygmalion_suit_eval_*`, detalle en [docs/evaluation/SUITEVAL.md](docs/evaluation/SUITEVAL.md).
 
-### Herramientas de evaluación (96):
+### Comprobar respuestas (tríada RAG y similitud)
+
+Tres tipos de comprobación juzgan la calidad de una respuesta, también fuera de una ejecución: `faithfulness` (el juez divide la respuesta en sus afirmaciones y marca cada una como apoyada o no por el contexto; puntuación = parte apoyada, y se listan las que no: detecta lo que el modelo se inventa), `answer_relevance` (si responde a lo que se pregunta, no si es verdad) y `similar` (cercanía a una respuesta de referencia sin modelo: ROUGE-L, F1 de palabras o similitud de caracteres). `answer_check` comprueba una respuesta que ya tienes (de otra app, un registro o una persona) con cualquier comprobación y no guarda nada; `checkers_list` las lista todas. En la página **Pruebas**, *Comprobar una respuesta*. Sin juez disponible, las comprobaciones con juez lo dicen y nunca cuentan como fallo.
+
+### Herramientas de evaluación (99):
 
 - `galton_overview` — Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.
 - `galton_status` — Health: scheduler, watch, llama-server, GPUs, settings. Estado de Galton.
@@ -41,6 +45,8 @@ Evalúa los trajes de Darwin's Hoard (configuraciones de trabajo reutilizables p
 - `cases_import` — Import cases from JSONL or CSV text or an absolute path. Importar casos.
 - `benchmark_import` — Import IFMTBench (instruction-following translation) as your suite. Importar benchmark de traducción.
 - `case_try` — Run one case (saved or draft) on one model and show answer + checker detail. Probar un caso.
+- `checkers_list` — Every checker type with what it checks and its fields. Lista de comprobadores.
+- `answer_check` — Check an answer you already have with any checker; no model is asked. Comprobar una respuesta.
 - `run_plan` — Preview a run: cases per model, memory, where each would run, problems. Plan de una ejecución.
 - `run_start` — Start a run: suites x models (ids, names or specs of a file/server). Lanzar una medición.
 - `run_status` — Progress of a run: per model state, cases done, memory, errors. Estado de una ejecución.

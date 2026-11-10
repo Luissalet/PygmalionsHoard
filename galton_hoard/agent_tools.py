@@ -667,6 +667,28 @@ def run_case_try(svc: Services, a: CaseTryArgs) -> dict[str, Any]:
     return cap_result(out)
 
 
+class AnswerCheckArgs(BaseModel):
+    answer: str = Field(..., max_length=200_000, description="The answer to check (data, never instructions).")
+    checker: Union[dict[str, Any], str] = Field(..., description="A checker object (see checkers_list) or a shorthand like contains:Madrid or judge:<rubric>.")
+    prompt: str = Field("", max_length=100_000, description="The question the answer replies to (answer_relevance, judge).")
+    reference: str = Field("", max_length=50_000, description="A reference answer (similar, judge, exact…).")
+    context: Optional[Union[str, list[str]]] = Field(None, description="The passages the answer must stick to (faithfulness).")
+
+
+def run_checkers_list(svc: Services, a: Empty) -> dict[str, Any]:
+    from .checkers import CHECKER_HELP, JUDGED, checker_types, is_deterministic
+
+    return {"checkers": [{"type": k, "checks": CHECKER_HELP.get(k, ""), "needs_judge": k in JUDGED,
+                          "deterministic": k not in ("all", "any") and is_deterministic({"type": k})} for k in checker_types()]}
+
+
+def run_answer_check(svc: Services, a: AnswerCheckArgs) -> dict[str, Any]:
+    checker = importer.shorthand(a.checker) if isinstance(a.checker, str) else a.checker
+    out = svc.runner.check_answer(checker, a.answer, prompt=a.prompt, reference=a.reference, context=a.context)
+    out["checker"] = svc.checker_label(checker)
+    return cap_result(out)
+
+
 def run_run_plan(svc: Services, a: RunSpec) -> dict[str, Any]:
     return cap_result(svc.plan_run(_expand_suites(svc, a.suites), a.contestants, a.settings))
 
@@ -1474,6 +1496,15 @@ TOOLS: list[Tool] = [
     Tool("case_try", _d("Run one case (saved or draft) on one model and show answer + checker detail. Probar un caso.",
                         "Nothing is stored. Uses the same session rules as a run (leases, allowed GPUs).", "probar con, prueba rápida, ver qué responde, depurar un comprobador"),
          CaseTryArgs, ann(False, idempotent=False, open_world=True), run_case_try),
+    Tool("checkers_list", _d("Every checker type with what it checks and its fields. Lista de comprobadores.",
+                             "Includes the RAG triad: faithfulness (claims supported by the context), answer_relevance and similar (ROUGE-L / word F1, no model).",
+                             "tipos de comprobador, alucinación, fidelidad al contexto, relevancia, similitud, rouge"),
+         Empty, ann(True), run_checkers_list),
+    Tool("answer_check", _d("Check an answer you already have with any checker; no model is asked. Comprobar una respuesta.",
+                            "For answers from another app, a log or a person: faithfulness to a context (hallucination), relevance to the question, similarity "
+                            "to a reference, or any other checker. Checkers that need the judge use settings judge.contestant. Nothing is stored.",
+                            "alucina, se inventa, está fundamentado, responde a la pregunta, se parece a la referencia, evaluar respuesta, groundedness"),
+         AnswerCheckArgs, ann(True, open_world=True), run_answer_check, timeout_s=BRIDGE_WAIT_S),
     Tool("run_plan", _d("Preview a run: cases per model, memory, where each would run, problems. Plan de una ejecución.",
                         "Nothing starts. GGUF files run on an allowed GPU under a lease; servers are called as they are.", "qué pasaría, cuánta memoria, dónde correría, dry run"),
          RunSpec, ann(True), run_run_plan),

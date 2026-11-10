@@ -305,6 +305,72 @@ function NewSuiteModal({ onClose, onDone }) {
   );
 }
 
+// ------------------------------------------------------------------ check an answer you already have (answer_check)
+const ANSWER_PRESETS = {
+  faithfulness: { type: "faithfulness" },
+  answer_relevance: { type: "answer_relevance" },
+  similar: { type: "similar", method: "rouge_l", threshold: 0.5 },
+  custom: null,
+};
+
+function AnswerCheckModal({ onClose }) {
+  const { t, lang } = useApp();
+  const { data: catalog } = useLoad(() => api.call("checkers_list", {}), []);
+  const [preset, setPreset] = useState("faithfulness");
+  const [form, setForm] = useState({ answer: "", prompt: "", context: "", reference: "", checker: "" });
+  const [busy, run] = useBusy();
+  const [out, setOut] = useState(null);
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const help = (catalog?.checkers || []).find((c) => c.type === preset)?.checks;
+  const submit = (e) => {
+    e.preventDefault();
+    run("check", async () => {
+      setOut(null);
+      let checker = ANSWER_PRESETS[preset];
+      if (!checker) {
+        const raw = form.checker.trim();
+        checker = raw.startsWith("{") ? JSON.parse(raw) : raw;
+      }
+      setOut(await api.call("answer_check", { answer: form.answer, checker, prompt: form.prompt, reference: form.reference, ...(form.context.trim() ? { context: form.context } : {}) }));
+    });
+  };
+  return (
+    <Modal title={t("answer_check")} onClose={onClose}>
+      <form className="space-y-3" onSubmit={submit} data-testid="answer-check-form">
+        <Field label={t("checker")} hint={help || t("answer_check_hint")}>
+          <select className="field" value={preset} onChange={(e) => setPreset(e.target.value)} data-testid="answer-check-preset">
+            {Object.keys(ANSWER_PRESETS).map((k) => <option key={k} value={k}>{t(`answer_preset_${k}`)}</option>)}
+          </select>
+        </Field>
+        {preset === "custom" && <Field label={t("checker")} hint={t("checker_hint")}><textarea className="field" rows={2} value={form.checker} onChange={set("checker")} placeholder='{"type": "contains", "all": ["Madrid"]}' /></Field>}
+        <Field label={t("answer_text")}><textarea className="field" rows={4} value={form.answer} onChange={set("answer")} required data-testid="answer-check-answer" /></Field>
+        <Field label={t("prompt")}><textarea className="field" rows={2} value={form.prompt} onChange={set("prompt")} /></Field>
+        {preset === "faithfulness" && <Field label={t("answer_context")} hint={t("answer_context_hint")}><textarea className="field" rows={4} value={form.context} onChange={set("context")} data-testid="answer-check-context" /></Field>}
+        {(preset === "similar" || preset === "custom") && <Field label={t("expected")}><textarea className="field" rows={3} value={form.reference} onChange={set("reference")} data-testid="answer-check-reference" /></Field>}
+        <div className="flex justify-end gap-2">
+          <button type="button" className="btn" onClick={onClose}>{t("cancel")}</button>
+          <Busy type="submit" className="btn btn-primary" busy={busy.check} data-testid="answer-check-run"><Icon d={ICONS.run} size={14} />{t("check")}</Busy>
+        </div>
+      </form>
+      {out && (
+        <div className="mt-3 space-y-2" data-testid="answer-check-result">
+          <div className="flex flex-wrap items-center gap-2">
+            {out.verdict?.unavailable ? <Chip className="chip-amber">{t("unscored")}</Chip>
+              : <Chip className={out.verdict?.passed ? "chip-ok" : "chip-danger"}>{out.verdict?.passed ? t("passed") : t("not_passed")} · {num(out.verdict?.score, 2, lang)}</Chip>}
+            <Chip>{out.checker}</Chip>
+            {out.judge && <Chip className="chip-info">{out.judge}</Chip>}
+          </div>
+          {out.reason && <div className="banner banner-warn">{t.msg(out.reason)}</div>}
+          {out.verdict?.detail?.unsupported?.length > 0 && (
+            <ul className="help list-disc pl-5">{out.verdict.detail.unsupported.map((c, i) => <li key={i}>{c}</li>)}</ul>
+          )}
+          <details><summary className="help">{t("checker_detail")}</summary><pre className="pre mt-1">{JSON.stringify(out.verdict?.detail, null, 2)}</pre></details>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 // ------------------------------------------------------------------ suite detail
 function SuiteDetail({ id }) {
   const { t, version, changed, notify, confirm } = useApp();
@@ -398,6 +464,7 @@ export default function Pruebas({ param }) {
   const [category, setCategory] = useState("");
   const [creating, setCreating] = useState(false);
   const [benchmark, setBenchmark] = useState(false);
+  const [checking, setChecking] = useState(false);
   const { data, error, loading } = useLoad(() => api.call("suites_list", {}), [version]);
   if (param) return <SuiteDetail id={param} />;
   const suites = (data?.suites || []).filter((s) => !category || s.category === category);
@@ -405,6 +472,7 @@ export default function Pruebas({ param }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="mr-auto">{t("nav_tests")}</h1>
+        <button type="button" className="btn" onClick={() => setChecking(true)} data-testid="answer-check-open"><Icon d={ICONS.run} size={14} />{t("answer_check")}</button>
         <button type="button" className="btn" onClick={() => setBenchmark(true)}><Icon d={ICONS.upload} size={14} />{t("import_benchmark")}</button>
         <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}><Icon d={ICONS.plus} size={14} />{t("new_suite")}</button>
       </div>
@@ -427,6 +495,7 @@ export default function Pruebas({ param }) {
       </div>
       {creating && <NewSuiteModal onClose={() => setCreating(false)} onDone={(s) => { changed(); window.location.hash = `#/pruebas/${s.id}`; }} />}
       {benchmark && <BenchmarkModal onClose={() => setBenchmark(false)} onDone={() => changed()} />}
+      {checking && <AnswerCheckModal onClose={() => setChecking(false)} />}
     </div>
   );
 }
