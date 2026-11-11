@@ -121,5 +121,6 @@
     "absorbed_apps": [
       "galton"
     ]
-  }
+  },
+  "skills": {"slugs": ["model-finetune-and-eval", "eval-harness", "prompt-optimizer", "measured-improvement", "cross-model-review"], "limit": 5}
 }
