@@ -32,7 +32,7 @@ def test_the_catalogue_has_unique_names_and_valid_schemas():
 
 def test_destructive_tools_are_annotated_and_need_confirm():
     destructive = {t.name for t in TOOLS if t.annotations["destructiveHint"]}
-    assert destructive == {"model_remove", "suite_remove", "case_remove", "pygmalion_suit_eval_delete", "logit_judge_delete", "rag_set_delete", "rag_case_remove", "rag_run_delete"}
+    assert destructive == {"model_remove", "suite_remove", "case_remove", "pygmalion_suit_eval_delete", "logit_judge_delete", "rag_set_delete", "rag_case_remove", "rag_run_delete", "briefbench_delete"}
     discard = TOOLS_BY_NAME["run_discard"]
     assert not discard.annotations["destructiveHint"] and "confirm" in discard.input_model.model_fields and "reason" in discard.input_model.model_fields, "reversible, but it asks for confirm"
     for t in TOOLS:
@@ -691,6 +691,23 @@ def test_language_bench_tools_list_tasks_and_judge_replies(svc):
     assert call(svc, "langbench_judge", text="Las zapatillas cuestan 59,90 euros y hay existencias.", lang="es")["score"] == 1.0
     assert call(svc, "langbench_judge", text="The shoes cost 59.90 euros and they are in stock.", lang="es")["score"] < 0.5
     assert call(svc, "langbench_judge", text="running shoes", lang="es", argument=True)["in_language_of_data"] is False
+
+
+def test_brief_bench_tools_browse_briefs_and_run(svc):
+    from evaluation_tests.test_briefbench import fake_render, responder
+    svc.settings.set_many({"briefbench.browser_python": "fake-python"})
+    svc.briefbench.render_fn = fake_render
+    add_gguf(svc, "escribano", responder=responder()[0])
+    cat = call(svc, "briefbench_catalog", kind="page")
+    assert cat["matching"] >= 5 and call(svc, "briefbench_brief", id="snake-game")["kind"] == "page"
+    assert call(svc, "briefbench_start", models=["escribano"], brief_ids=["snake-game"], dry_run=True)["calls"]["answers"] == 1
+    run = call(svc, "briefbench_start", models=["escribano"], brief_ids=["snake-game"], wait_s=60)["run"]
+    assert run["state"] == "done" and call(svc, "briefbench_status")["so_far"]["items"] == 1
+    assert call(svc, "briefbench_result")["briefs"][0]["items"][0]["outcome"] == "done"
+    assert call(svc, "briefbench_item", brief="snake-game", model="escribano")["files"]["shot.png"]
+    assert call(svc, "briefbench_cancel", run=run["id"])["cancelled"] is False
+    assert call(svc, "briefbench_list")["count"] == 1
+    assert call(svc, "briefbench_delete", run=run["id"], confirm=True) == {"deleted": run["id"]}
 
 
 def test_video_bank_tools_browse_briefs_and_run(svc):

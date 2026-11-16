@@ -6653,6 +6653,437 @@
     "module": "evaluation"
   },
   {
+    "name": "briefbench_catalog",
+    "description": "Brief bench: briefs to try on several models. Catálogo de encargos.\nPage briefs (a 3D scene, an orrery, a pricing page, a dashboard, a game) are answered with one HTML document that gets rendered; text briefs are answered as written. Also lists the offline libraries a page may use, the command-line agents of the briefbench.cli setting, the prices set and whether a browser is available.\nSinónimos: mismo encargo a varios modelos, comparar modelos, catálogo de prompts, qué pedir a un modelo",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "category": {
+          "default": "",
+          "description": "3d, canvas, ui, dataviz, interactive, writing or code. Empty: all.",
+          "maxLength": 30,
+          "title": "Category",
+          "type": "string"
+        },
+        "kind": {
+          "default": "",
+          "description": "page (an HTML page that is rendered) or text. Empty: all.",
+          "maxLength": 10,
+          "title": "Kind",
+          "type": "string"
+        },
+        "query": {
+          "default": "",
+          "description": "Words that must appear in the brief, its title or its id.",
+          "maxLength": 100,
+          "title": "Query",
+          "type": "string"
+        }
+      },
+      "title": "BriefCatalogArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "briefbench_brief",
+    "description": "One brief of the brief bench: the whole prompt. Un encargo completo.\nSinónimos: ver el prompt, texto del encargo",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "A brief id (see briefbench_catalog). Returns the whole prompt.",
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "BriefIdArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "briefbench_start",
+    "description": "Same brief to several models: time, tokens, cost, grid. Mismo encargo a varios modelos.\nEvery model answers every brief (Sparks, Ollama, local servers, or a command-line agent as cli:<name>); a page is rendered in a headless browser and shown in a grid; the call is timed and its tokens priced with the prices given (per million tokens). A judge model that did not write the answers scores them blind on four dimensions. Runs in the background; dry_run only shows the plan. Read briefbench_result for the table and the grid image URL.\nSinónimos: comparar modelos con el mismo prompt, escena 3D, arena de modelos, coste y tiempo por modelo, cuadrícula de resultados, juez",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "$defs": {
+        "BriefOwn": {
+          "properties": {
+            "prompt": {
+              "description": "The brief: what the models are asked.",
+              "maxLength": 12000,
+              "minLength": 10,
+              "title": "Prompt",
+              "type": "string"
+            },
+            "title": {
+              "default": "",
+              "maxLength": 80,
+              "title": "Title",
+              "type": "string"
+            },
+            "kind": {
+              "default": "page",
+              "description": "page or text.",
+              "maxLength": 10,
+              "title": "Kind",
+              "type": "string"
+            },
+            "libraries": {
+              "description": "Library names the page may use (files of the briefbench.libraries folder, e.g. three).",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 6,
+              "title": "Libraries",
+              "type": "array"
+            },
+            "criteria": {
+              "default": "",
+              "description": "What the judge must weigh besides the brief.",
+              "maxLength": 1500,
+              "title": "Criteria",
+              "type": "string"
+            }
+          },
+          "required": [
+            "prompt"
+          ],
+          "title": "BriefOwn",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "models": {
+          "description": "The models that answer, each an id or name from models_list (Sparks, Ollama, a server: {kind: 'server', url, model}) or `cli:<name>` for a command-line agent written in the briefbench.cli setting.",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Models",
+          "type": "array"
+        },
+        "judge": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional model that scores every answer in a fresh session, without knowing who wrote it. Empty: no judge. A judge that is also one of the models tends to be kinder to itself (the result says so).",
+          "title": "Judge"
+        },
+        "brief_ids": {
+          "description": "Ids from briefbench_catalog.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Brief Ids",
+          "type": "array"
+        },
+        "brief": {
+          "default": "",
+          "description": "A brief written here: the same text goes to every model.",
+          "maxLength": 12000,
+          "title": "Brief",
+          "type": "string"
+        },
+        "briefs": {
+          "description": "Several briefs written here, each with its own kind.",
+          "items": {
+            "$ref": "#/$defs/BriefOwn"
+          },
+          "maxItems": 20,
+          "title": "Briefs",
+          "type": "array"
+        },
+        "kind": {
+          "default": "page",
+          "description": "Kind of `brief`: page (one HTML document, rendered in a browser) or text.",
+          "maxLength": 10,
+          "title": "Kind",
+          "type": "string"
+        },
+        "title": {
+          "default": "",
+          "description": "Title of `brief`.",
+          "maxLength": 80,
+          "title": "Title",
+          "type": "string"
+        },
+        "libraries": {
+          "description": "Libraries `brief` may use (files in briefbench.libraries).",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 6,
+          "title": "Libraries",
+          "type": "array"
+        },
+        "criteria": {
+          "default": "",
+          "description": "What the judge must weigh besides `brief`.",
+          "maxLength": 1500,
+          "title": "Criteria",
+          "type": "string"
+        },
+        "prices": {
+          "additionalProperties": true,
+          "description": "Price per million tokens by model name or id: {\"<model>\": {\"input\": 3, \"output\": 15}}; a single number is used for both. Added to the briefbench.prices setting. A model without a price has an unknown cost, not a zero one.",
+          "title": "Prices",
+          "type": "object"
+        },
+        "settings": {
+          "additionalProperties": true,
+          "description": "max_tokens (default 16000), timeout_s (900), temperature (0.7), settle_ms (1500: wait after the page loads), motion_ms (1200: gap between the two pictures), render_timeout_s (120), judge_images (auto|true|false), judge_max_tokens (4000), plus the run settings seed, effort, device.",
+          "title": "Settings",
+          "type": "object"
+        },
+        "label": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Label",
+          "type": "string"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Wait this long for the run to finish before answering (0: return at once with its id).",
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        },
+        "dry_run": {
+          "default": false,
+          "description": "Only show the plan (models, briefs, calls, prices set, browser); start nothing.",
+          "title": "Dry Run",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "models"
+      ],
+      "title": "BriefStartArgs",
+      "type": "object"
+    },
+    "x-timeout-s": 660.0,
+    "module": "evaluation"
+  },
+  {
+    "name": "briefbench_status",
+    "description": "Progress of a brief-bench run: phase, answers and judgements done. Estado del encargo.\nSinónimos: cómo va, progreso de la comparación",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "default": "",
+          "description": "Run id (bk_...). Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "title": "BriefRunRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "briefbench_result",
+    "description": "Brief-bench result: time, tokens, cost and score per model, plus the grid. Resultado del encargo.\nSummary per model (mean time, tokens, tokens per second, total cost with how many answers had no price, mean score per dimension) and who is best, fastest and cheapest. Each brief has `grid_url`: a PNG with every model's render side by side, served by the app. Answers that never arrived are None, not zero.\nSinónimos: tabla de resultados, cuál es más rápido, cuál es más barato, mejor nota, cuadrícula",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "default": "",
+          "description": "Run id (bk_...). Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "title": "BriefRunRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "briefbench_item",
+    "description": "One brief-bench answer: figures, checks, judge scores, files. Detalle de una respuesta.\nThe measures of that model on that brief (time, time to first token, tokens, cost), page errors, the judge's summary and problems, optionally the page source or text. Pictures: /api/briefbench/<run>/<brief>/<slot>/shot.png.\nSinónimos: ver la respuesta de un modelo, el HTML, fallos del juez",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "default": "",
+          "description": "Run id (bk_...). Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Run",
+          "type": "string"
+        },
+        "brief": {
+          "description": "The brief id (own-1... for briefs written in the call).",
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Brief",
+          "type": "string"
+        },
+        "model": {
+          "description": "The slot (m1, m2...) or the name of the model.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "answer": {
+          "default": false,
+          "description": "Include the answer: the page source or the text (can be long).",
+          "title": "Answer",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "brief",
+        "model"
+      ],
+      "title": "BriefItemArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "briefbench_cancel",
+    "description": "Cancel a brief-bench run: finished answers kept. Cancelar encargo.\nSinónimos: parar, detener",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "default": "",
+          "description": "Run id (bk_...). Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "title": "BriefRunRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "briefbench_list",
+    "description": "Recent brief-bench runs with state and summary. Historial de encargos.\nSinónimos: comparaciones anteriores",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "limit": {
+          "default": 15,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "BriefListArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "briefbench_delete",
+    "description": "Delete a brief-bench run and its files (needs confirm=true). Borrar encargo.\nSinónimos: eliminar comparación",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Run",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be true: deletes the run and its files.",
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "run"
+      ],
+      "title": "BriefDeleteArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
     "name": "speechbench_engines",
     "description": "Speech-to-text engines for the speech bench; add command engines. Motores de voz a texto.\nfaster-whisper:<size> runs in a Python that has faster-whisper (found among this app and the family's venvs, or set with whisper_python), CPU int8 by default, one warm model per run. A command engine (name + command with {audio}, {language}) covers any other recogniser, e.g. a streaming model's CLI; it prints text or JSON {text, first_text_s}. Without arguments it only lists.\nSinónimos: motores de reconocimiento de voz, añadir motor, faster-whisper, R2T2, transcriptor, STT",
     "annotations": {

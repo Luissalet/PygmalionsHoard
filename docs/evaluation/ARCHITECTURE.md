@@ -19,7 +19,7 @@
                       ├──► routes.py: policy ─► routes.json (atomic) ─► event galton.routes.updated
                       ├──► watch.py: new/changed models ─► quick run; regression check after each run ─► notice + galton.regression
                       └──► arena.py: blind pairs from stored answers, votes, ratings
- agent_tools.py: one catalogue (115 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
+ agent_tools.py: one catalogue (124 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
  scheduler.py (hoard_link.lanes): lane "gpu" (runs, judging) · lane "io" (refresh every watch.interval_h, watch every minute, housekeeping hourly)
 ```
 
@@ -60,6 +60,7 @@
 | `galton_hoard/harnessbench/` | Model x harness x task matrix: `harnesses.py` (four adapters, variants), `world.py` (tools and in-memory world), `tasks.py` (24 tasks with verifiers and oracle paths), `loop.py` (one trial), `scoring.py` (cells, margins, conclusion), `external.py` (command-line harnesses), `store.py` (tables `hb_*`), `runner.py` (`MatrixRunner`: a matrix as a job on the GPU lane). See docs/HARNESSBENCH.md |
 | `galton_hoard/langbench/` | The language axis of the harness bench: `tasks.py` (27 tasks, each written once and localised to es and en with the same id), `canon.py` (the canonical entity map), `shop.py` and `family.py` (the datasets), `bm25.py` (the search), `langworld.py` (a `World` whose search tools count empty searches and arguments in the wrong language), `judge.py` (the lexical language judge) |
 | `galton_hoard/videobench/` | Code-made video bank: `prompts.py` and `data/prompts.json` (139 briefs with author and post), `contract.py` (what the model is asked for and how its reply is read), `render_worker.py` and `render.py` (frames in a browser subprocess, automatic checks, contact sheet), `jury.py` (rubric, jury messages, reading the verdict), `store.py` (`vb_runs`, `vb_items`), `service.py` (the three phases) |
+| `galton_hoard/briefbench/` | Same brief to several models: `briefs.py` (catalogue), `contract.py` (what each kind of brief asks for, offline libraries), `shot_worker.py` and `shot.py` (screenshots in a browser subprocess, automatic measures), `judge.py` (blind rubric), `cli.py` (command-line agents), `grid.py` (comparison PNG), `store.py` (`bk_runs`, `bk_items`), `service.py` (answers, render, judge) |
 | `galton_hoard/agentbench/` | Real harnesses on published benchmarks through a container trial runner: `spec.py` (harness lines, benchmark catalogue, deterministic subsets with dev/test split), `harbor.py` (job command line, reading `result.json` into trial rows, outcome `none` apart), `scoring.py` (cells, ranking, paired sign test), `campaign.py` (jobs with a fixed number of trials in flight, retries of `none`, resumable from the job folders), `store.py` (`ab_campaigns`, `ab_trials`), `service.py` (background threads, views for the tools) |
 | `galton_hoard/suiteval/` | Evaluation of suits kept in Darwin's Hoard: `checks.py` (file, JSON-schema subset, numeric, regex and judge checks on a deliverable folder; paths cannot leave it), `stats.py` (per-arm aggregation with spread, paired comparison, build cases left out), `store.py` (`se_evals`, `se_records`), `service.py` (define, record, score, export to Darwin's API or a JSON file); REST in `api/suiteval.py`. See [SUITEVAL.md](SUITEVAL.md) |
 | `galton_hoard/fakes.py` | Fake GPUs, leases, launcher and models for the tests and the demo mode |
@@ -140,6 +141,15 @@ Everything lives in `data/` (or `GALTON_DATA_DIR`): `galton.db`, `images/`, `cac
 ## Video bank
 
 `galton_hoard/videobench/` is a fourth kind of long job. `VideoBench.start` stores a row in `vb_runs` and one in `vb_items` per brief and runs `execute` in three phases, so that the writer and the jury are two different sessions. Writing: the model gets `contract.SYSTEM` and the brief and returns one HTML document; `static_check` reads it (no network, `window.seek` defined). Rendering needs no model: `render.render` runs `render_worker.py` in a Python that has Playwright (`render.browser_python` trusts `videobench.browser_python` when it is set, else tries the interpreter itself and `python`, `python3` and `py` on the path), which blocks every request, disables the page's `requestAnimationFrame`, takes N frames with `seek(t)` and a determinism probe (`seek(mid)`, `seek(0)`, `seek(mid)` must give the same picture); `render.measure` computes blank frames, motion and still stretches, and `contact_sheet` makes the 4x3 sheet. Judging: a fresh session gets the brief, the automatic checks and the sheet (when the jury model has `vision`; otherwise the checks and the page source) and returns scores, fixes and critical issues (`jury.parse_jury`). An item that never reached a phase is `none`, not a zero. Files go to `<data>/videobench/<run>/<brief>/` and `api/videos.py` serves them with a whitelist of names; `play.html` wraps the page with a small controller (`postMessage({seek})`) under a sandbox CSP.
+
+## Brief bench
+
+`galton_hoard/briefbench/` is a fifth kind of long job. `BriefBench.start` stores a row in `bk_runs` and one in `bk_items` per brief and model, and runs `execute` in a thread. For each model, one session (`Runner.session`)
+answers every brief; `_receive` saves the answer, and a page is drawn at once by `shot.render` (`shot_worker.py` in a Python that has Playwright: every request but the page itself is blocked and counted, WebGL
+runs on the browser's software rasteriser, two pictures `motion_ms` apart tell whether it moves) and measured by `shot.measure`. Time, tokens and decode speed come from the backend's `Completion`; cost is
+`cost_of(price, tokens_in, tokens_out)` with the run's prices (None without a price or without token counts). A model whose session fails leaves its answers `none` and the loop goes on. A command-line agent
+(`cli.py`) runs in a scratch folder under the run and has no token counts. If a judge was named, a second session scores each ready answer (`judge.parse_judge`) with no model name in the prompt. Files go to
+`<data>/briefbench/<run>/<brief>/<slot>/`; `api/briefs.py` serves the grid, the pictures and the sandboxed page, and `BriefBench.page_html` puts the libraries into the page when it is played.
 
 ## Agent bench
 

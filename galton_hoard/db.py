@@ -499,6 +499,61 @@ MIGRATIONS: list[str] = [
     );
     CREATE INDEX rb_results_run ON rb_results(run_id);
     """,
+    # 14: brief bench: one brief (or several) given to several models; one row per brief and model with time, tokens, estimated cost, the render and the judge's scores
+    """
+    CREATE TABLE bk_runs (
+      id TEXT PRIMARY KEY,
+      created_ts REAL NOT NULL,
+      label TEXT NOT NULL DEFAULT '',
+      state TEXT NOT NULL DEFAULT 'queued',
+      models TEXT NOT NULL DEFAULT '[]',
+      jury TEXT NOT NULL DEFAULT '',
+      briefs TEXT NOT NULL DEFAULT '[]',
+      settings TEXT NOT NULL DEFAULT '{}',
+      prices TEXT NOT NULL DEFAULT '{}',
+      progress TEXT NOT NULL DEFAULT '{}',
+      total INTEGER NOT NULL DEFAULT 0,
+      done INTEGER NOT NULL DEFAULT 0,
+      source TEXT NOT NULL DEFAULT 'ui',
+      caller TEXT NOT NULL DEFAULT '',
+      error TEXT NOT NULL DEFAULT '',
+      cancel INTEGER NOT NULL DEFAULT 0,
+      summary TEXT NOT NULL DEFAULT '{}',
+      started_ts REAL,
+      finished_ts REAL
+    );
+    CREATE TABLE bk_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id TEXT NOT NULL REFERENCES bk_runs(id) ON DELETE CASCADE,
+      brief_id TEXT NOT NULL,
+      slot TEXT NOT NULL,
+      contestant_id TEXT NOT NULL DEFAULT '',
+      model_name TEXT NOT NULL DEFAULT '',
+      state TEXT NOT NULL DEFAULT 'queued',
+      outcome TEXT NOT NULL DEFAULT '',
+      reason TEXT NOT NULL DEFAULT '',
+      detail TEXT NOT NULL DEFAULT '',
+      chars INTEGER,
+      tokens_in INTEGER,
+      tokens_out INTEGER,
+      latency_ms REAL,
+      ttft_ms REAL,
+      load_ms REAL,
+      decode_tps REAL,
+      cost REAL,
+      finish_reason TEXT NOT NULL DEFAULT '',
+      static TEXT NOT NULL DEFAULT '{}',
+      render TEXT NOT NULL DEFAULT '{}',
+      auto TEXT NOT NULL DEFAULT '{}',
+      judge TEXT NOT NULL DEFAULT '{}',
+      judge_mode TEXT NOT NULL DEFAULT '',
+      mean REAL,
+      folder TEXT NOT NULL DEFAULT '',
+      ts REAL NOT NULL,
+      UNIQUE(run_id, brief_id, slot)
+    );
+    CREATE INDEX bk_items_run ON bk_items(run_id);
+    """,
 ]
 
 

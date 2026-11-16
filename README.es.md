@@ -29,7 +29,7 @@ Funciona en tu PC, guarda sus datos en `data/`, va por sí sola en el navegador 
 
 ### Evaluación
 - Descubrimiento de modelos (servidores, Ollama, archivos GGUF), suites e importaciones de benchmarks, ejecuciones con reanudación, resultados, estadística y comparación, y exportación de resultados a CSV o JSON.
-- Arena, enrutado, prueba de reglas, usuarios simulados, matrices de arneses (también en un eje de idioma español/inglés), un banco de vídeos hecho por código y campañas de agentes.
+- Arena, enrutado, prueba de reglas, usuarios simulados, matrices de arneses (también en un eje de idioma español/inglés), un banco de vídeos hecho por código, un banco de encargos que da la misma tarea a varios modelos con tiempo, tokens, coste y una cuadrícula de resultados, y campañas de agentes.
 - Comprobaciones de respuesta fuera de una ejecución: fidelidad (afirmación a afirmación frente al contexto), relevancia de la respuesta y similitud con una referencia (ROUGE-L, solapamiento de palabras o razón de caracteres).
 - Evaluación de tuberías RAG: mide el recuperador (recall@k, MRR, nDCG), el orden y el corte, y el generador (fidelidad, cobertura, abstención), y atribuye cada caso fallido a la pieza que lo perdió. Evalúa una tubería incorporada, el RAG de documentos de un Faustus en marcha o cualquier tubería detrás de una petición HTTP.
 - Evaluación de trajes para Darwin's Hoard: casos con comprobaciones de aceptación ejecutables, tres brazos (herramientas genéricas, traje actual, candidato), agregados con su dispersión y resultados enviados a Darwin's Hoard.

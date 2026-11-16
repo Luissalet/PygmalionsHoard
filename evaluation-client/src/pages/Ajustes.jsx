@@ -264,6 +264,19 @@ export default function Ajustes() {
         </div>
       </Section>
 
+      <Section title={t("briefbench_section")}>
+        <div className="panel space-y-3">
+          <p className="help">{t("briefbench_help")}</p>
+          {field("briefbench.browser_python", t("bk_set_python"), t("vb_set_python_hint"))}
+          {field("briefbench.folder", t("bk_set_folder"), t("ab_set_dir_hint"))}
+          {field("briefbench.libraries", t("bk_set_libraries"), t("bk_set_libraries_hint"))}
+          {field("briefbench.prices", t("bk_set_prices"), t("bk_set_prices_hint"))}
+          {field("briefbench.currency", t("bk_set_currency"))}
+          {field("briefbench.cli", t("bk_set_cli"), t("bk_set_cli_hint"))}
+          {saveBar(["briefbench.browser_python", "briefbench.folder", "briefbench.libraries", "briefbench.prices", "briefbench.currency", "briefbench.cli"])}
+        </div>
+      </Section>
+
       <Section title={t("agentbench_section")}>
         <div className="panel space-y-3">
           <p className="help">{t("agentbench_help")}</p>

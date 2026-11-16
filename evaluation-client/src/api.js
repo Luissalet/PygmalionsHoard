@@ -47,6 +47,7 @@ export const api = {
   events: (run, after = 0) => request("GET", `/evaluation/api/runs/${encodeURIComponent(run)}/events`, { params: { after } }),
   visionUrl: (caseId, n = 1) => `/evaluation/api/vision/${encodeURIComponent(caseId)}/${n}.png`,
   videoUrl: (run, prompt, name) => `/evaluation/api/videobench/${encodeURIComponent(run)}/${encodeURIComponent(prompt)}/${name}`,
+  briefUrl: (run, brief, slot, name) => `/evaluation/api/briefbench/${encodeURIComponent(run)}/${encodeURIComponent(brief)}/${encodeURIComponent(slot)}/${name}`,
   call,
 };
 

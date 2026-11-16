@@ -1001,6 +1001,137 @@ Annotations: readOnlyHint, idempotentHint.
 |---|---|---|
 | `limit` (integer) | no |  |
 
+## `briefbench_catalog`
+
+Brief bench: briefs to try on several models. Catálogo de encargos.
+
+Page briefs (a 3D scene, an orrery, a pricing page, a dashboard, a game) are answered with one HTML document that gets rendered; text briefs are answered as written. Also lists the offline libraries a page may use, the command-line agents of the briefbench.cli setting, the prices set and whether a browser is available.
+Sinónimos: mismo encargo a varios modelos, comparar modelos, catálogo de prompts, qué pedir a un modelo
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `category` (string) | no | 3d, canvas, ui, dataviz, interactive, writing or code. Empty: all. |
+| `kind` (string) | no | page (an HTML page that is rendered) or text. Empty: all. |
+| `query` (string) | no | Words that must appear in the brief, its title or its id. |
+
+## `briefbench_brief`
+
+One brief of the brief bench: the whole prompt. Un encargo completo.
+
+Sinónimos: ver el prompt, texto del encargo
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `id` (string) | yes | A brief id (see briefbench_catalog). Returns the whole prompt. |
+
+## `briefbench_start`
+
+Same brief to several models: time, tokens, cost, grid. Mismo encargo a varios modelos.
+
+Every model answers every brief (Sparks, Ollama, local servers, or a command-line agent as cli:<name>); a page is rendered in a headless browser and shown in a grid; the call is timed and its tokens priced with the prices given (per million tokens). A judge model that did not write the answers scores them blind on four dimensions. Runs in the background; dry_run only shows the plan. Read briefbench_result for the table and the grid image URL.
+Sinónimos: comparar modelos con el mismo prompt, escena 3D, arena de modelos, coste y tiempo por modelo, cuadrícula de resultados, juez
+
+Annotations: openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `models` (array) | yes | The models that answer, each an id or name from models_list (Sparks, Ollama, a server: {kind: 'server', url, model}) or `cli:<name>` for a command-line agent written in the briefbench.cli setting. |
+| `judge` (object/string/null) | no | Optional model that scores every answer in a fresh session, without knowing who wrote it. Empty: no judge. A judge that is also one of the models tends to be kinder to itself (the result says so). |
+| `brief_ids` (array) | no | Ids from briefbench_catalog. |
+| `brief` (string) | no | A brief written here: the same text goes to every model. |
+| `briefs` (array) | no | Several briefs written here, each with its own kind. |
+| `kind` (string) | no | Kind of `brief`: page (one HTML document, rendered in a browser) or text. |
+| `title` (string) | no | Title of `brief`. |
+| `libraries` (array) | no | Libraries `brief` may use (files in briefbench.libraries). |
+| `criteria` (string) | no | What the judge must weigh besides `brief`. |
+| `prices` (object) | no | Price per million tokens by model name or id: {"<model>": {"input": 3, "output": 15}}; a single number is used for both. Added to the briefbench.prices setting. A model without a price has an unknown cost, not a zero one. |
+| `settings` (object) | no | max_tokens (default 16000), timeout_s (900), temperature (0.7), settle_ms (1500: wait after the page loads), motion_ms (1200: gap between the two pictures), render_timeout_s (120), judge_images (auto\|true\|false), judge_max_tokens (4000), plus the run settings seed, effort, device. |
+| `label` (string) | no |  |
+| `wait_s` (number) | no | Wait this long for the run to finish before answering (0: return at once with its id). |
+| `dry_run` (boolean) | no | Only show the plan (models, briefs, calls, prices set, browser); start nothing. |
+
+## `briefbench_status`
+
+Progress of a brief-bench run: phase, answers and judgements done. Estado del encargo.
+
+Sinónimos: cómo va, progreso de la comparación
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (bk_...). Empty: the running one, else the latest. |
+
+## `briefbench_result`
+
+Brief-bench result: time, tokens, cost and score per model, plus the grid. Resultado del encargo.
+
+Summary per model (mean time, tokens, tokens per second, total cost with how many answers had no price, mean score per dimension) and who is best, fastest and cheapest. Each brief has `grid_url`: a PNG with every model's render side by side, served by the app. Answers that never arrived are None, not zero.
+Sinónimos: tabla de resultados, cuál es más rápido, cuál es más barato, mejor nota, cuadrícula
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (bk_...). Empty: the running one, else the latest. |
+
+## `briefbench_item`
+
+One brief-bench answer: figures, checks, judge scores, files. Detalle de una respuesta.
+
+The measures of that model on that brief (time, time to first token, tokens, cost), page errors, the judge's summary and problems, optionally the page source or text. Pictures: /api/briefbench/<run>/<brief>/<slot>/shot.png.
+Sinónimos: ver la respuesta de un modelo, el HTML, fallos del juez
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (bk_...). Empty: the running one, else the latest. |
+| `brief` (string) | yes | The brief id (own-1... for briefs written in the call). |
+| `model` (string) | yes | The slot (m1, m2...) or the name of the model. |
+| `answer` (boolean) | no | Include the answer: the page source or the text (can be long). |
+
+## `briefbench_cancel`
+
+Cancel a brief-bench run: finished answers kept. Cancelar encargo.
+
+Sinónimos: parar, detener
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (bk_...). Empty: the running one, else the latest. |
+
+## `briefbench_list`
+
+Recent brief-bench runs with state and summary. Historial de encargos.
+
+Sinónimos: comparaciones anteriores
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `limit` (integer) | no |  |
+
+## `briefbench_delete`
+
+Delete a brief-bench run and its files (needs confirm=true). Borrar encargo.
+
+Sinónimos: eliminar comparación
+
+Annotations: destructiveHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | yes |  |
+| `confirm` (boolean) | no | Must be true: deletes the run and its files. |
+
 ## `speechbench_engines`
 
 Speech-to-text engines for the speech bench; add command engines. Motores de voz a texto.
