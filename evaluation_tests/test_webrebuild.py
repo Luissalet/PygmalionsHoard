@@ -161,7 +161,7 @@ class FakeBrowser:
         from PIL import Image, ImageDraw
         img = Image.new("RGB", (width, 200), (255, 255, 255))
         d = ImageDraw.Draw(img)
-        digest = hashlib.sha256(html).digest()
+        digest = hashlib.sha256(html.replace(b"\r\n", b"\n")).digest()  # a checkout may turn LF into CRLF
         for i in range(0, 24, 4):
             x, y = digest[i] * width // 256, digest[i + 1] * 200 // 256
             d.rectangle([x, y, x + 60, y + 40], fill=(digest[i + 2], digest[i + 3], 90))
