@@ -43,7 +43,7 @@
     "health": {
       "path": "/api/health",
       "expect": {
-        "service": "absorbed-galton"
+        "service": "galton-hoard"
       }
     },
     "identify": {
