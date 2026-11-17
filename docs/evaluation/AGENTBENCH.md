@@ -30,6 +30,7 @@ run gets the same tasks.
 | `polyglot` | aider/aider-polyglot | 10 + 20 | Exercism exercises in C++, Go, Java, JavaScript, Python and Rust, five per language |
 | `tau3` | sierra-research/tau3-bench | 8 + 16 | retail and airline customer-service dialogues with a simulated user, a policy and tools served over MCP |
 | `lcb` | livecodebench/livecodebench | 8 + 16 | competitive programming problems with hidden tests |
+| `websitebench` | websitebench/WebsiteBench@v1 | 2 + 4 | rebuild a real website full-stack after exploring it only through a browser; hidden cases pass when their checks pass and every visual checkpoint reaches normalized SSIM 0.99 (hours per task; its containers may reach the package hosts they build from) |
 
 The dev split is where a harness may be tuned: its failures can be read and its code changed. The test split is only ever measured. A harness that
 gains on dev but not on test was tuned to the tasks, not improved.

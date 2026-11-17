@@ -36,7 +36,7 @@ include = ["pygmalion_hoard*", "galton_hoard*"]
 
 [tool.setuptools.package-data]
 pygmalion_hoard = ["static/**/*", "calib/*.txt", "workers/*.py", "fusion/*.json", "fusion/web/**/*"]
-galton_hoard = ["static/**/*", "suites/*.json", "simusers/*.json", "agentbench/*.json", "rulebench/**/*.json"]
+galton_hoard = ["static/**/*", "suites/*.json", "simusers/*.json", "agentbench/*.json", "rulebench/**/*.json", "webrebuild/sites/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "evaluation_tests", "fusion_tests"]

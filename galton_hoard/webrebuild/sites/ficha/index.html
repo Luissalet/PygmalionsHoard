@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taller Brisa · Tetera de hierro</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #1f2933; background: #f6f3ee; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 18px 40px; background: #1f2933; color: #f6f3ee; }
+  header .logo { font-size: 22px; font-weight: 700; letter-spacing: 1px; }
+  header nav a { color: #f6f3ee; text-decoration: none; margin-left: 24px; font-size: 15px; }
+  #cart { background: #d97706; color: #fff; border-radius: 20px; padding: 6px 14px; font-size: 14px; font-weight: 700; }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; max-width: 1080px; margin: 48px auto; padding: 0 40px; }
+  .photo { aspect-ratio: 1 / 1; border-radius: 16px; background: linear-gradient(135deg, #475569 0%, #1e293b 60%, #0f172a 100%); position: relative; }
+  .photo::after { content: ""; position: absolute; left: 28%; top: 30%; width: 44%; height: 44%; border-radius: 50%; background: #334155; box-shadow: 0 0 0 10px #64748b; }
+  .tag { display: inline-block; background: #e7e0d4; color: #7c2d12; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 700; }
+  h1 { font-size: 38px; margin: 14px 0 8px; }
+  .price { font-size: 30px; color: #b45309; font-weight: 700; margin: 8px 0 20px; }
+  p { line-height: 1.6; font-size: 16px; }
+  ul.specs { padding-left: 20px; line-height: 1.8; }
+  button.add { background: #1f2933; color: #fff; border: 0; border-radius: 10px; padding: 14px 28px; font-size: 17px; font-weight: 700; cursor: pointer; }
+  #note { margin-top: 14px; color: #166534; font-weight: 700; min-height: 22px; }
+  footer { text-align: center; padding: 24px; color: #6b7280; font-size: 13px; }
+  @media (max-width: 700px) {
+    header { padding: 14px 18px; }
+    header nav a { display: none; }
+    main { grid-template-columns: 1fr; gap: 24px; margin: 24px auto; padding: 0 18px; }
+    h1 { font-size: 30px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">TALLER BRISA</div>
+  <nav><a href="#">Cocina</a><a href="#">Té</a><a href="#">Regalos</a><span id="cart">Cesta (0)</span></nav>
+</header>
+<main>
+  <div class="photo" aria-label="Tetera"></div>
+  <section>
+    <span class="tag">Hecho a mano</span>
+    <h1>Tetera de hierro</h1>
+    <div class="price">64,00 €</div>
+    <p>Hierro fundido esmaltado por dentro, con filtro de acero. Mantiene el té caliente durante una hora.</p>
+    <ul class="specs"><li>Capacidad: 0,9 litros</li><li>Peso: 1,4 kg</li><li>Apta para inducción</li></ul>
+    <button class="add" id="add">Añadir a la cesta</button>
+    <div id="note"></div>
+  </section>
+</main>
+<footer>Taller Brisa · Envío en 48 horas</footer>
+<script>
+  let n = 0;
+  document.getElementById('add').addEventListener('click', () => {
+    n += 1;
+    document.getElementById('cart').textContent = 'Cesta (' + n + ')';
+    document.getElementById('note').textContent = 'Añadida a la cesta';
+  });
+</script>
+</body>
+</html>

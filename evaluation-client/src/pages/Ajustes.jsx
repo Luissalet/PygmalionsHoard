@@ -277,6 +277,15 @@ export default function Ajustes() {
         </div>
       </Section>
 
+      <Section title={t("webrebuild_section")}>
+        <div className="panel space-y-3">
+          <p className="help">{t("webrebuild_help")}</p>
+          {field("webrebuild.browser_python", t("bk_set_python"), t("wr_set_python_hint"))}
+          {field("webrebuild.folder", t("bk_set_folder"), t("ab_set_dir_hint"))}
+          {saveBar(["webrebuild.browser_python", "webrebuild.folder"])}
+        </div>
+      </Section>
+
       <Section title={t("agentbench_section")}>
         <div className="panel space-y-3">
           <p className="help">{t("agentbench_help")}</p>

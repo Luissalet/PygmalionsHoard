@@ -99,6 +99,8 @@ SPECS: list[Spec] = [
     Spec("briefbench.currency", "str", "USD", "briefbench"),
     Spec("briefbench.cli", "str_list", [], "briefbench"),
     Spec("briefbench.cli_timeout_s", "int", 900, "briefbench", low=10, high=7200),
+    Spec("webrebuild.browser_python", "str", "", "webrebuild"),
+    Spec("webrebuild.folder", "str", "", "webrebuild"),
     Spec("logit.python", "str", "", "logit"),
     Spec("logit.top_logprobs", "int", 20, "logit", low=2, high=50),
     Spec("logit.timeout_s", "int", 120, "logit", low=5, high=1800),

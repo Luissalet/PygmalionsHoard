@@ -7084,6 +7084,526 @@
     "module": "evaluation"
   },
   {
+    "name": "webrebuild_catalog",
+    "description": "Website-rebuild bench: reference sites, step kinds, browser. Catálogo de reconstruir una web.\nSmall local reference sites (a product page, a pricing page with a monthly/yearly switch, a to-do list, a two-page blog) with their cases: steps that act, checks of what the page shows and checkpoints (pictures). Also whether a Python with Playwright was found and what of WebsiteBench is in the data folder.\nSinónimos: reconstruir una web, clonar un sitio, benchmark de webs, WebsiteBench, fidelidad visual",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "webrebuild_site",
+    "description": "One reference site of the rebuild bench with its cases step by step. Una web de referencia.\nSinónimos: casos de prueba de la web",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "A site of webrebuild_catalog (ficha, precios, tareas, blog). Returns its cases step by step.",
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "WebSiteArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "webrebuild_start",
+    "description": "Models rebuild reference sites by browsing them; scored by SSIM and checks. Reconstruir una web.\nEach model explores each reference in a headless browser (a text picture of every visible element: position, size, text, font, colours), writes its own HTML/CSS/JS with tools and can preview it. Then both sites run the same cases at 1280 and 390 px: a case passes when its checks pass and every checkpoint reaches normalized SSIM 0.99; the site's score is the share of cases passed. Time, tokens and cost per model. Runs in the background; dry_run only plans.\nSinónimos: reconstruir web, clonar sitio, rehacer página, comparar modelos haciendo webs, WebsiteBench local, SSIM",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "$defs": {
+        "WebUrlSite": {
+          "properties": {
+            "url": {
+              "description": "A reference site that is already running (http/https), e.g. a reference started from a benchmark task.",
+              "maxLength": 500,
+              "minLength": 8,
+              "title": "Url",
+              "type": "string"
+            },
+            "title": {
+              "default": "",
+              "maxLength": 120,
+              "title": "Title",
+              "type": "string"
+            },
+            "routes": {
+              "description": "Routes to picture when no cases are given (default: /).",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 12,
+              "title": "Routes",
+              "type": "array"
+            },
+            "cases": {
+              "description": "Cases: {id, steps: [{goto}, {click}, {fill, text}, {press, on}, {expect_text}, {expect_url}, {expect_count, n}, {checkpoint}...]} (see the step kinds in webrebuild_catalog).",
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 40,
+              "title": "Cases",
+              "type": "array"
+            }
+          },
+          "required": [
+            "url"
+          ],
+          "title": "WebUrlSite",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "models": {
+          "description": "The models that rebuild, each an id or name from models_list (Sparks, Ollama, a server: {kind: 'server', url, model}). They need tool calling.",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Models",
+          "type": "array"
+        },
+        "sites": {
+          "description": "Ids from webrebuild_catalog.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Sites",
+          "type": "array"
+        },
+        "urls": {
+          "description": "Reference sites given by URL, with their cases or routes.",
+          "items": {
+            "$ref": "#/$defs/WebUrlSite"
+          },
+          "maxItems": 6,
+          "title": "Urls",
+          "type": "array"
+        },
+        "prices": {
+          "additionalProperties": true,
+          "description": "Price per million tokens by model name or id: {\"<model>\": {\"input\": 3, \"output\": 15}}; a single number for both. Added to the briefbench.prices setting. A model without a price has an unknown cost, not a zero one.",
+          "title": "Prices",
+          "type": "object"
+        },
+        "settings": {
+          "additionalProperties": true,
+          "description": "max_steps (30: tool calls per site), max_tokens (12000 per call), temperature (0.2), timeout_s (600 per call), threshold (0.99: normalized SSIM a checkpoint needs), widths ([1280, 390]), plus the run settings seed, effort.",
+          "title": "Settings",
+          "type": "object"
+        },
+        "label": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Label",
+          "type": "string"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Wait this long for the run to finish before answering (0: return at once with its id).",
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        },
+        "dry_run": {
+          "default": false,
+          "description": "Only show the plan (models, sites, cases, prices, browser); start nothing.",
+          "title": "Dry Run",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "models"
+      ],
+      "title": "WebStartArgs",
+      "type": "object"
+    },
+    "x-timeout-s": 660.0,
+    "module": "evaluation"
+  },
+  {
+    "name": "webrebuild_status",
+    "description": "Progress of a website-rebuild run: phase and sites built. Estado de reconstruir una web.\nSinónimos: cómo va la reconstrucción",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "default": "",
+          "description": "Run id (wr-...). Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "title": "WebRunRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "webrebuild_result",
+    "description": "Website-rebuild result: score, cases, SSIM, checks, time and cost per model. Resultado de reconstruir.\nPer model: mean score over sites, cases passed, mean visual score, share of checks passed, tokens, cost, build time and steps; best, fastest and cheapest. Per site: one row per model. Models that never built a site are None, not zero.\nSinónimos: tabla de reconstrucción, qué modelo rehace mejor una web, puntuación SSIM",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "default": "",
+          "description": "Run id (wr-...). Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "title": "WebRunRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "webrebuild_item",
+    "description": "One rebuilt site: every case, its checks and checkpoints, zones that differ. Una web reconstruida.\nEach checkpoint has the reference, candidate and diff picture URLs (/api/webrebuild/<run>/<site>/<slot>/<file>), its normalized SSIM and the boxes that differ most.\nSinónimos: qué falla en la copia, capturas, diferencias, comprobaciones fallidas",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "default": "",
+          "description": "Run id (wr-...). Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Run",
+          "type": "string"
+        },
+        "site": {
+          "description": "The site id (url-1... for sites given by URL).",
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Site",
+          "type": "string"
+        },
+        "model": {
+          "description": "The slot (m1, m2...) or the name of the model.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        }
+      },
+      "required": [
+        "site",
+        "model"
+      ],
+      "title": "WebItemArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "webrebuild_code",
+    "description": "A file a model wrote while rebuilding a site, and the list of all of them. Código reconstruido.\nSinónimos: ver el HTML, el CSS",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "default": "",
+          "description": "Run id (wr-...). Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Run",
+          "type": "string"
+        },
+        "site": {
+          "description": "The site id (url-1... for sites given by URL).",
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Site",
+          "type": "string"
+        },
+        "model": {
+          "description": "The slot (m1, m2...) or the name of the model.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "path": {
+          "default": "index.html",
+          "description": "A file the model wrote (the answer lists all of them).",
+          "maxLength": 200,
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "site",
+        "model"
+      ],
+      "title": "WebCodeArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "webrebuild_cancel",
+    "description": "Cancel a website-rebuild run: finished sites kept. Cancelar reconstrucción.\nSinónimos: parar, detener",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "default": "",
+          "description": "Run id (wr-...). Empty: the running one, else the latest.",
+          "maxLength": 60,
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "title": "WebRunRef",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "webrebuild_list",
+    "description": "Recent website-rebuild runs with state and summary. Historial de reconstrucciones.\nSinónimos: ejecuciones anteriores de webs",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "limit": {
+          "default": 15,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "WebListArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "webrebuild_delete",
+    "description": "Delete a website-rebuild run and its files (needs confirm=true). Borrar reconstrucción.\nSinónimos: eliminar ejecución de webs",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "run": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Run",
+          "type": "string"
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be true: deletes the run and its files.",
+          "title": "Confirm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "run"
+      ],
+      "title": "WebDeleteArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
+    "name": "webrebuild_score",
+    "description": "Score a running site against a running reference: cases, SSIM, checks. Puntuar una copia de web.\nNo model: both sites go through the same cases (or one picture per route) at each width; normalized SSIM per checkpoint, checks, the share of cases passed and the zones that differ. Cases that fail on the reference itself are left out.\nSinónimos: comparar dos webs, fidelidad de un clon, paridad visual, SSIM entre sitios",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "reference": {
+          "description": "URL of the reference site (running).",
+          "maxLength": 500,
+          "minLength": 8,
+          "title": "Reference",
+          "type": "string"
+        },
+        "candidate": {
+          "description": "URL of the site to score against it (running).",
+          "maxLength": 500,
+          "minLength": 8,
+          "title": "Candidate",
+          "type": "string"
+        },
+        "cases": {
+          "description": "Cases to run on both (see webrebuild_catalog step kinds). Empty: one picture per route.",
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "maxItems": 40,
+          "title": "Cases",
+          "type": "array"
+        },
+        "routes": {
+          "description": "Routes to picture when no cases are given (default: /).",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Routes",
+          "type": "array"
+        },
+        "widths": {
+          "description": "Viewport widths (default 1280 and 390).",
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 3,
+          "title": "Widths",
+          "type": "array"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.5,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Normalized SSIM a checkpoint needs (default 0.99).",
+          "title": "Threshold"
+        }
+      },
+      "required": [
+        "reference",
+        "candidate"
+      ],
+      "title": "WebScoreArgs",
+      "type": "object"
+    },
+    "x-timeout-s": 660.0,
+    "module": "evaluation"
+  },
+  {
+    "name": "webrebuild_websitebench",
+    "description": "WebsiteBench public tasks in the data folder: list, import, read one. Tareas de WebsiteBench.\nimport downloads the release index, licence, notice and, per task, the instruction, the task file and the case manifest (hidden cases by kind and tier). A full run of those tasks goes through the agent bench (benchmark websitebench: containers and the trial runner).\nSinónimos: WebsiteBench, descargar tareas, 70 webs, casos ocultos",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "default": "list",
+          "description": "list: what is in the data folder; import: download the public files; instruction: one task's text.",
+          "pattern": "^(list|import|instruction)$",
+          "title": "Action",
+          "type": "string"
+        },
+        "tasks": {
+          "description": "import: task ids whose files to download (instruction, task file, case manifest); instruction: the first one.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 70,
+          "title": "Tasks",
+          "type": "array"
+        },
+        "every": {
+          "default": false,
+          "description": "import: all 70 tasks.",
+          "title": "Every",
+          "type": "boolean"
+        },
+        "query": {
+          "default": "",
+          "description": "list: part of a task id.",
+          "maxLength": 60,
+          "title": "Query",
+          "type": "string"
+        }
+      },
+      "title": "WebsiteBenchArgs",
+      "type": "object"
+    },
+    "module": "evaluation"
+  },
+  {
     "name": "speechbench_engines",
     "description": "Speech-to-text engines for the speech bench; add command engines. Motores de voz a texto.\nfaster-whisper:<size> runs in a Python that has faster-whisper (found among this app and the family's venvs, or set with whisper_python), CPU int8 by default, one warm model per run. A command engine (name + command with {audio}, {language}) covers any other recogniser, e.g. a streaming model's CLI; it prints text or JSON {text, first_text_s}. Without arguments it only lists.\nSinónimos: motores de reconocimiento de voz, añadir motor, faster-whisper, R2T2, transcriptor, STT",
     "annotations": {

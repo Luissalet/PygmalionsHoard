@@ -35,6 +35,8 @@ from .speechbench.service import SpeechBench
 from .videobench.store import VideoStore
 from .briefbench.service import BriefBench
 from .briefbench.store import BriefStore
+from .webrebuild.service import WebRebuild
+from .webrebuild.store import RebuildStore
 from .hoard_link import family
 from .hoard_link.docs.sniff import sniff
 from .hoard_link.tokens import read_or_create_token, write_url
@@ -117,6 +119,9 @@ class Services:
         self.brief_store = BriefStore(self.db, clock_fn)
         self.briefbench = BriefBench(self.brief_store, self.runner, self.settings, data_dir=config.data_dir, emit=self.emit, clock=clock_fn,
                                      base_url=lambda: f"http://127.0.0.1:{config.port}{config.url_prefix}")
+        self.web_store = RebuildStore(lambda: self.webrebuild.root, clock_fn)
+        self.webrebuild = WebRebuild(self.web_store, self.runner, self.settings, data_dir=config.data_dir, emit=self.emit, clock=clock_fn,
+                                     base_url=lambda: f"http://127.0.0.1:{config.port}{config.url_prefix}")
         self.logit = LogitJudge(self.store, self.settings, data_dir=config.data_dir, clock=clock_fn, emit=self.emit, client_factory=client_factory, meta_reader=meta_reader, digest_fn=digest_fn)
         self.suiteval = SuitEvals(SuitEvalStore(self.db, clock_fn), self.settings, data_dir=config.data_dir, clock=clock_fn)
         self.ragbench = RagBench(RagStore(self.db, clock_fn), self.runner, self.settings, backend_factory=self.backend_factory, client_factory=client_factory, clock=clock_fn,
@@ -148,6 +153,7 @@ class Services:
         self._abandon_stale_matrices()
         self.videobench.abandon_stale()
         self.briefbench.abandon_stale()
+        self.webrebuild.abandon_stale()
         self.ragbench.abandon_stale()
         self.scheduler.start()
         if self.config.resume_pending:
@@ -194,7 +200,7 @@ class Services:
             cancel.set()
         self.logit.stop()
         video_threads = self.videobench.stop_all(0)
-        rag_threads = self.ragbench.stop_all(0) + self.briefbench.stop_all(0)
+        rag_threads = self.ragbench.stop_all(0) + self.briefbench.stop_all(0) + self.webrebuild.stop_all(0)
         self.speechbench.stop_all(5.0)
         self.scheduler.stop(timeout)
         deadline = time.monotonic() + timeout

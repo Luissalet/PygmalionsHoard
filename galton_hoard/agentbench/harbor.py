@@ -65,6 +65,7 @@ def job_command(*, exe: str, bench: Benchmark, harness: HarnessSpec, tasks: Iter
     agent_time = (bench.timeout_multiplier or 1.0) * (time_scale or 1.0)
     if agent_time != 1.0:
         argv += ["--agent-timeout-multiplier", f"{agent_time:g}"]
+    argv += list(getattr(bench, "args", ()) or ())
     for key, value in harness.kwargs:
         argv += ["--ak", f"{key}={harness.render(value, model=model, base_url=base_url, api_key=api_key)}"]
     base = base_url.rstrip("/")

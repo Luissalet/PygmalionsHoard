@@ -1,0 +1,20 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Georgia, "Times New Roman", serif; background: #fffdf7; color: #2b2118; }
+.bar { display: flex; align-items: baseline; gap: 16px; padding: 22px 48px; border-bottom: 3px solid #2b2118; }
+.bar .home { font-size: 26px; font-weight: 700; color: #2b2118; text-decoration: none; }
+.bar .sub { color: #8a6d3b; font-style: italic; font-size: 15px; }
+.wrap { max-width: 720px; margin: 40px auto; padding: 0 24px; }
+h1 { font-size: 36px; margin: 6px 0 24px; }
+.post { padding: 20px 0; border-bottom: 1px dashed #c9b88f; }
+.post h2 { font-size: 24px; margin: 6px 0; }
+.post h2 a { color: #7c2d12; text-decoration: none; }
+.post p, .full p { font-size: 18px; line-height: 1.7; margin: 8px 0; }
+.date { text-transform: uppercase; letter-spacing: 2px; font-size: 12px; color: #8a6d3b; font-family: Arial, Helvetica, sans-serif; }
+.back { display: inline-block; margin-bottom: 18px; color: #7c2d12; font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
+blockquote { margin: 24px 0; padding: 12px 20px; border-left: 4px solid #8a6d3b; background: #f6efdf; font-style: italic; font-size: 19px; }
+.foot { text-align: center; color: #8a6d3b; padding: 32px; font-size: 14px; }
+@media (max-width: 600px) {
+  .bar { flex-direction: column; gap: 4px; padding: 16px 20px; }
+  .wrap { margin: 24px auto; padding: 0 18px; }
+  h1 { font-size: 28px; }
+}

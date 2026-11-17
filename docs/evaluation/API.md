@@ -1132,6 +1132,173 @@ Annotations: destructiveHint, idempotentHint.
 | `run` (string) | yes |  |
 | `confirm` (boolean) | no | Must be true: deletes the run and its files. |
 
+## `webrebuild_catalog`
+
+Website-rebuild bench: reference sites, step kinds, browser. Catálogo de reconstruir una web.
+
+Small local reference sites (a product page, a pricing page with a monthly/yearly switch, a to-do list, a two-page blog) with their cases: steps that act, checks of what the page shows and checkpoints (pictures). Also whether a Python with Playwright was found and what of WebsiteBench is in the data folder.
+Sinónimos: reconstruir una web, clonar un sitio, benchmark de webs, WebsiteBench, fidelidad visual
+
+Annotations: readOnlyHint, idempotentHint.
+
+## `webrebuild_site`
+
+One reference site of the rebuild bench with its cases step by step. Una web de referencia.
+
+Sinónimos: casos de prueba de la web
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `id` (string) | yes | A site of webrebuild_catalog (ficha, precios, tareas, blog). Returns its cases step by step. |
+
+## `webrebuild_start`
+
+Models rebuild reference sites by browsing them; scored by SSIM and checks. Reconstruir una web.
+
+Each model explores each reference in a headless browser (a text picture of every visible element: position, size, text, font, colours), writes its own HTML/CSS/JS with tools and can preview it. Then both sites run the same cases at 1280 and 390 px: a case passes when its checks pass and every checkpoint reaches normalized SSIM 0.99; the site's score is the share of cases passed. Time, tokens and cost per model. Runs in the background; dry_run only plans.
+Sinónimos: reconstruir web, clonar sitio, rehacer página, comparar modelos haciendo webs, WebsiteBench local, SSIM
+
+Annotations: openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `models` (array) | yes | The models that rebuild, each an id or name from models_list (Sparks, Ollama, a server: {kind: 'server', url, model}). They need tool calling. |
+| `sites` (array) | no | Ids from webrebuild_catalog. |
+| `urls` (array) | no | Reference sites given by URL, with their cases or routes. |
+| `prices` (object) | no | Price per million tokens by model name or id: {"<model>": {"input": 3, "output": 15}}; a single number for both. Added to the briefbench.prices setting. A model without a price has an unknown cost, not a zero one. |
+| `settings` (object) | no | max_steps (30: tool calls per site), max_tokens (12000 per call), temperature (0.2), timeout_s (600 per call), threshold (0.99: normalized SSIM a checkpoint needs), widths ([1280, 390]), plus the run settings seed, effort. |
+| `label` (string) | no |  |
+| `wait_s` (number) | no | Wait this long for the run to finish before answering (0: return at once with its id). |
+| `dry_run` (boolean) | no | Only show the plan (models, sites, cases, prices, browser); start nothing. |
+
+## `webrebuild_status`
+
+Progress of a website-rebuild run: phase and sites built. Estado de reconstruir una web.
+
+Sinónimos: cómo va la reconstrucción
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (wr-...). Empty: the running one, else the latest. |
+
+## `webrebuild_result`
+
+Website-rebuild result: score, cases, SSIM, checks, time and cost per model. Resultado de reconstruir.
+
+Per model: mean score over sites, cases passed, mean visual score, share of checks passed, tokens, cost, build time and steps; best, fastest and cheapest. Per site: one row per model. Models that never built a site are None, not zero.
+Sinónimos: tabla de reconstrucción, qué modelo rehace mejor una web, puntuación SSIM
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (wr-...). Empty: the running one, else the latest. |
+
+## `webrebuild_item`
+
+One rebuilt site: every case, its checks and checkpoints, zones that differ. Una web reconstruida.
+
+Each checkpoint has the reference, candidate and diff picture URLs (/api/webrebuild/<run>/<site>/<slot>/<file>), its normalized SSIM and the boxes that differ most.
+Sinónimos: qué falla en la copia, capturas, diferencias, comprobaciones fallidas
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (wr-...). Empty: the running one, else the latest. |
+| `site` (string) | yes | The site id (url-1... for sites given by URL). |
+| `model` (string) | yes | The slot (m1, m2...) or the name of the model. |
+
+## `webrebuild_code`
+
+A file a model wrote while rebuilding a site, and the list of all of them. Código reconstruido.
+
+Sinónimos: ver el HTML, el CSS
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (wr-...). Empty: the running one, else the latest. |
+| `site` (string) | yes | The site id (url-1... for sites given by URL). |
+| `model` (string) | yes | The slot (m1, m2...) or the name of the model. |
+| `path` (string) | no | A file the model wrote (the answer lists all of them). |
+
+## `webrebuild_cancel`
+
+Cancel a website-rebuild run: finished sites kept. Cancelar reconstrucción.
+
+Sinónimos: parar, detener
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | no | Run id (wr-...). Empty: the running one, else the latest. |
+
+## `webrebuild_list`
+
+Recent website-rebuild runs with state and summary. Historial de reconstrucciones.
+
+Sinónimos: ejecuciones anteriores de webs
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `limit` (integer) | no |  |
+
+## `webrebuild_delete`
+
+Delete a website-rebuild run and its files (needs confirm=true). Borrar reconstrucción.
+
+Sinónimos: eliminar ejecución de webs
+
+Annotations: destructiveHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | yes |  |
+| `confirm` (boolean) | no | Must be true: deletes the run and its files. |
+
+## `webrebuild_score`
+
+Score a running site against a running reference: cases, SSIM, checks. Puntuar una copia de web.
+
+No model: both sites go through the same cases (or one picture per route) at each width; normalized SSIM per checkpoint, checks, the share of cases passed and the zones that differ. Cases that fail on the reference itself are left out.
+Sinónimos: comparar dos webs, fidelidad de un clon, paridad visual, SSIM entre sitios
+
+Annotations: idempotentHint, openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `reference` (string) | yes | URL of the reference site (running). |
+| `candidate` (string) | yes | URL of the site to score against it (running). |
+| `cases` (array) | no | Cases to run on both (see webrebuild_catalog step kinds). Empty: one picture per route. |
+| `routes` (array) | no | Routes to picture when no cases are given (default: /). |
+| `widths` (array) | no | Viewport widths (default 1280 and 390). |
+| `threshold` (number/null) | no | Normalized SSIM a checkpoint needs (default 0.99). |
+
+## `webrebuild_websitebench`
+
+WebsiteBench public tasks in the data folder: list, import, read one. Tareas de WebsiteBench.
+
+import downloads the release index, licence, notice and, per task, the instruction, the task file and the case manifest (hidden cases by kind and tier). A full run of those tasks goes through the agent bench (benchmark websitebench: containers and the trial runner).
+Sinónimos: WebsiteBench, descargar tareas, 70 webs, casos ocultos
+
+Annotations: idempotentHint, openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `action` (string) | no | list: what is in the data folder; import: download the public files; instruction: one task's text. |
+| `tasks` (array) | no | import: task ids whose files to download (instruction, task file, case manifest); instruction: the first one. |
+| `every` (boolean) | no | import: all 70 tasks. |
+| `query` (string) | no | list: part of a task id. |
+
 ## `speechbench_engines`
 
 Speech-to-text engines for the speech bench; add command engines. Motores de voz a texto.

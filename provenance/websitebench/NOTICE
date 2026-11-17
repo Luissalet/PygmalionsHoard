@@ -1,0 +1,17 @@
+Website rebuild (galton_hoard/webrebuild) and the agent-bench entry "websitebench"
+
+* The scoring rule (a case passes when its functional checks pass and every visual
+  checkpoint reaches a flat-baseline-normalized RGB SSIM of 0.99; a site's score is the
+  share of its cases that pass) and the idea of rebuilding a site that the agent can
+  only explore through a browser follow WebsiteBench, by the WebsiteBench Authors
+  (TIGER-AI-Lab), https://github.com/TIGER-AI-Lab/WebsiteBench, released under the
+  Apache License 2.0. No code of WebsiteBench is included: the scorer, the step runner,
+  the agent loop and the four local reference sites are written here.
+* "webrebuild_websitebench action=import" downloads WebsiteBench's public release index,
+  its LICENSE and NOTICE and, per task, its instruction, task file and case manifest into
+  the data folder, next to a CREDITS.txt. Those files keep their licence (Apache-2.0).
+  The reference websites reproduce third-party sites; their content belongs to its
+  owners and is provided by WebsiteBench for non-commercial research only.
+* The agent-bench entry "websitebench" names the published dataset
+  websitebench/WebsiteBench@v1 of the trial runner's registry; the runner downloads and
+  runs it in its containers.

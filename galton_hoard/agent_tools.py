@@ -1066,6 +1066,71 @@ class BriefDeleteArgs(BaseModel):
     confirm: bool = Field(False, description="Must be true: deletes the run and its files.")
 
 
+class WebSiteArgs(BaseModel):
+    id: str = Field(..., min_length=1, max_length=40, description="A site of webrebuild_catalog (ficha, precios, tareas, blog). Returns its cases step by step.")
+
+
+class WebUrlSite(BaseModel):
+    url: str = Field(..., min_length=8, max_length=500, description="A reference site that is already running (http/https), e.g. a reference started from a benchmark task.")
+    title: str = Field("", max_length=120)
+    routes: list[str] = Field(default_factory=list, max_length=12, description="Routes to picture when no cases are given (default: /).")
+    cases: list[dict[str, Any]] = Field(default_factory=list, max_length=40, description="Cases: {id, steps: [{goto}, {click}, {fill, text}, {press, on}, {expect_text}, {expect_url}, "
+                                                                                       "{expect_count, n}, {checkpoint}...]} (see the step kinds in webrebuild_catalog).")
+
+
+class WebStartArgs(BaseModel):
+    models: list[Union[str, dict[str, Any]]] = Field(..., min_length=1, max_length=8, description="The models that rebuild, each an id or name from models_list (Sparks, Ollama, "
+                                                     "a server: {kind: 'server', url, model}). They need tool calling.")
+    sites: list[str] = Field(default_factory=list, max_length=12, description="Ids from webrebuild_catalog.")
+    urls: list[WebUrlSite] = Field(default_factory=list, max_length=6, description="Reference sites given by URL, with their cases or routes.")
+    prices: dict[str, Any] = Field(default_factory=dict, description="Price per million tokens by model name or id: {\"<model>\": {\"input\": 3, \"output\": 15}}; a single number for both. "
+                                                                   "Added to the briefbench.prices setting. A model without a price has an unknown cost, not a zero one.")
+    settings: dict[str, Any] = Field(default_factory=dict, description="max_steps (30: tool calls per site), max_tokens (12000 per call), temperature (0.2), timeout_s (600 per call), "
+                                                                       "threshold (0.99: normalized SSIM a checkpoint needs), widths ([1280, 390]), plus the run settings seed, effort.")
+    label: str = Field("", max_length=120)
+    wait_s: float = Field(0, ge=0, le=600, description="Wait this long for the run to finish before answering (0: return at once with its id).")
+    dry_run: bool = Field(False, description="Only show the plan (models, sites, cases, prices, browser); start nothing.")
+
+
+class WebRunRef(BaseModel):
+    run: str = Field("", max_length=60, description="Run id (wr-...). Empty: the running one, else the latest.")
+
+
+class WebItemArgs(BaseModel):
+    run: str = Field("", max_length=60, description="Run id (wr-...). Empty: the running one, else the latest.")
+    site: str = Field(..., min_length=1, max_length=40, description="The site id (url-1... for sites given by URL).")
+    model: str = Field(..., min_length=1, max_length=200, description="The slot (m1, m2...) or the name of the model.")
+
+
+class WebCodeArgs(WebItemArgs):
+    path: str = Field("index.html", max_length=200, description="A file the model wrote (the answer lists all of them).")
+
+
+class WebListArgs(BaseModel):
+    limit: int = Field(15, ge=1, le=100)
+
+
+class WebDeleteArgs(BaseModel):
+    run: str = Field(..., min_length=1, max_length=60)
+    confirm: bool = Field(False, description="Must be true: deletes the run and its files.")
+
+
+class WebScoreArgs(BaseModel):
+    reference: str = Field(..., min_length=8, max_length=500, description="URL of the reference site (running).")
+    candidate: str = Field(..., min_length=8, max_length=500, description="URL of the site to score against it (running).")
+    cases: list[dict[str, Any]] = Field(default_factory=list, max_length=40, description="Cases to run on both (see webrebuild_catalog step kinds). Empty: one picture per route.")
+    routes: list[str] = Field(default_factory=list, max_length=12, description="Routes to picture when no cases are given (default: /).")
+    widths: list[int] = Field(default_factory=list, max_length=3, description="Viewport widths (default 1280 and 390).")
+    threshold: Optional[float] = Field(None, ge=0.5, le=1.0, description="Normalized SSIM a checkpoint needs (default 0.99).")
+
+
+class WebsiteBenchArgs(BaseModel):
+    action: str = Field("list", pattern="^(list|import|instruction)$", description="list: what is in the data folder; import: download the public files; instruction: one task's text.")
+    tasks: list[str] = Field(default_factory=list, max_length=70, description="import: task ids whose files to download (instruction, task file, case manifest); instruction: the first one.")
+    every: bool = Field(False, description="import: all 70 tasks.")
+    query: str = Field("", max_length=60, description="list: part of a task id.")
+
+
 class AgentBenchStartArgs(BaseModel):
     benchmarks: list[str] = Field(default_factory=list, max_length=10, description="Benchmark ids from agentbench_catalog (tb2, swev, polyglot, tau3, lcb). Empty: all.")
     harnesses: list[str] = Field(default_factory=list, max_length=30, description="Harness names from the setting agentbench.harnesses. Empty: every line that is switched on.")
@@ -1325,6 +1390,96 @@ def run_briefbench_delete(svc: Services, a: BriefDeleteArgs) -> dict[str, Any]:
     if not a.confirm:
         raise ValueError("Deleting a run needs confirm=true.")
     return svc.briefbench.delete(_brief_run(svc, a.run)["id"])
+
+
+def _web_run(svc: Services, ref: str) -> dict[str, Any]:
+    if ref.strip():
+        return svc.web_store.run(ref.strip())
+    runs = svc.web_store.runs(limit=20)
+    if not runs:
+        raise GaltonError("not_found", "wr_no_run", id="-")
+    return next((r for r in runs if r["state"] in ("queued", "running")), runs[0])
+
+
+def _web_slot(run: dict[str, Any], ref: str) -> str:
+    ref = ref.strip()
+    return next((m["slot"] for m in run["models"] if ref.lower() in (m["slot"].lower(), m["name"].lower(), m["id"].lower())), ref)
+
+
+def run_webrebuild_catalog(svc: Services, a: Empty) -> dict[str, Any]:
+    from .webrebuild import websitebench
+    wb = websitebench.listing(svc.webrebuild.root)
+    return cap_result({**svc.webrebuild.catalog(), "websitebench": {k: wb.get(k) for k in ("imported", "task_count", "with_details", "folder", "repository")}})
+
+
+def run_webrebuild_site(svc: Services, a: WebSiteArgs) -> dict[str, Any]:
+    return cap_result(svc.webrebuild.task(a.id))
+
+
+def run_webrebuild_start(svc: Services, a: WebStartArgs) -> dict[str, Any]:
+    urls = [u.model_dump() for u in a.urls]
+    if a.dry_run:
+        return cap_result(svc.webrebuild.plan(models=a.models, task_ids=a.sites, urls=urls, prices=a.prices, settings=a.settings))
+    card = svc.webrebuild.start(models=a.models, task_ids=a.sites, urls=urls, prices=a.prices, settings=a.settings, label=a.label,
+                                source="ui" if _from_ui() else "assistant", caller=_CALLER.get())
+    if a.wait_s > 0:
+        entry = svc.webrebuild.threads.get(card["id"])
+        if entry is not None:
+            entry[0].join(a.wait_s)
+        card = svc.webrebuild.card(svc.web_store.run(card["id"]))
+        if card["state"] in ("queued", "running"):
+            return cap_result({"run": card, "still_running": True})
+    return cap_result({"run": card})
+
+
+def run_webrebuild_status(svc: Services, a: WebRunRef) -> dict[str, Any]:
+    run = _web_run(svc, a.run)
+    return cap_result({"run": svc.webrebuild.card(run), "so_far": run.get("summary") or svc.webrebuild.summary(run["id"])})
+
+
+def run_webrebuild_result(svc: Services, a: WebRunRef) -> dict[str, Any]:
+    return cap_result(svc.webrebuild.result(_web_run(svc, a.run)["id"]))
+
+
+def run_webrebuild_item(svc: Services, a: WebItemArgs) -> dict[str, Any]:
+    run = _web_run(svc, a.run)
+    return cap_result(svc.webrebuild.item_detail(run["id"], a.site, _web_slot(run, a.model)))
+
+
+def run_webrebuild_code(svc: Services, a: WebCodeArgs) -> dict[str, Any]:
+    run = _web_run(svc, a.run)
+    return cap_result(svc.webrebuild.code(run["id"], a.site, _web_slot(run, a.model), a.path))
+
+
+def run_webrebuild_cancel(svc: Services, a: WebRunRef) -> dict[str, Any]:
+    return svc.webrebuild.cancel(_web_run(svc, a.run)["id"])
+
+
+def run_webrebuild_list(svc: Services, a: WebListArgs) -> dict[str, Any]:
+    rows = svc.web_store.runs(limit=a.limit)
+    return cap_result({"runs": [svc.webrebuild.card(r) | ({"summary": r["summary"]} if r.get("summary") else {}) for r in rows], "count": len(rows)})
+
+
+def run_webrebuild_delete(svc: Services, a: WebDeleteArgs) -> dict[str, Any]:
+    if not a.confirm:
+        raise ValueError("Deleting a run needs confirm=true.")
+    return svc.webrebuild.delete(_web_run(svc, a.run)["id"])
+
+
+def run_webrebuild_score(svc: Services, a: WebScoreArgs) -> dict[str, Any]:
+    return cap_result(svc.webrebuild.score_sites(reference=a.reference, candidate=a.candidate, cases=a.cases or None, routes=a.routes or None,
+                                                 widths=a.widths or None, threshold=a.threshold))
+
+
+def run_webrebuild_websitebench(svc: Services, a: WebsiteBenchArgs) -> dict[str, Any]:
+    from .webrebuild import websitebench
+    if a.action == "import":
+        return cap_result(websitebench.import_public(svc.webrebuild.root, tasks=a.tasks, every=a.every))
+    if a.action == "instruction":
+        if not a.tasks:
+            raise ValueError("instruction needs a task id in tasks.")
+        return cap_result(websitebench.instruction(svc.webrebuild.root, a.tasks[0]))
+    return cap_result(websitebench.listing(svc.webrebuild.root, query=a.query))
 
 
 def run_langbench_task(_svc: Services, a: LangbenchTaskArgs) -> dict[str, Any]:
@@ -1952,6 +2107,44 @@ TOOLS: list[Tool] = [
     Tool("briefbench_list", _d("Recent brief-bench runs with state and summary. Historial de encargos.", synonyms="comparaciones anteriores"), BriefListArgs, ann(True), run_briefbench_list),
     Tool("briefbench_delete", _d("Delete a brief-bench run and its files (needs confirm=true). Borrar encargo.", synonyms="eliminar comparación"), BriefDeleteArgs,
          ann(False, idempotent=True, destructive=True), run_briefbench_delete),
+    Tool("webrebuild_catalog", _d("Website-rebuild bench: reference sites, step kinds, browser. Catálogo de reconstruir una web.",
+                                  "Small local reference sites (a product page, a pricing page with a monthly/yearly switch, a to-do list, a two-page blog) with their cases: steps that act, "
+                                  "checks of what the page shows and checkpoints (pictures). Also whether a Python with Playwright was found and what of WebsiteBench is in the data folder.",
+                                  "reconstruir una web, clonar un sitio, benchmark de webs, WebsiteBench, fidelidad visual"), Empty, ann(True), run_webrebuild_catalog),
+    Tool("webrebuild_site", _d("One reference site of the rebuild bench with its cases step by step. Una web de referencia.", synonyms="casos de prueba de la web"),
+         WebSiteArgs, ann(True), run_webrebuild_site),
+    Tool("webrebuild_start", _d("Models rebuild reference sites by browsing them; scored by SSIM and checks. Reconstruir una web.",
+                                "Each model explores each reference in a headless browser (a text picture of every visible element: position, size, text, font, colours), writes its own "
+                                "HTML/CSS/JS with tools and can preview it. Then both sites run the same cases at 1280 and 390 px: a case passes when its checks pass and every checkpoint "
+                                "reaches normalized SSIM 0.99; the site's score is the share of cases passed. Time, tokens and cost per model. Runs in the background; dry_run only plans.",
+                                "reconstruir web, clonar sitio, rehacer página, comparar modelos haciendo webs, WebsiteBench local, SSIM"), WebStartArgs,
+         ann(False, idempotent=False, open_world=True), run_webrebuild_start, timeout_s=BRIDGE_WAIT_S),
+    Tool("webrebuild_status", _d("Progress of a website-rebuild run: phase and sites built. Estado de reconstruir una web.", synonyms="cómo va la reconstrucción"),
+         WebRunRef, ann(True), run_webrebuild_status),
+    Tool("webrebuild_result", _d("Website-rebuild result: score, cases, SSIM, checks, time and cost per model. Resultado de reconstruir.",
+                                 "Per model: mean score over sites, cases passed, mean visual score, share of checks passed, tokens, cost, build time and steps; best, fastest and cheapest. "
+                                 "Per site: one row per model. Models that never built a site are None, not zero.",
+                                 "tabla de reconstrucción, qué modelo rehace mejor una web, puntuación SSIM"), WebRunRef, ann(True), run_webrebuild_result),
+    Tool("webrebuild_item", _d("One rebuilt site: every case, its checks and checkpoints, zones that differ. Una web reconstruida.",
+                               "Each checkpoint has the reference, candidate and diff picture URLs (/api/webrebuild/<run>/<site>/<slot>/<file>), its normalized SSIM and the boxes that differ most.",
+                               "qué falla en la copia, capturas, diferencias, comprobaciones fallidas"), WebItemArgs, ann(True), run_webrebuild_item),
+    Tool("webrebuild_code", _d("A file a model wrote while rebuilding a site, and the list of all of them. Código reconstruido.", synonyms="ver el HTML, el CSS"),
+         WebCodeArgs, ann(True), run_webrebuild_code),
+    Tool("webrebuild_cancel", _d("Cancel a website-rebuild run: finished sites kept. Cancelar reconstrucción.", synonyms="parar, detener"), WebRunRef, ann(False, idempotent=True),
+         run_webrebuild_cancel),
+    Tool("webrebuild_list", _d("Recent website-rebuild runs with state and summary. Historial de reconstrucciones.", synonyms="ejecuciones anteriores de webs"), WebListArgs, ann(True),
+         run_webrebuild_list),
+    Tool("webrebuild_delete", _d("Delete a website-rebuild run and its files (needs confirm=true). Borrar reconstrucción.", synonyms="eliminar ejecución de webs"), WebDeleteArgs,
+         ann(False, idempotent=True, destructive=True), run_webrebuild_delete),
+    Tool("webrebuild_score", _d("Score a running site against a running reference: cases, SSIM, checks. Puntuar una copia de web.",
+                                "No model: both sites go through the same cases (or one picture per route) at each width; normalized SSIM per checkpoint, checks, the share of cases "
+                                "passed and the zones that differ. Cases that fail on the reference itself are left out.",
+                                "comparar dos webs, fidelidad de un clon, paridad visual, SSIM entre sitios"), WebScoreArgs, ann(False, idempotent=True, open_world=True),
+         run_webrebuild_score, timeout_s=BRIDGE_WAIT_S),
+    Tool("webrebuild_websitebench", _d("WebsiteBench public tasks in the data folder: list, import, read one. Tareas de WebsiteBench.",
+                                       "import downloads the release index, licence, notice and, per task, the instruction, the task file and the case manifest (hidden cases by kind and tier). "
+                                       "A full run of those tasks goes through the agent bench (benchmark websitebench: containers and the trial runner).",
+                                       "WebsiteBench, descargar tareas, 70 webs, casos ocultos"), WebsiteBenchArgs, ann(False, idempotent=True, open_world=True), run_webrebuild_websitebench),
     Tool("speechbench_engines", _d("Speech-to-text engines for the speech bench; add command engines. Motores de voz a texto.",
                                    "faster-whisper:<size> runs in a Python that has faster-whisper (found among this app and the family's venvs, or set with "
                                    "whisper_python), CPU int8 by default, one warm model per run. A command engine (name + command with {audio}, {language}) "

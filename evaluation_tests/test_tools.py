@@ -32,7 +32,7 @@ def test_the_catalogue_has_unique_names_and_valid_schemas():
 
 def test_destructive_tools_are_annotated_and_need_confirm():
     destructive = {t.name for t in TOOLS if t.annotations["destructiveHint"]}
-    assert destructive == {"model_remove", "suite_remove", "case_remove", "pygmalion_suit_eval_delete", "logit_judge_delete", "rag_set_delete", "rag_case_remove", "rag_run_delete", "briefbench_delete"}
+    assert destructive == {"model_remove", "suite_remove", "case_remove", "pygmalion_suit_eval_delete", "logit_judge_delete", "rag_set_delete", "rag_case_remove", "rag_run_delete", "briefbench_delete", "webrebuild_delete"}
     discard = TOOLS_BY_NAME["run_discard"]
     assert not discard.annotations["destructiveHint"] and "confirm" in discard.input_model.model_fields and "reason" in discard.input_model.model_fields, "reversible, but it asks for confirm"
     for t in TOOLS:
@@ -708,6 +708,34 @@ def test_brief_bench_tools_browse_briefs_and_run(svc):
     assert call(svc, "briefbench_cancel", run=run["id"])["cancelled"] is False
     assert call(svc, "briefbench_list")["count"] == 1
     assert call(svc, "briefbench_delete", run=run["id"], confirm=True) == {"deleted": run["id"]}
+
+
+def test_website_rebuild_tools_browse_sites_run_score_and_read_websitebench(svc):
+    from evaluation_tests.test_webrebuild import FakeBrowser, builder
+    from galton_hoard.webrebuild.serve import Site
+    from galton_hoard.webrebuild.tasks import SITES
+    svc.settings.set_many({"webrebuild.browser_python": "fake-python"})
+    svc.webrebuild.browser_factory = FakeBrowser
+    add_gguf(svc, "constructor", responder=builder("precios"))
+    cat = call(svc, "webrebuild_catalog")
+    assert [t["id"] for t in cat["tasks"]] == ["ficha", "precios", "tareas", "blog"] and cat["browser"]["found"]
+    assert call(svc, "webrebuild_site", id="precios")["case_list"][0]["id"] == "precios-mensual"
+    assert call(svc, "webrebuild_start", models=["constructor"], sites=["precios"], dry_run=True)["cases_per_model"] == 6
+    run = call(svc, "webrebuild_start", models=["constructor"], sites=["precios"], wait_s=60)["run"]
+    assert run["state"] == "done" and call(svc, "webrebuild_status")["so_far"]["models"][0]["sites"] == 1
+    row = call(svc, "webrebuild_result")["tasks"][0]["rows"][0]
+    assert row["outcome"] == "done" and row["score"] == 1.0
+    assert call(svc, "webrebuild_item", site="precios", model="constructor")["case_results"]
+    assert "Nube Norte" in call(svc, "webrebuild_code", site="precios", model="m1")["content"]
+    assert call(svc, "webrebuild_cancel", run=run["id"])["cancelled"] is False
+    assert call(svc, "webrebuild_list")["count"] == 1
+    assert call(svc, "webrebuild_delete", run=run["id"], confirm=True) == {"deleted": run["id"]}
+    with Site(SITES / "blog") as ref, Site(SITES / "blog") as same, Site(SITES / "ficha") as other:
+        good = call(svc, "webrebuild_score", reference=ref, candidate=same, routes=["/", "/articulo-1.html"], widths=[1280])
+        bad = call(svc, "webrebuild_score", reference=ref, candidate=other, routes=["/"], widths=[390])
+    assert good["site"]["score"] == 1.0 and good["site"]["cases"] == 2
+    assert bad["site"]["score"] == 0.0 and bad["cases"][0]["checkpoint_rows"][0]["regions"]
+    assert call(svc, "webrebuild_websitebench", action="list")["imported"] is False
 
 
 def test_video_bank_tools_browse_briefs_and_run(svc):

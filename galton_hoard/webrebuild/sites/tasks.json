@@ -1,0 +1,48 @@
+{
+  "tasks": [
+    {
+      "id": "ficha",
+      "title": "Ficha de producto",
+      "summary": "Una página de producto con cabecera, foto, precio y un botón que suma a la cesta.",
+      "level": "fácil",
+      "cases": [
+        {"id": "ficha-inicio", "steps": [{"goto": "/"}, {"expect_text": "Tetera de hierro"}, {"expect_text": "Cesta (0)"}, {"checkpoint": "inicio"}]},
+        {"id": "ficha-cesta", "steps": [{"goto": "/"}, {"click": "text=Añadir a la cesta"}, {"expect_text": "Cesta (1)"}, {"expect_text": "Añadida a la cesta"}, {"checkpoint": "cesta"}]},
+        {"id": "ficha-dos", "steps": [{"goto": "/"}, {"click": "text=Añadir a la cesta"}, {"click": "text=Añadir a la cesta"}, {"expect_text": "Cesta (2)"}]}
+      ]
+    },
+    {
+      "id": "precios",
+      "title": "Página de precios",
+      "summary": "Tres planes con un selector mensual o anual que cambia los precios.",
+      "level": "fácil",
+      "cases": [
+        {"id": "precios-mensual", "steps": [{"goto": "/"}, {"expect_text": "29 €"}, {"expect_text": "Más elegido"}, {"checkpoint": "mensual"}]},
+        {"id": "precios-anual", "steps": [{"goto": "/"}, {"click": "text=Anual"}, {"expect_text": "290 €"}, {"expect_text": "por año"}, {"checkpoint": "anual"}]},
+        {"id": "precios-vuelta", "steps": [{"goto": "/"}, {"click": "text=Anual"}, {"click": "text=Mensual"}, {"expect_text": "79 €"}, {"expect_no_text": "790 €"}]}
+      ]
+    },
+    {
+      "id": "tareas",
+      "title": "Lista de tareas",
+      "summary": "Añadir tareas, marcarlas como hechas y filtrar entre todas, pendientes y hechas.",
+      "level": "media",
+      "cases": [
+        {"id": "tareas-vacia", "steps": [{"goto": "/"}, {"expect_text": "No hay tareas"}, {"expect_text": "0 pendientes"}, {"checkpoint": "vacia"}]},
+        {"id": "tareas-anadir", "steps": [{"goto": "/"}, {"fill": "input[type=text]", "text": "Comprar pan"}, {"press": "Enter", "on": "input[type=text]"}, {"fill": "input[type=text]", "text": "Regar el huerto"}, {"press": "Enter", "on": "input[type=text]"}, {"expect_count": "li", "n": 2}, {"expect_text": "2 pendientes"}, {"checkpoint": "dos"}]},
+        {"id": "tareas-filtro", "steps": [{"goto": "/"}, {"fill": "input[type=text]", "text": "Comprar pan"}, {"press": "Enter", "on": "input[type=text]"}, {"fill": "input[type=text]", "text": "Regar el huerto"}, {"press": "Enter", "on": "input[type=text]"}, {"click": "li >> nth=0 >> input[type=checkbox]"}, {"expect_text": "1 pendiente"}, {"click": "text=Pendientes"}, {"expect_count": "li", "n": 1}, {"expect_text": "Regar el huerto"}, {"expect_no_text": "Comprar pan"}, {"checkpoint": "filtro"}]}
+      ]
+    },
+    {
+      "id": "blog",
+      "title": "Blog de dos páginas",
+      "summary": "Un índice de notas con enlaces a cada artículo y una página de artículo con vuelta al índice.",
+      "level": "media",
+      "cases": [
+        {"id": "blog-indice", "steps": [{"goto": "/"}, {"expect_text": "Últimas notas"}, {"expect_count": "article", "n": 3}, {"checkpoint": "indice"}]},
+        {"id": "blog-articulo", "steps": [{"goto": "/"}, {"click": "text=Los almendros del barranco"}, {"expect_url": "/articulo-1.html"}, {"expect_text": "Volveré dentro de diez días"}, {"checkpoint": "articulo"}]},
+        {"id": "blog-volver", "steps": [{"goto": "/articulo-2.html"}, {"click": "text=Volver a las notas"}, {"expect_url": "/index.html"}, {"expect_text": "Últimas notas"}]}
+      ]
+    }
+  ]
+}

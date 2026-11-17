@@ -19,7 +19,7 @@
                       ├──► routes.py: policy ─► routes.json (atomic) ─► event galton.routes.updated
                       ├──► watch.py: new/changed models ─► quick run; regression check after each run ─► notice + galton.regression
                       └──► arena.py: blind pairs from stored answers, votes, ratings
- agent_tools.py: one catalogue (124 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
+ agent_tools.py: one catalogue (136 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
  scheduler.py (hoard_link.lanes): lane "gpu" (runs, judging) · lane "io" (refresh every watch.interval_h, watch every minute, housekeeping hourly)
 ```
 
@@ -150,6 +150,10 @@ runs on the browser's software rasteriser, two pictures `motion_ms` apart tell w
 `cost_of(price, tokens_in, tokens_out)` with the run's prices (None without a price or without token counts). A model whose session fails leaves its answers `none` and the loop goes on. A command-line agent
 (`cli.py`) runs in a scratch folder under the run and has no token counts. If a judge was named, a second session scores each ready answer (`judge.parse_judge`) with no model name in the prompt. Files go to
 `<data>/briefbench/<run>/<brief>/<slot>/`; `api/briefs.py` serves the grid, the pictures and the sandboxed page, and `BriefBench.page_html` puts the libraries into the page when it is played.
+
+## Website rebuild
+
+`galton_hoard/webrebuild/` is a sixth kind of long job, stored as one JSON file per run (`store.py`). `WebRebuild.execute` starts one browser worker (`browser_worker.py`, a Python that has Playwright, driven over JSON lines by `browser.py`), runs every case of every site on the reference at each width (`serve.Site` serves a local site on a free port), then for each model opens one session and, per site, runs `agent.RebuildAgent`: a tool loop where `browse`/`click`/`fill`/`press`/`back` act on the reference and return a text picture of the page, `write_file`/`read_file`/`list_files` touch the model's folder and `preview` opens its own page. The rebuilt site is served and put through the same cases; `hoard_link.webfidelity` pairs the checkpoints, computes normalized SSIM and the zones that differ, and scores cases and sites. `websitebench.py` keeps the public WebsiteBench files in the data folder; the agent bench's `websitebench` entry runs that benchmark in containers.
 
 ## Agent bench
 

@@ -2,6 +2,7 @@
 
 from .agent import router as agent_router
 from .briefs import router as briefs_router
+from .webrebuild import router as webrebuild_router
 from .health import router as status_router
 from .ragbench import router as ragbench_router
 from .runs import router as runs_router
@@ -9,4 +10,4 @@ from .suiteval import router as suiteval_router
 from .ui import router as ui_router
 from .videos import router as videos_router
 
-ROUTERS = [status_router, ui_router, agent_router, runs_router, videos_router, suiteval_router, ragbench_router, briefs_router]
+ROUTERS = [status_router, ui_router, agent_router, runs_router, videos_router, suiteval_router, ragbench_router, briefs_router, webrebuild_router]

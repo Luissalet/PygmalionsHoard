@@ -15,6 +15,7 @@ import Agentes from "./pages/Agentes.jsx";
 import Rutas from "./pages/Rutas.jsx";
 import Videos from "./pages/Videos.jsx";
 import Encargos from "./pages/Encargos.jsx";
+import Webs from "./pages/Webs.jsx";
 import Trajes from "./pages/Trajes.jsx";
 import Rag from "./pages/Rag.jsx";
 import Voz from "./pages/Voz.jsx";
@@ -31,6 +32,7 @@ const PAGES = [
   { path: "arena", key: "nav_arena", icon: ICONS.arena, component: Arena },
   { path: "arneses", key: "nav_harness", icon: ICONS.harness, component: Arneses },
   { path: "encargos", key: "nav_briefs", icon: ICONS.arena, component: Encargos },
+  { path: "webs", key: "nav_webs", icon: ICONS.tests, component: Webs },
   { path: "videos", key: "nav_videos", icon: ICONS.video, component: Videos },
   { path: "trajes", key: "nav_suits", icon: ICONS.tests, component: Trajes },
   { path: "rag", key: "nav_rag", icon: ICONS.search, component: Rag },

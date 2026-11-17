@@ -48,6 +48,7 @@ export const api = {
   visionUrl: (caseId, n = 1) => `/evaluation/api/vision/${encodeURIComponent(caseId)}/${n}.png`,
   videoUrl: (run, prompt, name) => `/evaluation/api/videobench/${encodeURIComponent(run)}/${encodeURIComponent(prompt)}/${name}`,
   briefUrl: (run, brief, slot, name) => `/evaluation/api/briefbench/${encodeURIComponent(run)}/${encodeURIComponent(brief)}/${encodeURIComponent(slot)}/${name}`,
+  webUrl: (run, site, slot, name) => `/evaluation/api/webrebuild/${encodeURIComponent(run)}/${encodeURIComponent(site)}/${encodeURIComponent(slot)}/${encodeURIComponent(name)}`,
   call,
 };
 

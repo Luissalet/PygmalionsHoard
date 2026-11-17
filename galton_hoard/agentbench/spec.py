@@ -146,6 +146,8 @@ class Benchmark:
     #: environment for the benchmark's own services, ``{model}`` = the campaign's model (an
     #: explicit variable in the caller's environment wins)
     env: tuple[tuple[str, str], ...] = ()
+    #: extra arguments of the runner's ``run`` command for this benchmark (hosts its containers may reach while they are built)
+    args: tuple[str, ...] = ()
 
     def info(self) -> dict[str, Any]:
         return {"id": self.id, "dataset": self.dataset, "title": self.title, "kind": self.kind, "n": self.n, "dev": self.dev, "test": self.n - self.dev,
@@ -169,6 +171,11 @@ CATALOGUE: tuple[Benchmark, ...] = (
               note="Customer-service dialogues with a simulated user and a policy; the database state and what the agent tells the user decide."),
     Benchmark("lcb", "livecodebench/livecodebench", "LiveCodeBench", "algorithmic", n=24, dev=8,
               note="Competitive programming problems released after the usual training cut-offs; hidden tests decide."),
+    Benchmark("websitebench", "websitebench/WebsiteBench@v1", "WebsiteBench", "web_rebuild", n=6, dev=2, seed=11,
+              args=tuple(a for host in ("snapshot.debian.org", "raw.githubusercontent.com", "github.com", "nodejs.org", "registry.npmjs.org")
+                         for a in ("--allow-environment-host", host)),
+              note="Rebuild a real website full-stack after exploring it only through a browser; hidden cases pass when their functional checks pass "
+                   "and every visual checkpoint reaches normalized SSIM 0.99. Long tasks: hours per task, 8 CPU and 8 GB per container."),
 )
 BY_ID = {b.id: b for b in CATALOGUE}
 
