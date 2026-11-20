@@ -101,11 +101,16 @@ def test_the_ui_never_names_the_wire_protocol_after_a_company():
 
 
 def test_no_personal_data_in_the_sources():
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    holder = re.search(r"^Copyright \(c\) \d{4} (.+)$", license_text, re.MULTILINE)
+    assert holder is not None
+    name_parts = holder[1].split()
+    identity = rf"\b{re.escape(name_parts[0])}\b|{re.escape(name_parts[-2])}"
     for path in source_files():
         if path.name in {"LICENSE"}:
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
-        assert not re.search(r"(?i)\bluis\b|salete|@gmail\.|C:\\Users\\|/home/claude|/root/", text), path.relative_to(ROOT)
+        assert not re.search(rf"{identity}|@gmail\.|C:\\Users\\|/home/claude|/root/", text, re.IGNORECASE), path.relative_to(ROOT)
 
 
 def test_no_placeholder_lines():

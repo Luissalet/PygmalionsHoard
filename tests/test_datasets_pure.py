@@ -96,7 +96,7 @@ def test_invalid_iban_is_ignored():
 
 
 def test_mask_is_idempotent_and_keeps_the_text_around():
-    text = "Escríbeme a luis@example.org o llama al 612 345 678 por favor."
+    text = "Escríbeme a reader@example.test o llama al 612 345 678 por favor."
     once = pii.mask(text)
     assert once == "Escríbeme a <EMAIL> o llama al <PHONE> por favor." and pii.mask(once) == once
 

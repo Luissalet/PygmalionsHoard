@@ -20,7 +20,7 @@ TERMS = json.dumps({"cat": ["gato"], "dog": ["perro"]})
 STRUCTURED = [
     ("JSON", '{"title": "Hello", "tags": ["a", "b"]}', '{"title": "Hola gato perro", "tags": ["a", "b"]}'),
     ("HTML", '<p class="x">Hello <b>world</b></p>', '<p class="x">Hola gato <b>perro</b></p>'),
-    ("CSV", "name,city\nAna,Paris\nLuis,Rome", "nombre,ciudad\nAna,gato\nLuis,perro"),
+    ("CSV", "name,city\nAna,Paris\nEquipo B,Rome", "nombre,ciudad\nAna,gato\nEquipo B,perro"),
     ("Markdown表格", "| a | b |\n| - | - |\n| 1 | 2 |", "| gato | perro |\n| - | - |\n| 1 | 2 |"),
     ("Markdown", "# Title\n\nSome text", "# Título\n\ngato perro"),     # not a table: the benchmark's own reader refuses even the reference
 ]
