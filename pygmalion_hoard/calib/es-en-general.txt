@@ -380,11 +380,11 @@ Customer Care
 
 Resumen de una reunión de equipo
 
-Fecha: martes, 14 de enero. Asistentes: Ana, Luis, Carmen, Pablo y Elena.
+Fecha: martes, 14 de enero. Asistentes: coordinación, operaciones, compras, soporte y finanzas.
 
 Puntos tratados:
 1. Estado del proyecto de la tienda en línea. La integración con la pasarela de pago está terminada y en pruebas; queda pendiente el diseño de la página de seguimiento de pedidos.
-2. Incidencias de la semana pasada. Se resolvieron dos errores de redondeo en el cálculo de gastos de envío. Luis revisará el resto de cálculos con importes decimales.
+2. Incidencias de la semana pasada. Se resolvieron dos errores de redondeo en el cálculo de gastos de envío. El responsable de operaciones revisará el resto de cálculos con importes decimales.
 3. Planificación del trimestre. Se propone dedicar febrero a rendimiento y accesibilidad, y marzo a la nueva aplicación móvil.
 
 Acuerdos:
