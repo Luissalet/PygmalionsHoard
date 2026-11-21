@@ -120,7 +120,9 @@ def test_no_placeholder_lines():
 
 
 def test_license_and_ci_exist():
-    assert "Luis María Salete Cuartero" in (ROOT / "LICENSE").read_text(encoding="utf-8") and "MIT License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    original_license = (ROOT / "provenance" / "galton" / "LICENSE").read_text(encoding="utf-8")
+    assert "MIT License" in license_text and license_text == original_license
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert "ubuntu-latest" in ci and "windows-latest" in ci and "pytest" in ci and "npm run build" in ci
     assert json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["scripts"]["build"].count("vite build") == 2

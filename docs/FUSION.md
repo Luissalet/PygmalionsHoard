@@ -26,7 +26,9 @@ OFF is saved before waiting. Native API requests share a lifetime and tracked st
 
 ## Verification
 
-Run `python -m pytest tests evaluation_tests fusion_tests --import-mode=importlib`; fake workers, invented data, no GPU/real model. Build both native clients with `npm run build`; check both API docs generators. Browser verification must inspect Functions on desktop/mobile and navigate native pages after explicit enabling. A source regression does not certify inference quality of a real model.
+Run `python -m pytest tests evaluation_tests fusion_tests --import-mode=importlib` for the CPU suite with fake workers and synthetic data. The stdio and shared bridge tests compare the catalogues with the running studio. The fusion tests verify catalogue coverage against both native registries.
+
+Build both native clients with `npm run build` and check both API docs generators. Inspect Functions on desktop and mobile, and navigate to each native page after explicitly enabling its module. A source regression does not certify inference quality of a real model.
 
 ## Assistant conversation spaces
 

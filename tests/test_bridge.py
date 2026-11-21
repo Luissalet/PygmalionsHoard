@@ -68,7 +68,13 @@ def test_bridge_roundtrip(server):
         tools = rpc(proc, {"jsonrpc": "2.0", "id": 2, "method": "tools/list"})["result"]["tools"]
         names = {t["name"] for t in tools}
         assert {"pygmalion_overview", "train_plan", "train_start", "quantize_start", "evaluate_start", "publish_ollama", "lineage_graph"} <= names
-        assert len(names) == 176
+        response = httpx.get(f"{url}/api/agent/tools", trust_env=False)
+        response.raise_for_status()
+        live_tools = response.json()["tools"]
+        assert len(tools) == len(names) == len(live_tools)
+        assert {t["name"]: t["inputSchema"] for t in tools} == {
+            t["name"]: t["inputSchema"] for t in live_tools
+        }
         ov = rpc(proc, {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "pygmalion_overview", "arguments": {}}})
         body = json.loads(ov["result"]["content"][0]["text"])
         assert body["allowed_gpus"] == [2, 3] and "summary" in body
