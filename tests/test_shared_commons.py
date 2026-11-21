@@ -88,8 +88,10 @@ def test_the_shared_bridge_lists_and_calls_the_tools_of_the_running_app(running_
         return tools, settings, missing
 
     tools, settings, missing = asyncio.run(go())
-    assert len(tools) == len(TOOLS) + 126
-    assert not settings.is_error and "values" in settings.body or "settings" in settings.body or not settings.is_error
+    response = httpx.get(f"http://127.0.0.1:{running_app['port']}/api/agent/tools", trust_env=False)
+    response.raise_for_status()
+    assert tools == response.json()["tools"]
+    assert not settings.is_error and isinstance(settings.body["values"], dict)
     assert missing.is_error and missing.body["code"] == "not_found" and missing.body["hint"] and missing.body["key"]
 
 
